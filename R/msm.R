@@ -22,7 +22,8 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                 tostate,   #  data required if fromto is TRUE
                 timelag,   #
                 death = FALSE,  # 'death' states, ie, entry time known exactly, but unknown transient state at previous instant
-                tunit = 1.0, # no longer used
+                censor = NULL,
+                censor.states = NULL,
                 exacttimes = FALSE,
                 fixedpars = NULL, # specify which parameters to fix
                 ... # options to optim
@@ -65,7 +66,9 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       else {
           nmisc <- nmisceffs <- 0; ematrix <- evector <- basemiscconstrvec <- NULL
       }
-
+### CENSORING MODEL
+      cens <- msm.form.censor(censor, censor.states, qmatrix)
+      
 ### BASIC DATA: BY TRANSITION PAIRS
       if (fromto) {
           if (misc)
@@ -139,7 +142,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       nmiss <- length(setdiff(1:nobs, final.rows))
       plural <- if (nmiss==1) "" else "s"
       if (nmiss > 0) warning(nmiss, " record", plural, " dropped due to missing values")
-      msm.check.consistency(qmatrix, misc, fromto=fromto, state=state, subject=subject, tostate=tostate, time=time)
+      msm.check.consistency(qmatrix, misc, fromto=fromto, state=state, censor=cens, subject=subject, tostate=tostate, time=time)
       nobs <- length(state)
 
 ### FORM LIST OF INITIAL PARAMETERS
@@ -179,7 +182,6 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       else if (length(setdiff(death, 1:nstates)) > 0)
         stop("Death states indicator contains states not in ",statelist)
       else {ndeath <- length(death); death <- death - 1}
-      if (!missing(tunit)) warning("tunit argument is no longer used. death times are now assumed exact")
       transient <- which (apply (qmatrix, 1, sum) > 0) - 1
       if (any (death %in% transient)) stop("Not all the \"death\" states are absorbing states")
       if (ndeath > 0 && exacttimes==TRUE) warning("Ignoring death argument, as all states have exact entry times")
@@ -191,7 +193,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                             baseconstrvec, basemiscconstrvec,
                             initprobs, nstates, nintens, nintenseffs, nmisc, nmisceffs,
                             nobs, npts, ncovs, ncoveffs, nmisccovs, nmisccoveffs, covmatch,
-                            ndeath, death, exacttimes, fixedpars, plabs)
+                            ndeath, death, cens, exacttimes, fixedpars, plabs)
           params <- inits
           covmat <- NULL
           foundse <- FALSE
@@ -208,7 +210,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                        nstates=nstates, nintens=nintens, nintenseffs=nintenseffs, nmisc=nmisc, nmisceffs=nmisceffs,
                        nobs=nobs, npts=npts,
                        ncovs=ncovs, ncoveffs=ncoveffs, nmisccovs=nmisccovs, nmisccoveffs=nmisccoveffs,
-                       covmatch=covmatch, ndeath=ndeath, death=death, exacttimes=exacttimes,
+                       covmatch=covmatch, ndeath=ndeath, death=death, cens=cens, exacttimes=exacttimes,
                        fixedpars=fixedpars, plabs=plabs)
           params <- allinits
           params[notfixed] <- opt$par
@@ -270,7 +272,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                            nstates=nstates, nintens=nintens, nintenseffs=nintenseffs, nmisc=nmisc,
                            constrvec=constrvec, baseconstrvec=baseconstrvec, ncoveffs=ncoveffs,
                            covmatch=covmatch, initprobs=initprobs, ndeath=ndeath, death=death, 
-                           exacttimes=exacttimes)
+                           cens=cens, exacttimes=exacttimes)
                          )
       
       attr(msmobject, "fixed") <- fixed
@@ -312,7 +314,7 @@ lik.msm <- function(params, allinits, misc, subject, time, state, tostate, fromt
                     constrvec, misccovvec, miscconstrvec, baseconstrvec, basemiscconstrvec, 
                     initprobs, nstates, nintens, nintenseffs, nmisc, nmisceffs, nobs, npts,
                     ncovs, ncoveffs, nmisccovs, nmisccoveffs, covmatch,
-                    ndeath, death, exacttimes, fixedpars, plabs)
+                    ndeath, death, cens, exacttimes, fixedpars, plabs)
   {      
       p <- length(params)
       state <- state - 1  # In R, work with states 1, ... n. In C, work with states 0, ... n-1
@@ -381,6 +383,10 @@ lik.msm <- function(params, allinits, misc, subject, time, state, tostate, fromt
                 as.integer(covmatch),
                 as.integer(ndeath),
                 as.integer(death),
+                as.integer(cens$ncens),
+                as.integer(cens$censor - 1),
+                as.integer(cens$states - 1),
+                as.integer(cens$index - 1),
                 as.integer(exacttimes),
                 as.integer(nfix),
                 as.integer(fixedpars),
@@ -410,8 +416,8 @@ msm.process.covs <- function(covariates, # formula:  ~ cov1 + cov2 + ...
       droprows <- as.numeric(attr(mf, "na.action"))
       kept.rows <- (1:nobs)[! ((1:nobs) %in% droprows)]
       ## centre the covariates about their means
-##      covmeans <- apply(mm, 2, mean)
-      covmeans <- rep(0, ncovs)
+      covmeans <- apply(mm, 2, mean)
+      ##      covmeans <- rep(0, ncovs)
       covstds <- apply(mm, 2, sd)
       covfactor <- sapply(mf, is.factor)
       mm <- sweep(mm, 2, covmeans)
@@ -514,11 +520,11 @@ msm.form.output <- function(matrix, # matrix of 0/1 indicators for allowed inten
 ### Check the consistency of the supplied data with the specified model 
 
 msm.check.consistency <- function(qmatrix, misc, fromto=FALSE, subject=NULL,
-                                  state, tostate=NULL, time)
+                                  state, censor, tostate=NULL, time)
   {
-      msm.check.state(nrow(qmatrix), state, fromto, tostate)
+      msm.check.state(nrow(qmatrix), state, censor$censor, fromto, tostate)
       if (!misc)
-        msm.check.model(state, subject, qmatrix, fromto, tostate)      
+        msm.check.model(state, subject, censor, qmatrix, fromto, tostate)      
       if (!fromto)
         msm.check.times(time, subject)
       invisible()
@@ -550,25 +556,31 @@ msm.check.ematrix <- function(ematrix, qmatrix)
 
 ### Check elements of state vector
 
-msm.check.state <- function(nstates, state, fromto=FALSE, tostate=NULL)
+msm.check.state <- function(nstates, state, censor, fromto=FALSE, tostate=NULL)
   {
       statelist <- if (nstates==2) "1, 2" else if (nstates==3) "1, 2, 3" else paste("1, 2, ... ,",nstates)
+      states <- c(1:nstates, censor)
       if (fromto) {
-          if (length(setdiff(unique(state), 1:nstates)) > 0)
+          if (length(setdiff(unique(state), states)) > 0)
             stop("From-state vector contains elements not in ",statelist)
-          if (length(setdiff(unique(tostate), 1:nstates)) > 0)
+          if (length(setdiff(unique(tostate), states)) > 0)
             stop("To-state vector contains elements not in ",statelist)         
       }
-      else if (length(setdiff(unique(state), 1:nstates)) > 0)
+      else if (length(setdiff(unique(state), states)) > 0)
         stop("State vector contains elements not in ",statelist)
       invisible()
   }
 
 ### CHECK IF TRANSITION PROBABILITIES FOR DATA ARE ALL NON-ZERO
 ### (e.g. check for backwards transitions when the model is irreversible)
+### BUG: Check not done for censoring states
 
-msm.check.model <- function(state, subject, qmatrix, fromto=FALSE, tostate=NULL)
+msm.check.model <- function(state, subject, censor, qmatrix, fromto=FALSE, tostate=NULL)
 {
+    nocens <- if (fromto) (! (state %in% censor$censor | tostate %in% censor$censor) ) else (! (state %in% censor$censor) )
+    subject <- subject[nocens]
+    tostate <- tostate[nocens]
+    state <- state[nocens]
     n <- length(state)
     diag(qmatrix) <- 0
     diag(qmatrix) <- - apply(qmatrix, 1, sum)
@@ -654,10 +666,14 @@ statetable.msm <- function(state, subject, data=NULL)
 }
 
 ## Calculate crude initial values for transition intensities by assuming observations represent the exact transition times
+## TODO: handle censoring 
 
 crudeinits.msm <- function(state, time, subject, qmatrix, data=NULL, fromto=FALSE,
-                           fromstate=NULL, tostate=NULL, timelag=NULL, check=FALSE)
+                           fromstate=NULL, tostate=NULL, timelag=NULL, censor=NULL, censor.states=NULL, check=FALSE)
   {
+      qmatrix <- msm.check.qmatrix(qmatrix)
+      cens <- msm.form.censor(censor, censor.states, qmatrix)
+
       if (fromto) {
           if (missing(fromstate) || missing(tostate) || missing(timelag))
             stop("fromstate, tostate and timelag must be specified if fromto is TRUE")
@@ -667,8 +683,6 @@ crudeinits.msm <- function(state, time, subject, qmatrix, data=NULL, fromto=FALS
               tostate <- eval(substitute(tostate), data, parent.frame())
               timelag <- eval(substitute(timelag), data, parent.frame())
           }
-          tottime <- tapply(timelag, state, sum)
-          ntrans <- table(state, tostate)
       }
       else {
           if (missing(state) || missing(time) || missing(subject))
@@ -679,17 +693,28 @@ crudeinits.msm <- function(state, time, subject, qmatrix, data=NULL, fromto=FALS
           }
           n <- length(state)
           if (!is.null(data)) subject <- if(missing(subject)) rep(1,n) else eval(substitute(subject), data, parent.frame())
+      }
+      msm.check.state(nrow(qmatrix), state, cens$censor, fromto, tostate)
+      if (check) 
+        msm.check.model(state, subject, cens, qmatrix, fromto, tostate)      
+      if (fromto){ 
+          nocens <- (! (state %in% cens$censor | tostate %in% cens$censor) )
+          state <- state[nocens]; tostate <- tostate[nocens]; timelag <- timelag[nocens]
+          tottime <- tapply(timelag, state, sum)
+          ntrans <- table(state, tostate)
+      }
+      else {
           subject <- as.numeric(factor(subject))
+          nocens <- (! (state %in% cens$censor) )
+          state <- state[nocens]; subject <- subject[nocens]; time <- time[nocens]
+          n <- length(state)
           nextsubj <- c(subject[2:n], NA)
           lastsubj <- (subject != nextsubj)
           timecontrib <- ifelse(lastsubj, NA, c(time[2:n], 0) - time)
           tottime <- tapply(timecontrib[!lastsubj], state[!lastsubj], sum) # total time spent in each state
           ntrans <- statetable.msm(state, subject, data=NULL) # table of transitions
       }
-      qmatrix <- msm.check.qmatrix(qmatrix)
-      msm.check.state(nrow(qmatrix), state, fromto, tostate)
-      if (check) 
-        msm.check.model(state, subject, qmatrix, fromto, tostate)
+
       nst <- nrow(qmatrix)
       estmat <- matrix(0, nst, nst)
       rownames(estmat) <- colnames(estmat) <- paste(1:nst)
@@ -706,3 +731,49 @@ crudeinits.msm <- function(state, time, subject, qmatrix, data=NULL, fromto=FALS
 ### Force dynamic loading of the C code library (msm.so)
 .First.lib <- function(lib, pkg) library.dynam( "msm", pkg, lib )
 
+
+msm.form.censor <- function(censor=NULL, censor.states=NULL, qmatrix)
+  {
+      if (is.null(censor)) ncens <- 0
+      else {
+          ncens <- length(censor)
+          if (is.null(censor.states)) {
+              if (ncens > 1) {
+                  warning("more than one type of censoring given, but censor.states not supplied. Assuming only one type of censoring")
+                  ncens <- 1; censor <- censor[1]
+              }
+              absorbing <- rowSums(qmatrix) == 0 # FIX FOR > 0.3.
+              if (!length(absorbing)) {
+                  warning("No absorbing state and no censor.states supplied. Ignoring censoring.")
+                  ncens <- 0
+              }
+              else {
+                  transient <- setdiff(seq(length=nrow(qmatrix)), absorbing)
+                  censor.states <- transient
+                  states.index <- c(1, length(censor.states)+1)
+              }
+          }
+          else { 
+              if (ncens == 1) {
+                  if (!is.vector(censor.states) ||
+                      (is.list(censor.states) && (length(censor.states) > 1)) )
+                    stop("if one type of censoring, censor.states should be a vector, or a list with one vector element")
+                  if (!is.numeric(unlist(censor.states))) stop("censor.states should be all numeric")
+                  states.index <- c(1, length(censor.states)+1)
+              }
+              else {
+                  if (!is.list(censor.states)) stop("censor.states should be a list")
+                  if (length(censor.states) != ncens) stop("expected ", ncens, " elements in censor.states list, found ", length(censor.states))
+                  states.index <- cumsum(c(0, lapply(censor.states, length))) + 1 
+              }
+              censor.states <- unlist(censor.states)
+          }
+      }
+      if (ncens==0) censor <- censor.states <- states.index <- NULL
+      ## Censoring information to be passed to C 
+      list(ncens=ncens, # number of censoring states
+           censor = censor, # vector of their labels in the data 
+           states = censor.states, # possible true states that the censoring represents 
+           index = states.index # index into censor.states for the start of each true-state set, including an extra length(censor.states)+1
+           )
+  }

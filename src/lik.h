@@ -47,6 +47,7 @@ struct model {
     int covmatch;
     int ndeath;
     int *death;
+    int ncens; int *censor; int *censstates; int *censstind;
     int exacttimes;
     double *intens;
     double *coveffect;
@@ -91,6 +92,10 @@ void msmCEntry(int *do_what,      /* 1 = eval likelihood, 2 = Viterbi */
 	       int *covmatch,     /* use the covariate value from the previous or next observation */
 	       int *ndeath,        /* number of death states */
 	       int *death,        /* vector of indices of death states */
+	       int *ncens,
+	       int *censor,
+	       int *censstates,
+	       int *censstind,
 	       int *exacttimes,   /* indicator for exact transition times */
 	       int *nfix,    /* number of fixed parameters */
 	       int *fixedpars,    /* which parameters to fix */
@@ -114,10 +119,11 @@ void fillparvec(double *parvec, /* named vector to fill (e.g. intens = baseline 
 		);
 
 double likmisc(int pt, data *d, model *m);
-void UpdateLik(int state, double dt, int k, int last, data *d, model *m, 
+void UpdateLik(int *current, int nc, double dt, int k, int last, data *d, model *m, 
 	       double *cumprod, double *newprod, double *lweight);
 void AddCovs(int obs, data *d, model *m, double *newintens);
 void AddMiscCovs(int obs, data *d, model *m, double *newp);
+void GetCensored (int obs, model *m, int *nc, int **states);
 double PObsTrue(int obst,      /* observed state */
 		int tst,       /* true state */
 		double *miscprobs, /* misclassification probabilities */

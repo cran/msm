@@ -39,9 +39,9 @@ qmatrix.msm(x, covariates="mean", sojourn=FALSE)
 \value{
   A list with components:
   
-  \item{\code{estimate}}{Estimated transition intensity matrix.}
+  \item{estimate}{Estimated transition intensity matrix.}
   
-  \item{\code{SE}}{Corresponding approximate standard errors.}  
+  \item{SE}{Corresponding approximate standard errors.}  
   If \code{sojourn} is \code{TRUE}, extra components called
   \code{sojourn} and \code{sojournSE} are included, containing the
   estimate and standard errors, respectively, of the mean sojourn times in

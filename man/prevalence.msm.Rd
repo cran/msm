@@ -33,10 +33,10 @@ prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean", misccovar
 \value{
   A list with components:
   
-  \item{\code{Observed}}{Table of observed numbers of individuals in each state at
+  \item{Observed}{Table of observed numbers of individuals in each state at
     each time}
   
-  \item{\code{Observed percentages}}{Corresponding percentage of the
+  \item{Observed percentages}{Corresponding percentage of the
     individuals at risk at each time.}
   
   \item{\code{Expected}}{Table of corresponding expected numbers.}

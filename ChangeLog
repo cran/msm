@@ -1,9 +1,29 @@
+2005-01-07 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+	
+	* DESCRIPTION: Version 0.4 released. 
+		
+2005-01-06 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+		
+	* msm/R/msm.process.covs: Bug fix - covariates were not being
+	centered. Thanks to Andrew Titman. 
+
+2004-12-29  Chris Jackson  <chris.jackson@imperial.ac.uk>
+
+	Support added for censored observations. 
+
+	* src/lik.c: Bug fix. Don't ignore exacttimes for
+	misclassification models.
+	
+	Fixes in documentation. Thanks to Ross Boylan. 
+
 2004-09-18 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 
 	* man: Rd syntax errors fixed to pass R CMD CHECK under 2.0.0 *
 
 	* msm-manual: Reference to the PDF manual for msm made more
 	prominent.
+		
+	* DESCRIPTION: Version 0.3.3 released. 
 
 2004-06-23 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 

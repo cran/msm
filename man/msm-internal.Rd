@@ -2,7 +2,6 @@
 \title{Internal msm functions}
 \alias{msm-internal}
 \alias{lik.msm}
-\alias{lik.msmmisc}
 \alias{getobs.msm}
 \alias{observed.msm}
 \alias{msm.process.covs}
@@ -14,6 +13,7 @@
 \alias{msm.check.model}
 \alias{msm.check.times}
 \alias{msm.check.qmatrix}
+\alias{msm.form.censor}
 \alias{qematrix.msm}
 \alias{qematrix.diagse.formstr}
 \alias{qematrix.diagse.msm}
@@ -30,7 +30,7 @@ lik.msm(params, allinits, misc, subject, time, state, tostate, fromto,
         qvector, evector, covvec, constrvec, misccovvec, miscconstrvec,
         baseconstrvec, basemiscconstrvec, initprobs,
         nstates, nintens, nintenseffs, nmisc, nmisceffs, nobs, npts, ncovs, ncoveffs,
-        nmisccovs, nmisccoveffs, covmatch, ndeath, death, exacttimes, fixedpars, plabs)
+        nmisccovs, nmisccoveffs, covmatch, ndeath, death, cens, exacttimes, fixedpars, plabs)
 
 getobs.msm(sim, obstimes, death, tunit)
 
@@ -46,14 +46,16 @@ msm.check.qmatrix(qmatrix)
 
 msm.check.ematrix(ematrix, qmatrix)
 
-msm.check.consistency(qmatrix, misc, fromto=FALSE, subject=NULL, state,
+msm.check.consistency(qmatrix, misc, fromto=FALSE, subject=NULL, state, censor,
                       tostate=NULL, time)
 
-msm.check.state(nstates, state, fromto=FALSE, tostate=NULL)
+msm.check.state(nstates, state, censor, fromto=FALSE, tostate=NULL)
 
-msm.check.model(state, subject, qmatrix, fromto=FALSE, tostate=NULL)
+msm.check.model(state, subject, censor, qmatrix, fromto=FALSE, tostate=NULL)
 
 msm.check.times(time, subject)
+
+msm.form.censor(censor=NULL, censor.states=NULL, qmatrix)
 
 qematrix.msm(x, covariates="mean", which="intens", sojourn)
 

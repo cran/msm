@@ -51,6 +51,10 @@ void msmCEntry(
     int *covmatch,     /* use the covariate value from the previous or next observation */
     int *ndeath,        /* number of death states */
     int *death,        /* vector of indices of death states */
+    int *ncens,
+    int *censor,
+    int *censstates,
+    int *censstind,
     int *exacttimes,   /* indicator for exact transition times */
     int *nfix,    /* number of fixed parameters */
     int *fixedpars,    /* which parameters to fix */
@@ -79,6 +83,7 @@ void msmCEntry(
     m.nst = *nst;  m.nms = *nms;  m.nintens = *nintens;  m.nmisc = *nmisc;  m.ncoveffs = *ncoveffs;
     m.nintenseffs = *nintenseffs; m.nmisceffs = *nmisceffs; 
     m.nmisccoveffs = *nmisccoveffs;  m.covmatch = *covmatch; m.ndeath=*ndeath; m.death = death;  
+    m.ncens = *ncens; m.censor = censor; m.censstates=censstates; m.censstind=censstind;
     m.exacttimes = *exacttimes;
     m.intens = intens;  m.coveffect = coveffect;  m.miscprobs = miscprobs;  m.misccoveffect = misccoveffect;
     m.initprobs = initprobs;
@@ -146,7 +151,20 @@ void fillparvec(double *parvec, /* named vector to fill (e.g. intens = baseline 
     }
 }
 
+/* Form vector of probabilities of a given outcome conditionally on each underlying state */
+/* If outcome has nc=1 (not censored) then outcome probs are defined by misclassification matrix */
+/* If outcome has nc>1 (censored) then outcome probs are sum of misclassification probs over censoring set */
 
+void GetCensoredPObsTrue(double *pout, int *current, int nc, double *newmisc, model *m)
+{
+    int i, j;
+    for (i=0; i<m->nst; ++i) {
+	pout[i] = 0;
+	for (j=0; j<nc; ++j) 
+	    pout[i] += PObsTrue(current[j], i, newmisc, m);
+	
+    }
+}
 
 /* Likelihood for the misclassification model for one individual */
 
@@ -154,11 +172,13 @@ double likmisc(int pt, /* ordinal subject ID */
 	       data *d, model *m
     )
 {
+    int *current = (int *) S_alloc (1, sizeof(int));
+    double *pout = (double *) S_alloc(m->nst, sizeof(double)); 
     double *cumprod     = (double *) S_alloc(m->nst, sizeof(double)); 
     double *newprod     = (double *) S_alloc(m->nst, sizeof(double));  
     double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
     double lweight, lik;
-    int i, pti, k, first=0, last=0;
+    int i, pti, k, first=0, last=0, nc=1;
     for (i = 1, pti = 0; i < d->nobs ; i++)
     {  /* find index in data set of individual's first and last observations */
 	if (pti==pt) {
@@ -170,13 +190,16 @@ double likmisc(int pt, /* ordinal subject ID */
 	else if (d->subject[i] != d->subject[i-1]) ++pti;
     }
     AddMiscCovs(first, d, m, newmisc); 
+    GetCensored(d->state[first], m, &nc, &current);
+    GetCensoredPObsTrue(pout, current, nc, newmisc, m);
     for (i = 0; i < m->nst; ++i)
-	cumprod[i] = PObsTrue(d->state[first], i, newmisc, m) * m->initprobs[i]; /* cumulative matrix product */
+	cumprod[i] = pout[i] * m->initprobs[i]; /* cumulative matrix product */
     lweight=0;
     /* Matrix product loop to accumulate the likelihood */
     for (k = first+1; k <= last; ++k)
     {
-	UpdateLik(d->state[k], d->time[k] - d->time[k-1],
+	GetCensored(d->state[k], m, &nc, &current);
+	UpdateLik(current, nc, d->time[k] - d->time[k-1],
 		  k, last, d, m, cumprod, newprod, &lweight);
 	for (i = 0; i < m->nst; ++i)
 	    cumprod[i] = newprod[i];
@@ -199,17 +222,20 @@ double likmisc(int pt, /* ordinal subject ID */
 
 /* Post-multiply the row-vector cumprod by matrix T to accumulate the likelihood */
 
-void UpdateLik(int state, double dt, int k, int last, data *d, model *m, 
+void UpdateLik(int *current, int nc, double dt, int k, int last, data *d, model *m, 
 	       double *cumprod, double *newprod, double *lweight)
 {
     int i, j;
     double newprod_ave;
     double *T           = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
     double *newintens   = (double *) S_alloc(m->nintens, sizeof(double));
-    double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
+    double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double)); 
     double *pmat        = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
+    double *pout = (double *) S_alloc(m->nst, sizeof(double)); 
     AddCovs(k - 1 + m->covmatch, d, m, newintens);
     AddMiscCovs(k - 1 + m->covmatch, d, m, newmisc);
+    GetCensoredPObsTrue(pout, current, nc, newmisc, m);
+    
     /* calculate the transition probability (P) matrix for the time interval dt */
     Pmat(pmat, dt, newintens, m->qvector, m->nst, m->exacttimes);
     for(j = 0; j < m->nst; ++j)
@@ -217,20 +243,22 @@ void UpdateLik(int state, double dt, int k, int last, data *d, model *m,
 	newprod[j] = 0.0;
 	for(i = 0; i < m->nst; ++i)
 	{
-	    if ((k == last) && (m->ndeath > 0) && is_element(state, m->death, m->ndeath)) {
+	    if ((k == last) && (m->ndeath > 0) && is_element(current[0], m->death, m->ndeath) && !m->exacttimes) {
 		/* last observation was death and death time known exactly */
-		T[MI(i,j,m->nst)] = pmat[MI(i,j,m->nst)] * qij(j, state, newintens, m->qvector, m->nst);
+		T[MI(i,j,m->nst)] = pmat[MI(i,j,m->nst)] * qij(j, current[0], newintens, m->qvector, m->nst);
 #ifdef LIKDEBUG	       
-		printf("obs %d, death i=%d, j=%d, state=%d, pmat=%lf, HM=%lf, res=%lf\n", k, i, j, state, pmat[MI(i, j, m->nst)],
-		       PObsTrue(state, j, newmisc, m),
+		printf("obs %d, death i=%d, j=%d, state=%d, pmat=%lf, HM=%lf, HM=%lf, res=%lf\n", k, i, j, current[0], pmat[MI(i, j, m->nst)],
+		       pout[j], 
+		       PObsTrue(current[0], j, newmisc, m),
 		       T[MI(i,j,m->nst)]);
 #endif
 	    }
 	    else {
-		T[MI(i,j,m->nst)] = pmat[MI(i, j, m->nst)] * PObsTrue(state, j, newmisc, m);
+		T[MI(i,j,m->nst)] = pmat[MI(i, j, m->nst)] * pout[j]; 
 #ifdef LIKDEBUG	       
-		printf("obs %d, i=%d, j=%d, state=%d, pmat=%lf, HM=%lf, res=%lf\n", k, i, j, state, pmat[MI(i, j, m->nst)],
-		       PObsTrue(state, j, newmisc, m),
+		printf("obs %d, i=%d, j=%d, state=%d, pmat=%lf, HM=%lf, HM=%lf, res=%lf\n", k, i, j, current[0], pmat[MI(i, j, m->nst)],
+		       pout[j], 
+		       PObsTrue(current[0], j, newmisc, m),
 		       T[MI(i,j,m->nst)]);
 #endif
 	    }
@@ -303,7 +331,7 @@ double PObsTrue(int obst,      /* observed state */
     double this_miscprob, probsum;
     double *emat = (double *) S_alloc( (m->nst)*(m->nst), sizeof(double));
     /* construct the misclassification prob matrix from the parameter vector */
-    FillQmatrix(m->evector, miscprobs, emat, m->nst); /* todo: extend this so they sum to 1 instead of 0 ? */
+    FillQmatrix(m->evector, miscprobs, emat, m->nst);
     if (obst == tst){
 	probsum = 0;
 	for (s = 0; s < m->nst; ++s)
@@ -316,34 +344,73 @@ double PObsTrue(int obst,      /* observed state */
     return this_miscprob;
 }
 
+/* Return a vector of the possible states that a censored state could represent */ 
+/* These will be summed over when calculating the likelihood */
+
+void GetCensored (int obs, model *m, int *nc, int **states) 
+{
+    int j, k=0, n, cens=0;
+    if (m->ncens == 0)
+	n = 1;
+    else {
+	while (obs != m->censor[k] && k < m->ncens)
+	    ++k;
+	if (k < m->ncens) { 
+	    cens = 1; 
+	    n =  m->censstind[k+1] - m->censstind[k];
+	}
+	else n = 1;
+    } 
+    *states = (int *) S_realloc ((char *) *states, n, *nc, sizeof(int));
+    if (m->ncens == 0 || !cens)
+	(*states)[0] = obs;
+    else for (j = m->censstind[k]; j < m->censstind[k+1]; ++j)
+	(*states)[j - m->censstind[k]] = m->censstates[j];
+    *nc = n;    
+}
 
 /* Likelihood for the simple model. Data of form "subject ID, obs time, obs state" */
 
 double liksimple(data *d, model *m)
 {
-    int i,j;
+    int i,j,k, nc=1, np=1;
+    int *previous = (int *) S_alloc (1, sizeof(int));
+    int *current = (int *) S_alloc (1, sizeof(int));
     double dt, lik=0, contrib, *newintens = (double *) S_alloc ( m->nintens , sizeof(double));
     for (i = 1; i < d->nobs; ++i){
 	AddCovs(i - 1 + m->covmatch, d, m, newintens);
 	if (d->subject[i-1] == d->subject[i]){ 
 	    dt = d->time[i] - d->time[i-1];
+	    GetCensored(d->state[i-1], m, &np, &previous);
+	    GetCensored(d->state[i], m, &nc, &current);
 	    if ((m->ndeath > 0) && is_element(d->state[i], m->death, m->ndeath))
 		/* if state is a "death" state, i.e. entry date is known exactly, with unknown different state at the previous instant. */
 		{
 		    if (d->state[i-1] == d->state[i]) 
 			contrib = 1; /* death-death transition has probability 1 */
 		    else { 
+			/*  Sum over states that state[i-1] can represent */
 			contrib=0;
-			for (j = 0; j < m->nst; ++j) 
-			    if (j != d->state[i])
-				contrib += 
-				    pijt(d->state[i-1], j,  dt, newintens, m->qvector, m->nst, 0)*
-				    qij(j, d->state[i], newintens, m->qvector, m->nst);
+			for (j = 0; j < np; ++j)
+			    for (k = 0; k < m->nst; ++k)
+				if (k != d->state[i])
+				    contrib += 
+					pijt(previous[j], k,  dt, newintens, m->qvector, m->nst, 0)*
+					qij(k, d->state[i], newintens, m->qvector, m->nst);
 		    }
 		    lik += log(contrib);
 		}
-	    else 
-		lik += log(pijt(d->state[i-1], d->state[i], dt, newintens, m->qvector, m->nst, m->exacttimes));
+	    else {
+		/* Sum over states that state[i-1] can represent, and state[i] can represent */
+		contrib = 0;
+		for (j = 0; j < np; ++j) 
+		    for (k = 0; k < nc; ++k) 
+			contrib += pijt(previous[j], current[k], dt, newintens, m->qvector, m->nst, m->exacttimes);
+		lik += log(contrib);
+	    }
+#ifdef DEBUG
+ 	    printf("lik = %lf\n", lik);
+#endif
 	}
     }
     return (-2*lik); 
@@ -353,28 +420,41 @@ double liksimple(data *d, model *m)
 
 double liksimple_fromto(data *d, model *m)
 {
-    int i,j;
+    int i,j,k,np=1,nc=1;
     double lik=0, contrib;
+    int *previous = (int *) S_alloc (1, sizeof(int));
+    int *current = (int *) S_alloc (1, sizeof(int));
     double *newintens = (double *) S_alloc ( m->nintens , sizeof(double));
     for (i=0; i < d->nobs; ++i)
     {
 	AddCovs(i, d, m, newintens);
+	GetCensored(d->state[i], m, &np, &previous);
+	GetCensored(d->tostate[i], m, &nc, &current);
 	if ((m->ndeath > 0) && is_element(d->tostate[i], m->death, m->ndeath))
 	{
 	    if (d->state[i] == d->tostate[i]) 
 		contrib = 1; /* death-death transition has probability 1 */
 	    else { 
 		contrib = 0;
-		for (j = 0; j < m->nst; ++j)
-		    if (j != d->tostate[i])
-			contrib += 
-			    pijt(d->state[i], j,  d->time[i], newintens, m->qvector, m->nst, 0)*
-			    qij(j, d->tostate[i], newintens, m->qvector, m->nst);	
+		for (j = 0; j < np; ++j)
+		    for (k = 0; k < m->nst; ++k)
+			if (k != d->tostate[i])
+			    contrib += 
+				pijt(previous[j], k, d->time[i], newintens, m->qvector, m->nst, 0)*
+				qij(k, d->tostate[i], newintens, m->qvector, m->nst);	
 	    }
 	    lik += log(contrib);
 	}
-	else 
-	    lik += log(pijt(d->state[i], d->tostate[i], d->time[i], newintens, m->qvector, m->nst, m->exacttimes));
+	else {
+	    contrib = 0;
+	    for (j = 0; j < np; ++j) 
+		for (k = 0; k < nc; ++k)
+		    contrib += pijt(previous[j], current[k], d->time[i], newintens, m->qvector, m->nst, m->exacttimes);
+	    lik += log(contrib);
+	}
+#ifdef DEBUG
+ 	printf("lik = %lf\n", lik);  
+#endif
     }
     return (-2*lik); 
 }
@@ -383,13 +463,15 @@ double liksimple_fromto(data *d, model *m)
 
 void Viterbi(data *d, model *m, double *fitted)
 {
-    int i, true, k, kmax, obs;
+    int i, tru, k, kmax, obs, nc=1;
     double *newintens   = (double *) S_alloc(m->nintens, sizeof(double));
     double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
     double *pmat = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
     int *ptr = (int *) S_alloc((d->nobs)*(m->nst), sizeof(int));
     double *lvold = (double *) S_alloc(m->nst, sizeof(double));
     double *lvnew = (double *) S_alloc(m->nst, sizeof(double));
+    int *current = (int *) S_alloc (1, sizeof(int));
+    double *pout = (double *) S_alloc(m->nst, sizeof(double)); 
     double maxk, try, dt;
 
     for (k = 0; k < m->nst; ++k) 
@@ -402,24 +484,27 @@ void Viterbi(data *d, model *m, double *fitted)
 	    dt = d->time[i] - d->time[i-1];
 	    AddCovs(i-1 + m->covmatch, d, m, newintens);
 	    AddMiscCovs(i-1 + m->covmatch, d, m, newmisc);
+	    GetCensored(d->state[i], m, &nc, &current);
+	    GetCensoredPObsTrue(pout, current, nc, newmisc, m);
+
 	    Pmat(pmat, dt, newintens, m->qvector, m->nst, m->exacttimes);
 	    /* TODO: some sort of utility function for maxima and positional maxima ? */
-	    for (true = 0; true < m->nst; ++true)
+	    for (tru = 0; tru < m->nst; ++tru)
 	    {
 		kmax = 0;
-		maxk = lvold[0] + log( pmat[MI(0, true, m->nst)] );
-		if (true > 0) 
+		maxk = lvold[0] + log( pmat[MI(0, tru, m->nst)] );
+		if (tru > 0) 
 		{
 		    for (k = 1; k < m->nst; ++k){
-			try = lvold[k] + log( pmat[MI(k, true, m->nst)] );
+			try = lvold[k] + log( pmat[MI(k, tru, m->nst)] );
 			if (try > maxk) {
 			    maxk = try;
 			    kmax = k;
 			}
 		    }
 		}
-		lvnew[true] = log( PObsTrue(d->state[i], true, newmisc, m) )  +  maxk;
-		ptr[MI(i, true, m->nst)] = kmax;
+		lvnew[tru] = log( pout[tru] )  +  maxk;
+		ptr[MI(i, tru, m->nst)] = kmax;
 	    }
 	    for (k = 0; k < m->nst; ++k)
 		lvold[k] = lvnew[k];
