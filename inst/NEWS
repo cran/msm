@@ -3,6 +3,14 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.41 (January 28, 2005)
+------------
+
+* Censored outcomes in misclassification models are assumed to be not
+  subject to misclassification. 
+
+* A couple of bug fixes for exact transition times.
+
 Version 0.4 (January 7, 2005)
 -----------
 

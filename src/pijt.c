@@ -41,9 +41,20 @@ double qij(int i, int j, vector intens, ivector qvector, int nstates)
 
 void Pmat(Matrix pmat, double t, vector intens, ivector qvector, int nstates, int exacttimes)
 {
+    int i,j;
+    double pii;
     Matrix qmat = (double *) S_alloc( (nstates)*(nstates), sizeof(double));
     FillQmatrix(qvector, intens, qmat, nstates);
-    MatrixExp(qmat, nstates, pmat, t);
+    if (exacttimes) { 
+	for (i=0; i<nstates; ++i) 
+	    for (j=0; j<nstates; ++j) {
+		pii = exp(t * qmat[MI(i, i, nstates)] );
+		pmat[MI(i, j, nstates)] = ( i==j  ?  pii  : pii * qmat[MI(i, j, nstates)] );
+	    }
+    }
+    else {
+	MatrixExp(qmat, nstates, pmat, t);
+    }
 }
 
 /* Fills the required entries of the intensity-matrix with the current intensities */

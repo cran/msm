@@ -153,16 +153,20 @@ void fillparvec(double *parvec, /* named vector to fill (e.g. intens = baseline 
 
 /* Form vector of probabilities of a given outcome conditionally on each underlying state */
 /* If outcome has nc=1 (not censored) then outcome probs are defined by misclassification matrix */
-/* If outcome has nc>1 (censored) then outcome probs are sum of misclassification probs over censoring set */
+/* If outcome has nc>1 (censored) then no misclassification  */
 
 void GetCensoredPObsTrue(double *pout, int *current, int nc, double *newmisc, model *m)
 {
     int i, j;
     for (i=0; i<m->nst; ++i) {
 	pout[i] = 0;
-	for (j=0; j<nc; ++j) 
-	    pout[i] += PObsTrue(current[j], i, newmisc, m);
-	
+	if (nc == 1) 
+	    pout[i] =  PObsTrue(current[0], i, newmisc, m);
+	else { 
+	    for (j=0; j<nc; ++j) 
+		if (current[j] == i) 
+		    pout[i] = 1;
+	}
     }
 }
 
@@ -199,6 +203,13 @@ double likmisc(int pt, /* ordinal subject ID */
     for (k = first+1; k <= last; ++k)
     {
 	GetCensored(d->state[k], m, &nc, &current);
+#ifdef DEBUG
+	if (nc > 0) {
+	    for (i=0; i<nc; ++i)
+		printf("curr %d = %d, ", i, current[i]);
+	    printf("\n");
+	}
+#endif
 	UpdateLik(current, nc, d->time[k] - d->time[k-1],
 		  k, last, d, m, cumprod, newprod, &lweight);
 	for (i = 0; i < m->nst; ++i)
@@ -383,7 +394,7 @@ double liksimple(data *d, model *m)
 	    dt = d->time[i] - d->time[i-1];
 	    GetCensored(d->state[i-1], m, &np, &previous);
 	    GetCensored(d->state[i], m, &nc, &current);
-	    if ((m->ndeath > 0) && is_element(d->state[i], m->death, m->ndeath))
+	    if ((m->ndeath > 0) && is_element(d->state[i], m->death, m->ndeath) && !m->exacttimes)
 		/* if state is a "death" state, i.e. entry date is known exactly, with unknown different state at the previous instant. */
 		{
 		    if (d->state[i-1] == d->state[i]) 
@@ -409,7 +420,7 @@ double liksimple(data *d, model *m)
 		lik += log(contrib);
 	    }
 #ifdef DEBUG
- 	    printf("lik = %lf\n", lik);
+ 	    printf("prev=%d, curr=%d, timelag=%lf, con=%lf, lik = %lf\n", previous[0], current[0], dt, log(contrib), lik);
 #endif
 	}
     }
@@ -430,7 +441,7 @@ double liksimple_fromto(data *d, model *m)
 	AddCovs(i, d, m, newintens);
 	GetCensored(d->state[i], m, &np, &previous);
 	GetCensored(d->tostate[i], m, &nc, &current);
-	if ((m->ndeath > 0) && is_element(d->tostate[i], m->death, m->ndeath))
+	if ((m->ndeath > 0) && is_element(d->tostate[i], m->death, m->ndeath) && !m->exacttimes)
 	{
 	    if (d->state[i] == d->tostate[i]) 
 		contrib = 1; /* death-death transition has probability 1 */
@@ -473,14 +484,23 @@ void Viterbi(data *d, model *m, double *fitted)
     int *current = (int *) S_alloc (1, sizeof(int));
     double *pout = (double *) S_alloc(m->nst, sizeof(double)); 
     double maxk, try, dt;
+#ifdef DEBUG
+    printf("Starting Viterbi algorithm...\n");
+#endif
 
     for (k = 0; k < m->nst; ++k) 
 	lvold[k] = 0;
 
     for (i = 1; i <= d->nobs; ++i)
     {
-	if ((d->subject[i] == d->subject[i-1]) && (i < d->nobs))
+#ifdef DEBUG
+	    printf("obs %d\n", i);
+#endif
+	if ( (i < d->nobs) && (d->subject[i] == d->subject[i-1]) )
 	{
+#ifdef DEBUG
+	    printf("subject %d\n ", d->subject[i]);
+#endif
 	    dt = d->time[i] - d->time[i-1];
 	    AddCovs(i-1 + m->covmatch, d, m, newintens);
 	    AddMiscCovs(i-1 + m->covmatch, d, m, newmisc);
@@ -504,6 +524,9 @@ void Viterbi(data *d, model *m, double *fitted)
 		    }
 		}
 		lvnew[tru] = log( pout[tru] )  +  maxk;
+#ifdef DEBUG			   
+		printf("obs %d, true %d, pout[%d] = %lf, lvnew = %lf, kmax=%d\n", d->state[i], tru, tru, pout[tru], lvnew[tru], kmax);
+#endif
 		ptr[MI(i, tru, m->nst)] = kmax;
 	    }
 	    for (k = 0; k < m->nst; ++k)
@@ -511,23 +534,35 @@ void Viterbi(data *d, model *m, double *fitted)
 	}
 	else 
 	{
+#ifdef DEBUG
+	    printf("traceback for subject %d\n ", d->subject[i]);
+#endif
 	    /* Traceback for current patient */
 	    maxk = lvold[0];
 	    kmax = 0;
 	    for (k=1; k < m->nst; ++k)
 	    {
+#ifdef DEBUG
+		printf("lvold[%d] = %lf, ", k, lvold[k]);
+#endif
 		try = lvold[k];
 		if (try > maxk) {
 		    maxk = try;
 		    kmax = k;
 		}
 	    }
-	  
+#ifdef DEBUG
+	    printf("kmax = %d\n", kmax);
+#endif
+
 	    obs = i-1;
 	    fitted[obs] = kmax;
-	    while   ( (d->subject[obs] == d->subject[obs-1]) && (obs > 0) ) 
+	    while   ( (obs > 0) && (d->subject[obs] == d->subject[obs-1]) ) 
 	    {
 		fitted[obs-1] = ptr[MI(obs, fitted[obs], m->nst)];
+#ifdef DEBUG
+		printf("ptr %d = %lf, ", obs-1, fitted[obs-1]);
+#endif
 		--obs;
 	    }
 	    fitted[obs] = 0;
