@@ -38,8 +38,8 @@ ematrix.msm(x, covariates="mean")
 \value{
   A list with components:
 
-  \item{\code{estimate}}{Estimated misclassification probability matrix.}  
-  \item{\code{SE}}{Corresponding approximate standard errors.}
+  \item{estimate}{Estimated misclassification probability matrix.}  
+  \item{SE}{Corresponding approximate standard errors.}
 
 }
 \details{
@@ -51,8 +51,6 @@ ematrix.msm(x, covariates="mean")
 }
 \seealso{
   \code{\link{qmatrix.msm}}
-}
-\examples{
 }
 \author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{models}

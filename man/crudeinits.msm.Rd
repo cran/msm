@@ -8,7 +8,8 @@
 }
 \usage{
 crudeinits.msm(state, time, subject, qmatrix, data=NULL, fromto=FALSE,
-               fromstate=NULL, tostate=NULL, timelag=NULL, check=FALSE)
+               fromstate=NULL, tostate=NULL, timelag=NULL,
+               censor=NULL, censor.states=NULL, check=FALSE)
 }
 \arguments{
   \item{state}{Observed states, assumed to be ordered by time
@@ -42,6 +43,15 @@ crudeinits.msm(state, time, subject, qmatrix, data=NULL, fromto=FALSE,
   \item{timelag}{ Time difference between observing \code{fromstate}
     and \code{tostate}  (required if \code{fromto == TRUE} ). }
 
+  \item{censor}{ A state, or vector of states, which indicates
+    censoring.  See \code{\link{msm}}. 
+  }
+
+  \item{censor.states}{
+    Specifies the underlying states which censored observations can
+    represent.  See \code{\link{msm}}. 
+  }
+
   \item{check}{ Should the supplied state, time and subject data
     be checked for inconsistency with the supplied \code{qmatrix}, for
     example, backward transitions in the data with a forward progression
@@ -53,8 +63,8 @@ crudeinits.msm(state, time, subject, qmatrix, data=NULL, fromto=FALSE,
   the \code{inits} argument to \code{\link{msm}}.
 }
 \details{
-
-  If we observe \eqn{n_{rs}}{n_rs} transitions from state \eqn{r} to state \eqn{s}, and a
+  Suppose we want a crude estimate of the transition intensity \eqn{q_{rs}}{q_rs} from state \eqn{r} to
+  state \eqn{s}.  If we observe \eqn{n_{rs}}{n_rs} transitions from state \eqn{r} to state \eqn{s}, and a
   total of \eqn{n_r} transitions from state \eqn{r}, then \eqn{q_{rs} /
     q_{rr}}{q_rs / q_rr} can be estimated by \eqn{n_{rs} / n_r}{n_rs / n_r}. Then, given a total of \eqn{T_r} years
   spent in state \eqn{r},  the mean sojourn time \eqn{1 / q_{rr}}{1 / q_rr} can be estimated as \eqn{T_r / n_r}.
@@ -64,6 +74,7 @@ crudeinits.msm(state, time, subject, qmatrix, data=NULL, fromto=FALSE,
   If the data do represent the exact transition times of the Markov
   process, then these are the exact maximum likelihood estimates.
 
+  Censored states are ignored when calculating these estimates. 
 }
 \seealso{
   \code{\link{statetable.msm}}

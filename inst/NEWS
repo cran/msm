@@ -3,6 +3,18 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.4 (January 7, 2005)
+-----------
+
+* Censored observations are now supported, via new "censor" and
+  "censor.states" arguments.  A censored observation is unknown, but
+  known to be one of a particular set of states.
+
+A major update to msm is under development, for release in the first
+half of 2005. This will support hidden Markov models with general
+response distributions.
+
+
 Version 0.3.3 (September 18, 2004)
 -------------
 

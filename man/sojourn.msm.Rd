@@ -35,9 +35,9 @@ sojourn.msm(x, covariates="mean")
 \value{
     A list with components:
 
-    \item{\code{estimate}}{Estimated mean sojourn times in the transient states.}
+    \item{estimate}{Estimated mean sojourn times in the transient states.}
 
-    \item{\code{se}}{Corresponding standard errors.}
+    \item{se}{Corresponding standard errors.}
 }
 \details{
   The mean sojourn time in a transient state \eqn{r} is estimated by

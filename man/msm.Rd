@@ -19,7 +19,7 @@ msm ( formula, qmatrix, misc = FALSE, ematrix, inits, subject,
       miscconstraint = NULL, qconstraint=NULL, econstraint=NULL,
       covmatch = "previous", initprobs = NULL, 
       data = list(), fromto = FALSE, fromstate, tostate, timelag,
-      death = FALSE, tunit = 1.0, exacttimes = FALSE,
+      death = FALSE, censor = NULL, censor.states = NULL, exacttimes = FALSE,
       fixedpars = NULL, ... )
 }
 \arguments{
@@ -186,7 +186,18 @@ misclassifications.
     representing the set of observed transitions between states, and the
     time taken by each one. Otherwise, the data are given by \code{formula},
     containing observation times, corresponding observed states, and a
-    vector of corresponding subject identification numbers \code{subject}.
+    vector of corresponding subject identification numbers
+    \code{subject}.
+
+    This is not a recommended way to store multi-state data, since the
+    longitudinal component of the data, observations through time on the
+    same person, is lost.  Thus after a \code{msm} model is fitted to
+    this style of data, some of the summary methods designed for
+    longitudinal data, such as \code{\link{prevalence.msm}} and
+    \code{\link{plot.msm}} cannot be used.
+    
+    \code{fromto} support is likely to be abolished in a future
+    version of \pkg{msm}.
   }
 
   \item{fromstate}{ Starting states for the observed transitions
@@ -211,9 +222,30 @@ misclassifications.
     death state.
   }
 
-  \item{tunit}{No longer used, since \pkg{msm} version 0.3.2. The entry time
-    into death states is now assumed to be exact, rather than known
-    within a day.}
+  \item{censor}{ A state, or vector of states, which indicates
+    censoring.  Censoring means that the observed state is unknown, but known to be
+    one of a particular set of states. For example, \code{censor=999},
+    indicates that all observations of 999 in the vector of observed
+    states denote censoring times.  By default, this means that the true
+    state could have been anything other than an absorbing state. To
+    specify corresponding true states explicitly, use a \code{censor.states}
+    argument.
+  }
+
+  \item{censor.states}{
+    Specifies the underlying states which censored observations can
+    represent. If \code{censor} is a single number (the ddefault) this
+    can be a vector, or a list with one element.  If \code{censor} is a
+    vector with more than one element, this should be a list, with each
+    element a vector corresponding to the equivalent element of
+    \code{censor}.  For example
+
+    \code{censor = c(99, 999), censor.states = list(c(2,3), c(3,4))}
+    
+    means that observations coded 99 represent either state 2 or state
+    3, while observations coded 999 are really either state 3 or
+    state 4. 
+  }
 
   \item{exacttimes}{By default, the transitions of the Markov process
   are assumed to take place at unknown occasions in between the
