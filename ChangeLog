@@ -1,3 +1,18 @@
+2005-01-28 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+		
+	* src/lik.c (GetCensoredPObsTrue): Censored outcomes are now
+	assumed to be not misclassified.
+
+	* msm.R(msm.form.censor): Bug fix - transient states were detected
+	incorrectly.
+	
+	* src/pijt.c: Bug fix. P matrix calculation for misclassification
+	models was ignoring exacttimes. 
+
+	* src/lik.c: Bug fix. Ignore death when exacttimes = TRUE. 
+	
+	* DESCRIPTION: Version 0.4.1 released. 
+		
 2005-01-07 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 	
 	* DESCRIPTION: Version 0.4 released. 

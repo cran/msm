@@ -742,7 +742,7 @@ msm.form.censor <- function(censor=NULL, censor.states=NULL, qmatrix)
                   warning("more than one type of censoring given, but censor.states not supplied. Assuming only one type of censoring")
                   ncens <- 1; censor <- censor[1]
               }
-              absorbing <- rowSums(qmatrix) == 0 # FIX FOR > 0.3.
+              absorbing <- which(rowSums(qmatrix) == 0)
               if (!length(absorbing)) {
                   warning("No absorbing state and no censor.states supplied. Ignoring censoring.")
                   ncens <- 0
