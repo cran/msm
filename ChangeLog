@@ -1,6 +1,40 @@
+2004-09-18 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* man: Rd syntax errors fixed to pass R CMD CHECK under 2.0.0 *
+
+	* msm-manual: Reference to the PDF manual for msm made more
+	prominent.
+
+2004-06-23 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* msm.R(msm.process.covs): Bug fix, constraints were not being
+	calculated properly when some covariates were constrained and some
+	were not.  Thanks to Mike Sweeting. 
+
+2004-06-01 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* msm-manual: Correction - heartmiscsex.msm is actually run using
+	default Nelder-Mead optimization, not BFGS.
+
+2004-05-13 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* R/outputs.R: plot.msm now plots survival curves in different
+	colours as well as different line types. 
+
+2004-05-11 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* R/simul.R: simmulti.msm now sensibly returns a data frame
+	instrad of a matrix.
+	
+2004-04-23 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* R/simul.R New argument "start" in simmulti.msm to give the
+	starting state for each individual. Thanks to Stephan Lenz for the
+	suggestion.
+
 2004-03-25 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 
-	*  NEWS file moved to inst directory, so that it ends up in the
+	* NEWS file moved to inst directory, so that it ends up in the
 	root directory of binary installs. Leave ChangeLog in the source
 	package. 
 		

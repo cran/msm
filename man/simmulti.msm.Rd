@@ -6,7 +6,7 @@
   specified arbitrary times for each individual. 
 }
 \usage{
-simmulti.msm(data, qmatrix, beta, death = FALSE,  tunit = 1)
+simmulti.msm(data, qmatrix, beta, death = FALSE,  tunit = 1, start)
 }
 
 \arguments{
@@ -51,7 +51,12 @@ simmulti.msm(data, qmatrix, beta, death = FALSE,  tunit = 1)
     indicates that there is no death state. }
 
   \item{tunit}{No longer used, from msm version 0.3.2. Death times are
-    now assumed to be exact, rather than accurate within one day. 
+    now assumed to be exact, rather than accurate within one day.} 
+
+  \item{start}{A vector with the same number of elements as there are 
+	distinct subjects in the data, giving the states in which each
+	corresponding individual begins. Defaults to state 1 for each 
+	subject.}
   }
 
 }
@@ -72,7 +77,7 @@ simmulti.msm(data, qmatrix, beta, death = FALSE,  tunit = 1)
   If the subject enters an absorbing state, then only the first
   observation in that state is kept in the data frame. Rows corresponding to future
   observations are deleted.  The entry times into states given in
-  \code{death} are assumed to be known exactly}.
+  \code{death} are assumed to be known exactly.
 }
 \seealso{ \code{\link{sim.msm}}
 }

@@ -9,6 +9,8 @@
 
 
 #include "lik.h"
+#define NODEBUG
+#define NOLIKDEBUG
 
 /* This function is called from R to provide an entry into C code for
    evaluating likelihoods, doing Viterbi state reconstruction and short
@@ -99,6 +101,9 @@ void msmLikelihood (data *d, model *m, int misc, double *returned) {
 	*returned = 0;
 	for (pt = 0;  pt < d->npts; ++pt){
 	    likone = likmisc (pt, d, m);
+#ifdef DEBUG
+	    printf("pt %d, lik %lf\n", pt, likone);
+#endif
 	    *returned += likone;
 	}
     }
@@ -168,14 +173,19 @@ double likmisc(int pt, /* ordinal subject ID */
     for (i = 0; i < m->nst; ++i)
 	cumprod[i] = PObsTrue(d->state[first], i, newmisc, m) * m->initprobs[i]; /* cumulative matrix product */
     lweight=0;
-
     /* Matrix product loop to accumulate the likelihood */
     for (k = first+1; k <= last; ++k)
     {
 	UpdateLik(d->state[k], d->time[k] - d->time[k-1],
-		  k, last, d, m, cumprod, newprod, lweight, &lweight);
+		  k, last, d, m, cumprod, newprod, &lweight);
 	for (i = 0; i < m->nst; ++i)
 	    cumprod[i] = newprod[i];
+#ifdef LIKDEBUG
+	    for (i = 0; i < m->nst; ++i) {
+		printf("cump %d = %lf, ", i, cumprod[i]);
+	    }
+	    printf("lweight = %lf\n", lweight);
+#endif
     }
   
     lik=0;
@@ -190,7 +200,7 @@ double likmisc(int pt, /* ordinal subject ID */
 /* Post-multiply the row-vector cumprod by matrix T to accumulate the likelihood */
 
 void UpdateLik(int state, double dt, int k, int last, data *d, model *m, 
-	       double *cumprod, double *newprod, double lweight_old, double *lweight_new)
+	       double *cumprod, double *newprod, double *lweight)
 {
     int i, j;
     double newprod_ave;
@@ -207,17 +217,35 @@ void UpdateLik(int state, double dt, int k, int last, data *d, model *m,
 	newprod[j] = 0.0;
 	for(i = 0; i < m->nst; ++i)
 	{
-	    if ((k == last) && (m->ndeath > 0) && is_element(state, m->death, m->ndeath))
+	    if ((k == last) && (m->ndeath > 0) && is_element(state, m->death, m->ndeath)) {
 		/* last observation was death and death time known exactly */
 		T[MI(i,j,m->nst)] = pmat[MI(i,j,m->nst)] * qij(j, state, newintens, m->qvector, m->nst);
-	    else
+#ifdef LIKDEBUG	       
+		printf("obs %d, death i=%d, j=%d, state=%d, pmat=%lf, HM=%lf, res=%lf\n", k, i, j, state, pmat[MI(i, j, m->nst)],
+		       PObsTrue(state, j, newmisc, m),
+		       T[MI(i,j,m->nst)]);
+#endif
+	    }
+	    else {
 		T[MI(i,j,m->nst)] = pmat[MI(i, j, m->nst)] * PObsTrue(state, j, newmisc, m);
+#ifdef LIKDEBUG	       
+		printf("obs %d, i=%d, j=%d, state=%d, pmat=%lf, HM=%lf, res=%lf\n", k, i, j, state, pmat[MI(i, j, m->nst)],
+		       PObsTrue(state, j, newmisc, m),
+		       T[MI(i,j,m->nst)]);
+#endif
+	    }
 	    if (T[MI(i,j,m->nst)] < 0) T[MI(i,j,m->nst)] = 0;
 	    newprod[j] = newprod[j] + cumprod[i]*T[MI(i,j,m->nst)];
 	}
     }
     /* re-scale the likelihood at each step to prevent it getting too small and underflowing */
     /*  while cumulatively recording the log scale factor   */
+#ifdef LIKDEBUG
+    for (i = 0; i < m->nst; ++i) {
+	printf("newp %d = %lf, ", i, newprod[i]);
+    }
+    printf("\n");
+#endif
     for(i = 0, newprod_ave=0.0; i < m->nst ; ++i)
 	newprod_ave += newprod[i];  
     newprod_ave /=  m->nst;
@@ -225,7 +253,7 @@ void UpdateLik(int state, double dt, int k, int last, data *d, model *m,
 	newprod_ave = 1;
     for(i = 0; i < m->nst ; ++i)
 	newprod[i] = newprod[i] / newprod_ave;
-    *lweight_new = lweight_old  -  log(newprod_ave);
+    *lweight -= log(newprod_ave);
 }
 
 

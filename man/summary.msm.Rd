@@ -38,9 +38,9 @@ covariates="mean", misccovariates="mean", hazard.scale=1, \dots)
   \item{...}{further arguments passed to or from other methods}
 }
 
-\note {
+\note{
   The prevalence table is not available if the data were specified in
-  \code{fromto} format in the call to {\code{\link{msm}}}. Expected
+  \code{fromto} format in the call to \code{\link{msm}}. Expected
   prevalences only make sense for processes where all individuals
   start at a common time.
 }

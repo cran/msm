@@ -410,7 +410,8 @@ msm.process.covs <- function(covariates, # formula:  ~ cov1 + cov2 + ...
       droprows <- as.numeric(attr(mf, "na.action"))
       kept.rows <- (1:nobs)[! ((1:nobs) %in% droprows)]
       ## centre the covariates about their means
-      covmeans <- apply(mm, 2, mean)
+##      covmeans <- apply(mm, 2, mean)
+      covmeans <- rep(0, ncovs)
       covstds <- apply(mm, 2, sd)
       covfactor <- sapply(mf, is.factor)
       mm <- sweep(mm, 2, covmeans)
@@ -438,9 +439,9 @@ msm.process.covs <- function(covariates, # formula:  ~ cov1 + cov2 + ...
                   if (length(thiscon) != nmatrix)
                     stop("\"",names(constraint)[i],"\"","constraint of length",length(constraint[i]),"should be",nmatrix)
                   constrvec <- c(constrvec, maxc + as.numeric(factor(thiscon)))
-                  maxc <- max(constrvec)
               }
               else constrvec <- c(constrvec, (i-1)*nmatrix + 1:nmatrix)
+              maxc <- max(constrvec)
           }
       }
       ncoveffs <- max(unique(constrvec))

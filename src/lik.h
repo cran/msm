@@ -115,7 +115,7 @@ void fillparvec(double *parvec, /* named vector to fill (e.g. intens = baseline 
 
 double likmisc(int pt, data *d, model *m);
 void UpdateLik(int state, double dt, int k, int last, data *d, model *m, 
-	       double *cumprod, double *newprod, double lweight_old, double *lweight_new);
+	       double *cumprod, double *newprod, double *lweight);
 void AddCovs(int obs, data *d, model *m, double *newintens);
 void AddMiscCovs(int obs, data *d, model *m, double *newp);
 double PObsTrue(int obst,      /* observed state */

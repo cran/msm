@@ -3,7 +3,14 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
-Version 0.3.2 (March 25, 2003)
+Version 0.3.3 (September 18, 2004)
+-------------
+
+* Maintenance release with minor fixes and enhancements ready for
+R-2.0.0. 
+
+
+Version 0.3.2 (March 25, 2004)
 -------------
 
 * More than one death state is now permitted, through the "death"
