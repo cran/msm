@@ -61,5 +61,5 @@ qmatrix.msm(x, covariates="mean", sojourn=FALSE)
   \code{\link{pmatrix.msm}}, \code{\link{sojourn.msm}},
   \code{\link{deltamethod}}, \code{\link{ematrix.msm}}
 }
-\author{C. H. Jackson}
+\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{models}

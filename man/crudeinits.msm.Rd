@@ -75,5 +75,5 @@ oneway.q <- rbind( c(0, 1, 0, 0), c(0, 0, 1, 0), c(0, 0, 0, 1), c(0, 0, 0, 0))
 crudeinits.msm(fromstate=from, tostate=to, timelag=dt, fromto=TRUE,
                data=aneur, qmatrix=oneway.q)
 }
-\author{C. H. Jackson \email{chris.jackson@ic.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{}

@@ -63,5 +63,5 @@ covariates="mean", misccovariates="mean", hazard.scale=NULL,\dots)
   \code{\link{prevalence.msm}}, \code{\link{hazard.msm}}
 }
 
-\author{C. H. Jackson \email{chris.jackson@ic.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{}

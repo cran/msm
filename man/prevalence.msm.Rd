@@ -88,5 +88,5 @@ prevalence.msm(x, times, timezero=min(time), initstates, covariates="mean", misc
   \code{\link{msm}}, \code{\link{summary.msm}}}
 }
 
-\author{C. H. Jackson \email{chris.jackson@ic.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{models}

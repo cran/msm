@@ -28,5 +28,5 @@ hazard.msm(x, hazard.scale = 1)
 \seealso{
   \code{\link{msm}}, \code{\link{summary.msm}}, \code{\link{odds.msm}}
 }
-\author{C. H. Jackson \email{chris.jackson@ic.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{models}

@@ -51,7 +51,8 @@ totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean", ...)
 }
 \details{
   The expected total length of stay in state \eqn{j} between times
-  \eqn{t_1} and \eqn{t_2}, starting from state \eqn{i} at time 0,
+  \eqn{t_1} and \eqn{t_2}, from the point of view of an individual in
+  state \eqn{i} at time 0,
   is defined by the integral from \eqn{t_1} to
   \eqn{t_2} of the \eqn{i,j} entry of the transition probability matrix \eqn{P(t)}.
   As \eqn{P(t) = exp(tQ)} is not available explicitly in terms of
@@ -77,5 +78,5 @@ totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean", ...)
 \seealso{
   \code{\link{sojourn.msm}}, \code{\link{integrate}}.
 }
-\author{C. H. Jackson}
+\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{}

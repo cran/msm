@@ -73,5 +73,5 @@ transient.msm(x)
 absorbing.msm(x)
 
 }
-\author{C. H. Jackson \email{chris.jackson@ic.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{internal}
