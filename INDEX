@@ -1,0 +1,25 @@
+MatrixExp               Matrix exponential
+aneur                   Aortic aneurysm progression data
+deltamethod             The delta method
+expit                   Inverse logit function
+hazard.msm              Calculate tables of hazard ratios for
+                        covariates on transition intensities
+logit                   Logit function
+msm-internal            Internal msm functions
+msm                     Multi-state Markov models
+plot.msm                Plots of multi-state models
+prevalence.msm          Calculate tables of observed and expected
+                        prevalences at a series of times
+prevalencemisc.msm      Calculate tables of observed and expected
+                        prevalences at a series of times
+print.msm               Print a fitted multi-state model
+sim.msm                 Simulate one individual trajectory from a
+                        continuous-time Markov model
+simmulti.msm            Simulate multiple trajectories from a
+                        multi-state Markov model with arbitrary
+                        observation times
+sojourn.msm             Estimate mean sojourn times from a multi-state
+                        model
+msm.summary             Summarise a fitted multi-state model
+viterbi.msm             Calculate the most likely path through
+                        underlying stages
