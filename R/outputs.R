@@ -99,21 +99,22 @@ plot.msm <- function(x, from=NULL, to=NULL, covariates="mean", legend.pos=NULL, 
       timediff <- (rg[2] - rg[1]) / 50
       times <- seq(rg[1], rg[2], timediff)
       pr <- numeric()
+      cols <- rainbow(length(from))
       for (t in times)
         pr <- c(pr, pmatrix.msm(x, t, covariates)[from[1], to])
       plot(times, 1 - pr, type="l", xlab="Time", ylab="Fitted survival probability",
-           ylim=c(0,1), lty = 1, ...)
+           ylim=c(0,1), lty = 1, col=cols[1],...)
       lt <- 2
       for (st in from[-1]){ 
           pr <- numeric()
           for (t in times)
             pr <- c(pr, pmatrix.msm(x, t, covariates)[st, to])
-          lines(times, 1 - pr, type="l", lty = lt)
+          lines(times, 1 - pr, type="l", lty = lt, col=cols[lt],...)
           lt <- lt+1
       }
       if (length(legend.pos) != 2)
         legend.pos <- c(max(times) - 15*timediff, 1)
-      legend(legend.pos[1], legend.pos[2], legend=paste("From stage",from), lty = seq(lt-1))
+      legend(legend.pos[1], legend.pos[2], legend=paste("From stage",from), lty = seq(lt-1), col=cols, ...)
       invisible()
   }
 
@@ -191,8 +192,8 @@ qematrix.msm <- function(x, covariates="mean", which="intens", sojourn=FALSE)
             stop(paste("Covariate \"", n, "\" not in model. For factor covariates, use, for example, covnameCOVVALUE = 1", sep=""))
         if (which=="intens"){
             logq <- x$Qmatrices$logbaseline
-            for (i in 1 : nc)
-              logq <- logq + x$Qmatrices[[i+1]] * (covariates[[i]] - covmeans[i])
+            for (i in 1 : nc) 
+                logq <- logq + x$Qmatrices[[i+1]] * (covariates[[i]] - covmeans[i])
             mat <- exp(logq)
             qmatrix.ind <- t(matrix(x$model$qvector, nrow=x$model$nstates))
             mat[qmatrix.ind == 0] <- 0

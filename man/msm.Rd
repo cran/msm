@@ -211,7 +211,7 @@ misclassifications.
     death state.
   }
 
-  \item{tunit}{No longer used, since msm version 0.3.2. The entry time
+  \item{tunit}{No longer used, since \pkg{msm} version 0.3.2. The entry time
     into death states is now assumed to be exact, rather than known
     within a day.}
 
@@ -295,6 +295,11 @@ misclassifications.
     for use in post-processing.}
 }
 \details{
+  For full details about the methodology behind the \pkg{msm} package,
+  refer to the PDF manual \file{msm-manual.pdf} in the \file{doc}
+  subdirectory of the package. This includes a tutorial in the typical
+  use of \pkg{msm}.
+
   For models without misclassification,
   the likelihood is calculated in terms of the transition intensity
   matrix \eqn{Q}. When the data consist of observations of the Markov
@@ -321,9 +326,6 @@ misclassifications.
   Choosing an appropriate set of initial values for the optimisation can
   also be important.  For flat likelihoods, 'informative' initial values
   will often be required.
-
-  For further details see the PDF manual supplied with the package, and
-  the references below. 
 }
 \references{
   Jackson, C.H., Sharples, L.D., Thompson, S.G. and Duffy, S.W. and

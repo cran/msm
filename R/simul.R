@@ -114,7 +114,8 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
                          beta = NULL,    # list of covariate effects on log intensities
                          death = FALSE,  # vector of indicators for "death" states, ie absorbing states whose entry time is known exactly,
                                         # but with unknown transient state at previous instant
-                         tunit = 1.0 # no longer used
+                         tunit = 1.0, # no longer used
+				 start     # starting times of the process, defaults to all 1.	
                          )
   {
       if (!("subject" %in% names(data)))
@@ -139,6 +140,9 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
       times <- split(time, subject)
       covs <- if (ncovs > 0) lapply(split(data[,covnames], subject), as.matrix) else NULL
       n <- length(unique(subject))
+	if (missing(start)) start <- rep(1, n)
+	else if (length(start) != n)
+	     stop("Supplied ", length(start), " starting states, expected ", n)
             
 ### Check consistency of qmatrix
       nstates <- dim(qmatrix)[1]
@@ -173,11 +177,11 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
       subj <- split(subject, subject)
       for (pt in 1:n)
         {
-            sim.mod <- sim.msm(qmatrix, max(times[[pt]]), covs[[pt]], beta, times[[pt]], 1, min(times[[pt]]))
+            sim.mod <- sim.msm(qmatrix, max(times[[pt]]), covs[[pt]], beta, times[[pt]], start[pt], min(times[[pt]]))
             obsd <- getobs.msm(sim.mod, times[[pt]], death)
             keep.data <- rbind(keep.data,
                                cbind(subj[[pt]][obsd$keep], obsd$time, covs[[pt]][obsd$keep,], obsd$state))
         }
       colnames(keep.data) <- c("subject","time",covnames,"state")
-      keep.data
+      as.data.frame(keep.data)
   }
