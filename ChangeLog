@@ -1,3 +1,59 @@
+2004-03-25 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	*  NEWS file moved to inst directory, so that it ends up in the
+	root directory of binary installs. Leave ChangeLog in the source
+	package. 
+		
+	* DESCRIPTION: Version 0.3.2 released. 
+	
+2004-03-24 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* R/outputs.R(print.msm): Bug fix - only say "covariates set to
+	their means" in the output if there actually are any covariates.
+
+	* msm-manual.pdf: Hidden Markov model theory moved to straight
+	after general model theory, general cleanups. 
+	
+2004-03-23 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* msm-manual.pdf: R code examples rewritten using Sweave.
+	Examples run again with different death assumption, most estimates
+	are negligibly different.  Misclassification model examples
+	corrected to include death.  Example of plot.msm added. This is
+	not distributed as a vignette, as the msm model examples take a
+	long time to fit.
+		
+2004-03-22 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* R/simul.R(simmulti.msm, getobs.msm): tunit argument abolished
+	and death times assumed to be known exactly.
+
+	* src/lik.c(fillparvec): Bug fix. Bounds checking on vector of
+	indices of fixed parameters. Thanks to Ross Boylan.
+		
+2004-03-21 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+	
+	* R/msm.R, src/lik.c: tunit argument is now abolished (with
+	warning given).  Death states are assumed to have exact entry
+	times, not within one day.  This is cleaner and more logical, as
+	in longitudinal studies all observations are usually accurate to
+	one basic time unit, not just deaths. 
+
+	* R/msm.R, src/lik.c: More than one death state is now supported.
+	A death state has exact entry time, with an unknown transient
+	state at the previous instant. Thanks to Jean-Luc Bulliard for
+	suggesting this.
+
+	* R/msm.R(msm.check.times): Just give a warning if a subject only
+	has one observation, no need to die.
+	
+	* R/msm.R(lik.msm): Bug fix. set diagonal to 0 when calculating
+	number of misclassified states nms, in case user has given non
+	zero diagonal entries in ematrix.
+
+	* (various) Changes made so that R CMD CHECK passes with R 1.9.0
+	alpha: codoc mismatches and PACKAGE argument in .C() 
+	
 2003-10-14 Chris Jackson   <chris.jackson@imperial.ac.uk>
 
 	* src/pijt.c(MatrixExpSeries): Bug fix. Don't overwrite the matrix
@@ -5,8 +61,8 @@
 	results when exacttimes = TRUE and the intensity matrix had
 	repeated eigenvalues.
 
-	* src/lik.c(liksimple, liksimple_fromto, UpdateLik): Don't ignore death argument when
-	exacttimes = TRUE.
+	* src/lik.c(liksimple, liksimple_fromto, UpdateLik): Don't ignore
+	death argument when exacttimes = TRUE.
 	
 	* R/msm.R(msm.check.times): Use table instead of tapply to count
 	the number of observations per subject. Fixes further problems

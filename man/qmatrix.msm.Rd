@@ -44,7 +44,7 @@ qmatrix.msm(x, covariates="mean", sojourn=FALSE)
   \item{\code{SE}}{Corresponding approximate standard errors.}  
   If \code{sojourn} is \code{TRUE}, extra components called
   \code{sojourn} and \code{sojournSE} are included, containing the
-  estimate and standard errors respectively of the mean sojourn times in
+  estimate and standard errors, respectively, of the mean sojourn times in
   each transient state.
 
 }

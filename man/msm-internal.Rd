@@ -13,7 +13,6 @@
 \alias{msm.check.state}
 \alias{msm.check.model}
 \alias{msm.check.times}
-\alias{msm.check.tunit}
 \alias{msm.check.qmatrix}
 \alias{qematrix.msm}
 \alias{qematrix.diagse.formstr}
@@ -31,7 +30,7 @@ lik.msm(params, allinits, misc, subject, time, state, tostate, fromto,
         qvector, evector, covvec, constrvec, misccovvec, miscconstrvec,
         baseconstrvec, basemiscconstrvec, initprobs,
         nstates, nintens, nintenseffs, nmisc, nmisceffs, nobs, npts, ncovs, ncoveffs,
-        nmisccovs, nmisccoveffs, covmatch, death, tunit, exacttimes, fixedpars, plabs)
+        nmisccovs, nmisccoveffs, covmatch, ndeath, death, exacttimes, fixedpars, plabs)
 
 getobs.msm(sim, obstimes, death, tunit)
 
@@ -47,16 +46,14 @@ msm.check.qmatrix(qmatrix)
 
 msm.check.ematrix(ematrix, qmatrix)
 
-msm.check.consistency(qmatrix, misc, fromto=F, subject=NULL, state,
-                      tostate=NULL, time, death=FALSE, exacttimes=FALSE, tunit=NULL)
+msm.check.consistency(qmatrix, misc, fromto=FALSE, subject=NULL, state,
+                      tostate=NULL, time)
 
 msm.check.state(nstates, state, fromto=FALSE, tostate=NULL)
 
-msm.check.model(state, subject, qmatrix, fromto=NULL, tostate=NULL)
+msm.check.model(state, subject, qmatrix, fromto=FALSE, tostate=NULL)
 
 msm.check.times(time, subject)
-
-msm.check.tunit(fromto, time, subject, timelag, tunit)
 
 qematrix.msm(x, covariates="mean", which="intens", sojourn)
 

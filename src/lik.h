@@ -25,7 +25,6 @@ struct data {
     int npts;
     int ncovs;
     int nmisccovs;
-    double tunit;
 };
 
 typedef struct data data;
@@ -46,7 +45,8 @@ struct model {
     int ncoveffs;
     int nmisccoveffs;
     int covmatch;
-    int death;
+    int ndeath;
+    int *death;
     int exacttimes;
     double *intens;
     double *coveffect;
@@ -57,7 +57,7 @@ struct model {
 
 typedef struct model model;
 
-void msmCEntry(int *do_what,      /* 1 = eval likelihood, 2 = Viterbi, 3 = prediction */
+void msmCEntry(int *do_what,      /* 1 = eval likelihood, 2 = Viterbi */
 	       double *params,    /* full parameter vector */
 	       double *allinits,  /* all initial values */
 	       int *misc,
@@ -89,12 +89,11 @@ void msmCEntry(int *do_what,      /* 1 = eval likelihood, 2 = Viterbi, 3 = predi
 	       int *nmisccovs,    /* number of covariates on misclassification probabilities */
 	       int *nmisccoveffs, /* number of distinct misclassification covariate effect parameters */
 	       int *covmatch,     /* use the covariate value from the previous or next observation */
-	       int *death,        /* indicator for death state */
-	       double *tunit,     /* time unit in days */
+	       int *ndeath,        /* number of death states */
+	       int *death,        /* vector of indices of death states */
 	       int *exacttimes,   /* indicator for exact transition times */
+	       int *nfix,    /* number of fixed parameters */
 	       int *fixedpars,    /* which parameters to fix */
-	       double *predtimes, /* prediction times for one-step-ahead prediction */
-	       int *npreds,       /* number of prediction times */
 	       double *returned   /* returned -2 log likelihood */
 	       );
 
@@ -103,17 +102,19 @@ void msmLikelihood (data *d, model *m, int misc, double *returned);
 /* Fill a parameter vector with either the current values from the optimisation or the fixed inital values */
 
 void fillparvec(double *parvec, /* named vector to fill (e.g. intens = baseline intensities) */
+		int p, /* number of parameters optimised over */
 		double *params, /* current values of parameters being optimised over */
 		double *allinits, /* full vector of initial values */
-		int *fixi,  /* indices of allinits which are fixed */
+		int nfix,   /* number of fixed parameters, ie length of fixedpars */
+		int *fixedpars,  /* indices of allinits which are fixed */
 		int ni,    /* length of parvec */
-		int *ifix,  /* current index into fixi */
+		int *ifix,  /* current index into fixedpars */
 		int *iopt,  /* current index into params */
 		int *iall   /* current index into allinits */
 		);
 
 double likmisc(int pt, data *d, model *m);
-void UpdateLik(int state, double dt, int k, int last, int predict_death, data *d, model *m, 
+void UpdateLik(int state, double dt, int k, int last, data *d, model *m, 
 	       double *cumprod, double *newprod, double lweight_old, double *lweight_new);
 void AddCovs(int obs, data *d, model *m, double *newintens);
 void AddMiscCovs(int obs, data *d, model *m, double *newp);
@@ -128,10 +129,12 @@ void Viterbi(data *d, model *m, double *fitted);
 
 
 double pijt(int i, int j, double t, vector intens, int *qvector, int nstates, int exacttimes);
+double qij(int i, int j, vector intens, ivector qvector, int nstates);
 void Pmat(Matrix pmat, double t, vector intens, int *qvector, int nstates, int exacttimes);
 void FillQmatrix(int *qvector, vector intens, Matrix qmat, int nstates);
 void MatrixExp(Matrix mat, int n, Matrix expmat, double t);
 int repeated_entries(vector vec, int n);
+int is_element(int a, int *b, int n);
 void MatrixExpSeries(Matrix mat, int n, Matrix expmat, double t);
 void MatTranspose(Matrix A, Matrix AT, int n);
 void MatInv(Matrix A, Matrix Ainv, int n);

@@ -41,7 +41,7 @@ intensity matrix
   \eqn{(r,s)} entry of the matrix \eqn{exp(tQ)}. 
   
   The series approximation method was adapted from the corresponding
-  function in Jim Lindsey's \code{rmutil} library.
+  function in Jim Lindsey's R package \code{rmutil}.
 }
 \references{
   Cox, D. R. and Miller, H. D. \emph{The theory of stochastic

@@ -25,8 +25,16 @@ double pijt(int i, int j, double t, vector intens, ivector qvector, int nstates,
     }
     else 
 	pr = exptq[MI(i, j, nstates)];
-    return pr;
-    /*  return ((pr < 0) ? 0 : pr); */
+    return ((pr < 0) ? 0 : pr); /* avoid problems with returning tiny negative numbers */
+}
+
+/* Returns i-j transition intensity time t given an intensity matrix */
+
+double qij(int i, int j, vector intens, ivector qvector, int nstates)
+{
+    Matrix qmat = (double *) S_alloc( (nstates)*(nstates), sizeof(double));
+    FillQmatrix(qvector, intens, qmat, nstates);
+    return qmat[MI(i,j,nstates)];
 }
 
 /* Calculates the whole transition matrix in time t given an intensity matrix */
@@ -108,6 +116,17 @@ int repeated_entries(vector vec, int n)
 	for (j=0; j<i; ++j)
 	    if (vec[j] == vec[i]) 
 		return 1;
+    return 0;
+}
+
+/* Tests if an integer a is a member of the integer set b */
+
+int is_element(int a, int *b, int n)
+{
+    int i;
+    for (i=0; i<n; ++i)
+	if (b[i] == a)
+	    return 1;
     return 0;
 }
 

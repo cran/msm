@@ -4,12 +4,12 @@
 \alias{print.summary.msm}
 \description{
   Summary method for fitted \code{\link{msm}} models. Produces a table of observed and
-  expected state prevalences for each time. For all models, prints
+  expected state prevalences for each time. For models with covariates, prints
   hazard ratios with confidence intervals for covariate effects.
 }
 \usage{
 \method{summary}{msm}(object, times=NULL, timezero=NULL, initstates=NULL,
-covariates="mean", misccovariates="mean", hazard.scale=NULL, \dots)
+covariates="mean", misccovariates="mean", hazard.scale=1, \dots)
 }
 \arguments{
   \item{object}{A fitted multi-state model object, as returned by

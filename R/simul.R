@@ -68,7 +68,7 @@ sim.msm <- function(qmatrix,   # intensity matrix
 
 getobs.msm <- function(sim,          # output from simMSM
                        obstimes,     # fixed observation times
-                       death = TRUE, # whether absorption time is known within 1/tunit time units, in the case whether the highest state is absorbing
+                       death = FALSE, # indicators for death states
                        tunit = 1.0   # observation time unit in days (e.g. time in months, tunit = 30)
                        ) 
   {
@@ -94,8 +94,8 @@ getobs.msm <- function(sim,          # output from simMSM
               }
               else if ((obstimes[i] >= max(sim$times)) && (sim$states[j+1] %in% absorbing)){
                   obsstate[i] <- nstates
-                  if (death)
-                    obstimes[i] <- (1/tunit) * ceiling(sim$times[j+1] / (1/tunit))
+                  if (sim$states[j+1] %in% death)
+                    obstimes[i] <- sim$times[j+1] # death times are observed exactly. 
                   keep.time[i] <- i
                   absorbed <- TRUE
                   found <- TRUE
@@ -112,8 +112,9 @@ getobs.msm <- function(sim,          # output from simMSM
 simmulti.msm <- function(data,           # data frame with subject, times, covariates... 
                          qmatrix,        # intensity matrix
                          beta = NULL,    # list of covariate effects on log intensities
-                         death = FALSE,  # whether absorption time is known within one day
-                         tunit = 1.0     # time unit in days
+                         death = FALSE,  # vector of indicators for "death" states, ie absorbing states whose entry time is known exactly,
+                                        # but with unknown transient state at previous instant
+                         tunit = 1.0 # no longer used
                          )
   {
       if (!("subject" %in% names(data)))
@@ -133,8 +134,6 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
       }
       subject <- data[,"subject"]; time <- data[,"time"]
       msm.check.times(time, subject)
-      if (death)
-        retval <- msm.check.tunit(FALSE, time, subject, NULL, tunit)
       covnames <- setdiff(names(data), c("subject","time"))
       ncovs <- length(covnames)
       times <- split(time, subject)
@@ -159,6 +158,14 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
           if (!is.null(ncol(beta)) & ncol(beta) != length(qmatrix[qmatrix > 0]))
             stop(paste("Expected",length(qmatrix[qmatrix > 0]),"columns in covariate matrix, found", ncol(beta)))
       }
+
+### Check death argument. Logical values allowed for backwards compatibility (TRUE means final state is death, FALSE means no death state)       
+      statelist <- if (nstates==2) "1, 2" else if (nstates==3) "1, 2, 3" else paste("1, 2, ... ,",nstates)
+      if (is.logical(death) && death==TRUE)  {death <- nstates}
+      else if (is.logical(death) && death==FALSE) {death <- 0}
+      else if (length(setdiff(unique(death), 1:nstates)) > 0)
+        stop(paste("Death states indicator contains states not in",statelist))
+      if (!missing(tunit)) warning("tunit argument is no longer used. death times are now assumed exact")
       
 ### Simulate a realisation for each person
       state <- numeric()
@@ -167,7 +174,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
       for (pt in 1:n)
         {
             sim.mod <- sim.msm(qmatrix, max(times[[pt]]), covs[[pt]], beta, times[[pt]], 1, min(times[[pt]]))
-            obsd <- getobs.msm(sim.mod, times[[pt]], death, tunit)
+            obsd <- getobs.msm(sim.mod, times[[pt]], death)
             keep.data <- rbind(keep.data,
                                cbind(subj[[pt]][obsd$keep], obsd$time, covs[[pt]][obsd$keep,], obsd$state))
         }

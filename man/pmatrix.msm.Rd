@@ -46,8 +46,8 @@ pmatrix.msm(x, t, covariates="mean")
   \eqn{(r,s)} entry of the matrix \eqn{P(t) = exp(tQ)}.
 
   For non-homogeneous processes, where covariates and hence the
-  transition intensity matrix vary but are piecewise-constant within
-  the time interval \code{[u,
+  transition intensity matrix are time-dependent, but are
+  piecewise-constant within  the time interval \code{[u,
   u+t]}, the function \code{\link{pmatrix.piecewise.msm}} can be used.
   
 }
