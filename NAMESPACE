@@ -1,0 +1,65 @@
+useDynLib(msm)
+
+export(
+absorbing.msm,
+coef.msm,
+crudeinits.msm,
+deltamethod,
+ematrix.msm,
+hazard.msm,
+MatrixExp,
+msm,
+logLik.msm,
+odds.msm,
+plot.msm,
+pmatrix.msm,
+pmatrix.piecewise.msm,
+prevalence.msm,
+qmatrix.msm,
+qratio.msm,
+sim.msm,
+simmulti.msm,
+sojourn.msm,
+statetable.msm,
+summary.msm,
+totlos.msm,
+transient.msm,
+viterbi.msm,
+hmmCat,
+hmmIdent,
+hmmUnif,
+hmmNorm,
+hmmLNorm,
+hmmExp,
+hmmGamma,
+hmmWeibull,
+hmmPois,
+hmmBinom,
+hmmTNorm,
+hmmMETNorm,
+hmmMEUnif,
+dtnorm,
+ptnorm,
+qtnorm,
+rtnorm,
+dmenorm,
+pmenorm,
+qmenorm,
+rmenorm,
+dmeunif,
+pmeunif,
+qmeunif,
+rmeunif
+)
+
+importFrom(graphics, plot)
+importFrom(stats, coef)
+
+S3method(print, msm)
+S3method(summary, msm)
+S3method(plot, msm)
+S3method(coef, msm)
+S3method(logLik, msm)
+S3method(print, hmodel)
+S3method(print, hmmdist)
+S3method(print, msm.est)

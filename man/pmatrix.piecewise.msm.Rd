@@ -36,16 +36,17 @@ pmatrix.piecewise.msm(x, t1, t2, times, covariates)
   }
 }
 \details{
-    Suppose a multi-state model, \code{x.msm}, has been fitted, in which
+    Suppose a multi-state model has been fitted, in which
   the transition intensity matrix \eqn{Q(x(t))} is modelled in terms of
   time-dependent covariates \eqn{x(t)}.  The transition probability
   matrix \eqn{P(t_1, t_n)}{P(t1, tn)} for the time interval \eqn{(t_1,
   t_n)}{(t1, tn)} cannot be calculated from the estimated intensity matrix as  
-  \eqn{exp((t_n - t_1) Q)}{exp((tn - t1) Q)}, because \eqn{Q} varies within the interval
+  \eqn{\exp((t_n - t_1) Q)}{exp((tn - t1) Q)}, because \eqn{Q} varies within the interval
   \eqn{t_1, t_n}{t1, tn}.  However, if the covariates are piecewise-constant, 
   or can be approximated as piecewise-constant, then we can calculate
   \eqn{P(t_1, t_n)}{P(t1, tn)} by multiplying together individual matrices
   \eqn{P(t_i,
+  t_{i+1}) = \exp((t_{i+1} - t_i) Q)}{P(t_i,
   t_{i+1}) = exp((t_{i+1} - t_i) Q)}, calculated over intervals where Q is
 constant:
 
@@ -55,8 +56,8 @@ constant:
 \value{
   The matrix of estimated transition probabilities \eqn{P(t)} for the
   time interval \code{[t1, tn]}.  That is, the probabilities of
-  occupying state \eqn{s} at time \eqn{tn}
-  conditionally on occupying state \eqn{r} at time \eqn{t1}.
+  occupying state \eqn{s} at time \eqn{t_n}{tn}
+  conditionally on occupying state \eqn{r} at time \eqn{t_1}{t1}.
   Rows correspond to "from-state" and columns to "to-state". 
 }
 \seealso{

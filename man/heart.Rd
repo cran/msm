@@ -15,18 +15,27 @@
   covariates.
   
   \tabular{rll}{
-    PTNUM   \tab (numeric) \tab Patient identification number \cr
-    age     \tab (numeric) \tab Recipient age at examination (years) \cr
-    years   \tab (numeric) \tab Examination time (years after transplant)\cr
-    dage    \tab (numeric) \tab Age of heart donor (years) \cr
-    sex   \tab (character) \tab sex (0=male, 1=female) \cr
-    pdiag \tab (character) \tab Primary diagnosis (reason for
-    transplant) IHD=ischaemic heart disease, IDC=idiopathic dilated
+    \code{PTNUM}   \tab (numeric) \tab Patient identification number \cr
+    \code{age}     \tab (numeric) \tab Recipient age at examination (years) \cr
+    \code{years}   \tab (numeric) \tab Examination time (years after transplant)\cr
+    \code{dage}    \tab (numeric) \tab Age of heart donor (years) \cr
+    \code{sex}   \tab (character) \tab sex (0=male, 1=female) \cr
+    \code{pdiag} \tab (character) \tab Primary diagnosis (reason for
+    transplant)  \cr \tab \tab IHD=ischaemic heart disease, IDC=idiopathic dilated
     cardiomyopathy. \cr
-    cumrej     \tab (numeric) \tab Cumulative number of acute rejection
+    \code{cumrej}     \tab (numeric) \tab Cumulative number of acute rejection
     episodes \cr
-    state \tab (numeric) \tab State at the examination. Grade 1 represents no CAV, grade 2 is mild/moderate CAV and grade 3 is severe
-  CAV.  Grade 4 is recorded at the time of death.   \cr
+    \code{state} \tab (numeric) \tab State at the examination. \cr \tab \tab State 1
+    represents no CAV, state 2 is mild/moderate CAV \cr \tab \tab and state 3 is severe
+  CAV.  State 4 indicates death.   \cr
   }}
-
+\source{
+  Papworth Hospital, U.K.
+}
+\references{
+  Sharples, L.D. and Jackson, C.H. and Parameshwar, J. and Wallwork,
+  J. and Large, S.R. (2003). Diagnostic accuracy of coronary angiopathy
+  and risk factors for post-heart-transplant cardiac allograft
+  vasculopathy. Transplantation 76(4):679-82
+}
 \keyword{datasets}

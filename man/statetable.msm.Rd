@@ -3,7 +3,8 @@
 \title{Table of transitions}
 \description{
   Calculates a frequency table counting the number of times each pair of
-  states were observed in successive observation times.  
+  states were observed in successive observation times.  This can be a
+  useful way of summarising multi-state data. 
 }
 \usage{
 statetable.msm(state, subject, data=NULL)
@@ -20,12 +21,6 @@ statetable.msm(state, subject, data=NULL)
 \value{
   A frequency table with starting states as rows and finishing states as
   columns.
-}
-\details{
-  If the data are in "from state, to state, time lag" format, then this table
-  can simply be produced by tabulating "from state" against "to state":
-
-  \code{table(fromstate, tostate)}
 }
 \seealso{
   \code{\link{crudeinits.msm}}

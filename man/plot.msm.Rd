@@ -1,24 +1,28 @@
 \name{plot.msm}
 \title{Plots of multi-state models}
 \alias{plot.msm}
+\concept{Survival}
 \description{
   This produces a plot of the expected probability of
   survival against time, from each transient state. Survival is defined
-  as not entering the final absorbing state.
+  as not entering an absorbing state.
 }
 \usage{
-\method{plot}{msm}(x, from, to, covariates, legend.pos, ...)
+\method{plot}{msm}(x, from, to, range, covariates, legend.pos, ...)
 }
 \arguments{
 
   \item{x}{Output from \code{\link{msm}}, representing a fitted
     multi-state model object}
 
-  \item{from}{States from which to consider survival from. Defaults to
+  \item{from}{States from which to consider survival. Defaults to
     the complete set of transient states. }
 
   \item{to}{Absorbing state to consider. Defaults to the
     highest-labelled absorbing state. }
+
+  \item{range}{Vector of two elements, giving the range of times to plot
+  for.}
 
   \item{covariates}{Covariate values for which to evaluate the expected
     probabilities.  This can either be:\cr

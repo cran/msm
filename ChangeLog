@@ -1,3 +1,97 @@
+2005-03-06 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* DESCRIPTION: Version 0.5 released.  This is a major re-write, so
+	instead of a detailed change log, the NEWS entry is reproduced
+	below.
+
+Version 0.5 (2005-03-06)
+-----------
+
+* Major update. Much of the internal R and C code has been re-written.
+
+* General continuous-time hidden Markov models can now be fitted with
+  msm, as well as misclassification models.  Allowed response
+  distributions conditionally on the hidden state include categorical,
+  normal, Poisson, exponential and others.  See the new "hmodel"
+  argument. Misclassification models can either be fitted in the old
+  style using an ematrix, or using a general HMM with a categorical
+  response distribution.  Covariates can be fitted to many of the new
+  hidden response processes via generalized regressions.  See
+  "hcovariates", "hcovinits" arguments.
+
+* Per-observation observation schemes, generalising the "exacttimes"
+  and "death" concepts.  An optional new variable in the data can
+  specify whether each observation is a snapshot of the process, an
+  exactly-observed transition time, or a death state.  Observations
+  are allowed to be at identical times, for example, a snapshot
+  followed instantly by an exact transition time.
+
+* Various syntax changes for cleaner moder specification. 
+
+  - Instead of 0/1 indicators, qmatrix and ematrix should contain the
+  initial values for the transition intensity / misclassification
+  matrix.  These matrices can be named with names for the states of
+  the Markov chain.
+
+  - The inits argument is abolished.  Initial values are estimated
+  automatically if the new argument to msm "gen.inits = TRUE" is
+  supplied.  This uses the initial values calculated by
+  crudeinits.msm.
+
+  - misc no longer needs to be specified if an ematrix is supplied.
+
+  - fixedpars=TRUE fixes all parameters, or specific parameters can
+  be fixed as before.
+
+  - crudeinits.msm takes a state ~ time formula instead of two
+  separate state, time arguments, for consistency with the msm
+  function.
+
+  - Initial values for covariate effects on transition rates /
+  misclassification probabilities are assumed to be zero unless
+  otherwise specified by the new "covinits" / "misccovinits" argument.
+
+* Support for 'from-to' style data has been withdrawn. Storing data in
+  this format is inadvisable as it destroys the longitudinal nature of
+  the data.
+
+* Speed improvements.  The algorithm for calculating the likelihood
+  for non-hidden multi-state models has changed so that the matrix
+  exponential of the Q matrix is only calculated once for each time
+  difference / covariate combination.  Therefore, users should see
+  speed improvements for data where the same from-state, to-state,
+  time difference, covariates combination appears many times.
+
+* Confidence intervals are now presented instead of standard errors
+  for uncertainty in parameter estimates. 
+
+* New method of calculating matrix exponentials when the eigenvector
+  matrix is not invertible.  It now uses the more robust method of
+  Pade approximants with scaling and squaring, instead of power
+  series.  Faster LAPACK routines are now used for matrix inversion. 
+
+* covmatch argument to msm has been abolished.  To take a
+  time-dependent covariate value from the end of the relevant
+  transition instead of the default start, users are expected to
+  manipulate their data accordingly before calling msm, shifting the
+  positions of the covariate back by one within each subject.
+
+* Syntax changes for simmulti.msm. 
+
+Bug fixes 
+---------
+
+* The likelihood is now calculated correctly for individuals with
+   censored intermediate states, as well as censored initial and final states.
+   Thanks to Michael Sweeting for reporting this. 
+	
+* hazard.scale and odds.scale were interpreted wrongly in hazard.msm
+  and odds.msm respectively.
+
+* time-dependent covariate values now taken from the start instead of
+  end of the transition under hidden Markov models.
+
+
 2005-01-28 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 		
 	* src/lik.c (GetCensoredPObsTrue): Censored outcomes are now
@@ -30,16 +124,16 @@
 	misclassification models.
 	
 	Fixes in documentation. Thanks to Ross Boylan. 
-
+	
 2004-09-18 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 
 	* man: Rd syntax errors fixed to pass R CMD CHECK under 2.0.0 *
 
 	* msm-manual: Reference to the PDF manual for msm made more
 	prominent.
-		
-	* DESCRIPTION: Version 0.3.3 released. 
 
+	* DESCRIPTION: Version 0.3.3 released. 
+	
 2004-06-23 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 
 	* msm.R(msm.process.covs): Bug fix, constraints were not being
@@ -58,18 +152,18 @@
 
 2004-05-11 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 
-	* R/simul.R: simmulti.msm now sensibly returns a data frame
-	instrad of a matrix.
+	* R/simul.R: simmulti.msm now returns a data frame, as it should
+	do.
 	
 2004-04-23 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 
-	* R/simul.R New argument "start" in simmulti.msm to give the
-	starting state for each individual. Thanks to Stephan Lenz for the
-	suggestion.
+	* New argument "start" in simmulti.msm to give the starting state
+	for each individual. Thanks to Stephan Lenz for the suggestion. 
+
 
 2004-03-25 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 
-	* NEWS file moved to inst directory, so that it ends up in the
+	*  NEWS file moved to inst directory, so that it ends up in the
 	root directory of binary installs. Leave ChangeLog in the source
 	package. 
 		

@@ -3,17 +3,16 @@
 \alias{viterbi.msm}
 
 \description{
-  For a fitted multi state model with misclassification, the Viterbi
+  For a fitted hidden Markov model, the Viterbi
   algorithm recursively constructs the path with the
-  highest probability through the underlying stages .
+  highest probability through the underlying stages.
 }
 
 \usage{
 viterbi.msm(x)
 }
 \arguments{
-  \item{x}{A fitted multi-state model with misclassification, as
-  produced by \code{\link{msm}}}
+  \item{x}{A fitted hidden Markov multi-state model, as produced by \code{\link{msm}}}
 }
 \value{
     A data frame with columns:
@@ -25,7 +24,8 @@ viterbi.msm(x)
     \code{observed} = corresponding observed states
 
     \code{fitted} = corresponding fitted states found by Viterbi
-    recursion.
+    recursion. If the model is not a hidden Markov model, this is just
+    the observed states. 
 }
 \seealso{
   \code{\link{msm}}

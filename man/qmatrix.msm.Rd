@@ -7,7 +7,7 @@
   multi-state model at a given set of covariate values. 
 }
 \usage{
-qmatrix.msm(x, covariates="mean", sojourn=FALSE)
+qmatrix.msm(x, covariates="mean", sojourn=FALSE, cl=0.95)
 }
 \arguments{
  
@@ -34,6 +34,9 @@ qmatrix.msm(x, covariates="mean", sojourn=FALSE)
   }
   \item{sojourn}{Set to TRUE if the estimated sojourn times and their
     standard errors should also be returned.}
+
+  \item{cl}{Width of the symmetric confidence interval to present. 
+    Defaults to 0.95.}
 }
 
 \value{
@@ -41,12 +44,22 @@ qmatrix.msm(x, covariates="mean", sojourn=FALSE)
   
   \item{estimate}{Estimated transition intensity matrix.}
   
-  \item{SE}{Corresponding approximate standard errors.}  
+  \item{SE}{Corresponding approximate standard errors.}
+
+  \item{L}{Lower confidence limits}
+
+  \item{U}{Upper confidence limits}
+  
   If \code{sojourn} is \code{TRUE}, extra components called
   \code{sojourn} and \code{sojournSE} are included, containing the
   estimate and standard errors, respectively, of the mean sojourn times in
   each transient state.
 
+  The default print method for objects returned by
+  \code{\link{qmatrix.msm}} presents estimates and confidence limits. To
+  present estimates and standard errors, do something like 
+
+  \code{qmatrix.msm(x)[c("estimates","SE")]}
 }
 
 \details{
@@ -54,7 +67,8 @@ qmatrix.msm(x, covariates="mean", sojourn=FALSE)
   scale by \code{\link{msm}}. A covariance matrix is estimated from the
   Hessian of the maximised log-likelihood.  The delta method is used to
   obtain from these the standard error of the intensities on the natural
-  scale at arbitrary covariate values. 
+  scale at arbitrary covariate values. Confidence limits are calculated
+  by assuming normality on the log scale. 
 }
 
 \seealso{

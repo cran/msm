@@ -1,117 +1,210 @@
 \name{msm}
-\title{Multi-state Markov models}
+\title{Multi-state Markov and hidden Markov models in continuous time}
 \alias{msm}
 \description{
-  Fit a continuous-time Markov multi-state model by maximum
-  likelihood. Observations of the process
+  Fit a continuous-time Markov or hidden Markov multi-state model
+  by maximum likelihood. Observations of the process
   can be made at arbitrary times, or the exact times of
   transition between states can be known. 
-  Covariates can be fitted to the transition intensities.
-  When the true state is observed with error, a model can be fitted
-  which simultaneously estimates the state transition intensities and
-  misclassification probabilities, with optional covariates on both
-  processes.
-  
+  Covariates can be fitted to the Markov chain transition intensities or
+  to the hidden Markov observation process. 
 }
 \usage{
-msm ( formula, qmatrix, misc = FALSE, ematrix, inits, subject,
-      covariates = NULL, constraint = NULL, misccovariates = NULL,
-      miscconstraint = NULL, qconstraint=NULL, econstraint=NULL,
-      covmatch = "previous", initprobs = NULL, 
-      data = list(), fromto = FALSE, fromstate, tostate, timelag,
-      death = FALSE, censor = NULL, censor.states = NULL, exacttimes = FALSE,
-      fixedpars = NULL, ... )
+msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
+      ematrix=NULL, hmodel=NULL, obstype=NULL,
+      covariates = NULL, covinits = NULL, constraint = NULL,
+      misccovariates = NULL, misccovinits = NULL, miscconstraint = NULL,
+      hcovariates = NULL, hcovinits = NULL, hconstraint = NULL,
+      qconstraint=NULL, econstraint=NULL, initprobs = NULL,
+      death = FALSE, exacttimes = FALSE, censor=NULL,
+      censor.states=NULL, cl = 0.95, fixedpars = NULL, center=TRUE, ... )
 }
 \arguments{
   \item{formula}{ A formula giving the vectors containing the observed
-    states and the  corresponding observation times. For example,
+    states and the corresponding observation times. For example,
     
-    \code{states ~ times}
+    \code{state ~ time}
 
-    See \code{fromto} for an alternative way to specify the
-    data. Observed states should be in the set \code{1, \dots, n},
+    Observed states should be in the set \code{1, \dots, n},
     where \code{n} is the number of states.
   }
 
-  \item{qmatrix}{Matrix of indicators for the allowed transitions.
-    If a transition is allowed from state \eqn{r} to state \eqn{s},
-    then \code{qmatrix} should have \eqn{(r,s)} entry 1, otherwise
-    it should have \eqn{(r,s)} entry 0. The diagonal of \code{qmatrix}
-    is ignored. For example,\cr
+  \item{subject}{Vector of subject identification numbers for the data
+    specified by \code{formula}. If missing, then all observations
+    are assumed to be on the same subject. These must be sorted so that
+    all observations on the same subject are adjacent.}
+
+  \item{data}{Optional data frame in which to interpret the variables
+    supplied in \code{formula}, \code{subject}, \code{covariates},
+    \code{misccovariates}, \code{hcovariates} and \code{obstype}.}
+
+  \item{qmatrix}{Initial transition intensity matrix of the Markov
+    chain.  If an instantaneous transition is not allowed  from state
+    \eqn{r} to state \eqn{s}, then \code{qmatrix} should have
+    \eqn{(r,s)} entry 0, otherwise it should be non-zero. Any 
+    diagonal entry of \code{qmatrix} is ignored, as it is constrained to
+    be equal to minus the sum of the rest of the row. For example,\cr
     
     \code{
     rbind(
-    c( 0, 1, 1 ),
-    c( 1, 0, 1 ),
+    c( 0, 0.1, 0.01 ),
+    c( 0.1, 0, 0.2 ),
     c( 0, 0, 0 )
     )
   }\cr
   
-    represents a 'health - disease - death' model, with transitions
-    allowed from health to disease, health to death, disease to health, 
-    and disease to death. 
+    represents a 'health - disease - death' model, with transition intensities
+    0.1 from health to disease, 0.01 from health to death, 0.1 from disease to health, 
+    and 0.2 from disease to death.  The initial intensities given here
+    are with any covariates set to zero. 
   }
 
-  \item{misc}{Set \code{misc = TRUE} if misclassification between
-    observed and underlying states is to be modelled.}
-
+  \item{gen.inits}{If \code{TRUE}, then initial values for the
+    transition intensities are estimated by assuming that the data
+    represent the exact transition times of the process. The non-zero
+    entries of the supplied \code{qmatrix} are assumed to indicate the
+    allowed transitions of the model.}
+  
   \item{ematrix}{
-    (required when \code{misc == TRUE}) Matrix of indicators for the allowed
-misclassifications. 
+    If misclassification between states is to be modelled, this should
+    be a matrix of initial values for the misclassification probabilities.
     The rows represent underlying states, and the columns represent
     observed states.
-    If an observation of state \eqn{s} is possible when the subject
+    If an observation of state \eqn{s} is not possible when the subject
     occupies underlying state \eqn{r}, then \code{ematrix} should have
-    \eqn{(r,s)} entry 1, otherwise
-    it should have \eqn{(r,s)} entry 0. The diagonal of \code{ematrix}
-    is ignored. For example, \cr
+    \eqn{(r,s)} entry 0.  Otherwise \code{ematrix} should 
+    have \eqn{(r,s)} entry corresponding to the probability of
+    observing \eqn{s} conditionally on occupying true state \eqn{r}. The
+    diagonal of \code{ematrix} is ignored, as rows are constrained to
+    sum to 1.  For example, \cr
 
     \code{
       rbind(
-    c( 0, 1, 0 ),
-    c( 1, 0, 1 ),
-    c( 0, 1, 0 )
+    c( 0, 0.1, 0 ),
+    c( 0.1, 0, 0.1 ),
+    c( 0, 0.1, 0 )
     )
   }\cr
   
     represents a model in which misclassifications are only permitted
     between adjacent states. 
+
+    For an alternative way of specifying misclassification models, see
+    \code{hmodel}.
   }
 
-  \item{inits}{(required) Vector of initial parameter estimates for the
-    optimisation. These are given in the order
+  \item{hmodel}{
+    Specification of the hidden Markov model.  This should be a list of   
+    return values from the constructor functions described in the
+    \code{\link{hmm-dists}} help
+    page.  Each element of the list corresponds to the outcome model 
+    conditionally on the corresponding underlying state.
 
-    - transition intensities (reading across first rows of intensity
-    matrix, then second row ... )
+    For example, consider a three-state hidden Markov model.  Suppose
+    the observations in underlying state 1 are
+    generated from a Normal distribution with mean 100 and standard
+    deviation 16, while observations in underlying state 2 are Normal
+    with mean 54 and standard deviation 18. Observations in state 3,
+    representing death, are exactly observed, and coded as 999 in the
+    data.  This model is specified as 
 
-    - covariate effects on log transition intensities
+    \code{hmodel = list(hmmNorm(mean=100, sd=16), hmmNorm(mean=54, sd=18), hmmIdent(999))}
 
-    - misclassification probabilities (reading across first row of
-    misclassification matrix, then second row ...)
+    The mean and standard deviation parameters are estimated starting
+    from these initial values.  See the \code{\link{hmm-dists}} help page
+    for details of the constructor functions for each available distribution. 
+    
+    A misclassification model, that is, a hidden Markov model where
+    the outcomes are misclassified observations of the underlying
+    states, can either be specified using a list of \code{\link{hmmCat}}
+    objects, or by using an \code{ematrix} as in previous versions of
+    \pkg{msm}.
 
-    - covariate effects on logit misclassification probabilities
+    For example, \cr
 
-    Covariate effects are given in the following order,
+     \code{
+      ematrix = rbind(
+    c( 0, 0.1, 0, 0 ),
+    c( 0.1, 0, 0.1, 0 ),
+    c( 0, 0.1, 0, 0),
+    c( 0, 0, 0, 0)
+    )
+  }\cr
 
-    - effects of first covariate on transition/misclassification matrix elements (reading across
-    first row of matrix, then second row ...)
+    is equivalent to \cr
 
-    - effects of second covariate ... 
+    \code{hmodel = list(
+    hmmCat(prob=c(0.9, 0.1, 0, 0)),
+    hmmCat(prob=c(0.1, 0.8, 0.1, 0)),
+    hmmCat(prob=c(0, 0.1, 0.9, 0)), hmmIdent())
+    }\cr
+
   }
 
-  \item{subject}{Vector of subject identification numbers, when the data
-    are specified by \code{formula}. If missing, then all observations
-    are assumed to be on the same subject. These must be sorted so that
-    all observations on the same subject are adjacent. Ignored if
-    \code{fromto == TRUE}.}
+  \item{obstype}{A vector specifying the observation scheme for each row
+    of the data. This can be included in the data frame \code{data}
+    along with the  state, time, subject IDs and covariates.  Its
+    elements should be either 1, 2 or 3, meaning as follows:
+    
+    \describe {
+      \item{1}{An observation of the process at an arbitrary time (a "snapshot"
+	of the process)}
+      \item{2}{An exact transition time, with the state at the previous
+	observation retained until the current observation.}
+      \item{3}{An exact transition time, but the state at the instant before
+	entering this state is unknown. A common example is death times in
+	studies of chronic diseases.}    
+    } 
+    If \code{obstype} is not specified, this defaults to all 1. If
+    \code{obstype} is a single number, all observations are assumed to
+    be of this type. 
 
+    This is a generalisation of the \code{death} and \code{exacttimes}
+    arguments to allow different schemes per observation.
+    
+    \code{exacttimes=TRUE} specifies that all observations are of
+    obstype 2.
+
+    \code{death = death.states} specifies that all observations of
+    \code{death.states} are of type 3.  \code{death =
+      TRUE} specifies that all observations in the final absorbing state
+    are of type 3. 
+
+
+  }
+    
   \item{covariates}{Formula representing the covariates on the
-  transition intensities, for example,
+  transition intensities via a log-linear model. For example,
 
     \code{~ age + sex + treatment}
     
   }
+  
+  \item{covinits}{Initial values for log-linear effects of covariates on the
+    transition intensities. This should be a named list with each element
+    corresponding to a covariate.  A single element contains the initial
+    values for that covariate on each transition intensity, reading
+    across the rows in order.  For a pair of effects constrained to be
+    equal, the initial value for the first of the two effects is used. 
+    
+    For example, for a model with the above \code{qmatrix} and age and sex
+    covariates, the following initialises all covariate effects to zero
+    apart from the age effect on the 2-1 transition, and the sex
+    effect on the 1-3 transition.  
+    \code{ covinits = list(sex=c(0, 0, 0.1, 0), age=c(0, 0.1, 0, 0))}
 
+    For factor covariates, name each level by concatenating the name of
+    the covariate with the level name, quoting if necessary. For example,
+    for a covariate  \code{agegroup} with three levels \code{0-15,
+      15-60, 60-}, use something like
+
+    \code{ covinits = list("agegroup15-60"=c(0, 0.1, 0, 0),
+      "agegroup60-"=c(0.1, 0.1, 0, 0))}
+
+    If not specified or wrongly specified, initial values are assumed
+    to be zero. 
+    }
+  
   \item{constraint}{A list of one vector for each named covariate. The
   vector indicates which covariate effects on intensities are
   constrained to be equal. Take, for example, a model with five
@@ -124,7 +217,8 @@ misclassifications.
     treatment is assumed to be different for each intensity. Any vector of
     increasing numbers can be used as indicators. The intensity parameters are
     assumed to be ordered by reading across the rows of the
-    transition matrix, starting at the first row.
+    transition matrix, starting at the first row, ignoring the
+    diagonals. 
 
     For categorical covariates, defined using \code{factor(covname)},
     specify constraints as follows:\cr
@@ -133,9 +227,11 @@ misclassifications.
     
     where \code{VALUE1}, \code{VALUE2}, ... are the levels of the factor.
     Make sure the \code{contrasts} option is set appropriately, for
-    example, the default \code{options(contrasts=c(contr.treatment,
-      contr.poly))} sets the first (baseline) level of unordered factors to
-    zero.
+    example, the default
+
+    \code{options(contrasts=c(contr.treatment, contr.poly))}
+
+    sets the first (baseline) level of unordered factors to zero.
 
     To assume no covariate effect on a certain transition, set its
     initial value to zero and use the \code{fixedpars} argument to fix
@@ -145,13 +241,58 @@ misclassifications.
 
   \item{misccovariates}{A formula representing the covariates on the 
   misclassification probabilities, analogously to \code{covariates}.
+    Only used if the model is specified using \code{ematrix}, rather
+    than \code{hmodel}. 
+  }
+
+  \item{misccovinits}{Initial values for the covariates on the 
+    misclassification probabilities, defined in the same way as \code{covinits}. 
+    Only used if the model is specified using \code{ematrix}. 
   }
 
   \item{miscconstraint}{A list of one vector for each named covariate on
     misclassification probabilities. The vector indicates which
     covariate effects on misclassification probabilities are
     constrained to be equal, analogously to \code{constraint}.
+    Only used if the model is specified using \code{ematrix}. 
   }
+
+  \item{hcovariates}{
+    List of formulae the same length as \code{hmodel}, defining any covariates
+    governing the hidden Markov outcome models.  The covariates operate
+    on a suitably link-transformed linear scale, for example, log scale
+    for a Poisson outcome model. If there are no covariates for a certain
+    hidden state, then insert a NULL in the corresponding place in the
+    list.  For example, 
+    \code{hcovariates = list(~acute + age, ~acute, NULL).}
+    }
+
+  \item{hcovinits}{
+    Initial values for the hidden Markov model covariates. A list of the
+    same length as \code{hcovariates}. Each element is a vector with
+    initial values for each covariate on that state.  For example, the
+    above \code{hcovariates} can be initialised with 
+    \code{hcovariates = list(c(-8, 0), -8, NULL)}. Initial values must
+    be given for all or no covariates, if none are given these are all
+    set to zero.  The initial value given in the \code{hmodel}
+    constructor function for the corresponding baseline parameter is
+    interpreted as the value of that parameter with any covariates fixed
+    to their means in the data.
+    }
+
+  \item{hconstraint}{
+    A named list. Each element is a vector of constraints on the named hidden
+    Markov model parameter. The vector has length equal to the number of
+    times that class of parameter appears in the whole model. 
+
+    For example consider the three-state hidden Markov model described
+    above, with normally-distributed outcomes for states 1 and 2. 
+    To constrain the outcome variance to be equal for states 1 and 2,
+    and to also constrain the effect of \code{acute} on the outcome mean
+    to be equal for states 1 and 2, specify
+
+    \code{hconstraint = list(sd = c(1,1), acute=c(1,1))}    
+    }
 
   \item{qconstraint}{A vector of indicators specifying which baseline
     transition intensities are equal. For example,
@@ -163,51 +304,16 @@ misclassifications.
   }
 
   \item{econstraint}{A similar vector of indicators specifying which
-    baseline misclassification probabiliities are constrained to be
-    equal. }
+    baseline misclassification probabilities are constrained to be
+    equal.      Only used if the model is specified using \code{ematrix}, rather
+    than \code{hmodel}.  }
   
-  \item{covmatch}{If \code{"previous"}, then time-dependent covariate
-    values are taken from the observation at the start of the
-    transition. If \code{"next"}, then the covariate value is taken from
-    the end of the transition.}
-
-  \item{initprobs}{Currently only used in misclassification
-    models.  Vector of assumed underlying state occupancy
+  \item{initprobs}{Currently only used in hidden Markov models.
+    Vector of assumed underlying state occupancy
     probabilities at each individual's first observation. Defaults to
     \code{c(1, rep(0, nstates-1))}, that is, in state 1 with a
-    probability of 1.  
+    probability of 1.  Scaled to sum to 1 if necessary. 
   }
-
-  \item{data}{Optional data frame in which to interpret the state, time,
-    subject ID, covariate, fromstate, tostate and timelag vectors.}
-
-  \item{fromto}{If \code{TRUE}, then the data are given as three vectors, 
-    \emph{from-state, to-state, time-difference},
-    representing the set of observed transitions between states, and the
-    time taken by each one. Otherwise, the data are given by \code{formula},
-    containing observation times, corresponding observed states, and a
-    vector of corresponding subject identification numbers
-    \code{subject}.
-
-    This is not a recommended way to store multi-state data, since the
-    longitudinal component of the data, observations through time on the
-    same person, is lost.  Thus after a \code{msm} model is fitted to
-    this style of data, some of the summary methods designed for
-    longitudinal data, such as \code{\link{prevalence.msm}} and
-    \code{\link{plot.msm}} cannot be used.
-    
-    \code{fromto} support is likely to be abolished in a future
-    version of \pkg{msm}.
-  }
-
-  \item{fromstate}{ Starting states for the observed transitions
-    (required if \code{fromto == TRUE} ). }
-
-  \item{tostate}{ Finishing states for the observed transitions
-    (required if \code{fromto == TRUE} ). }
-
-  \item{timelag}{ Time difference between observing \code{fromstate}
-    and \code{tostate}  (required if \code{fromto == TRUE} ). }
 
   \item{death}{Vector of indices of the death states.  A death state is
     an absorbing state whose time of entry is known exactly, but the
@@ -219,13 +325,13 @@ misclassifications.
 
     \code{death = TRUE} indicates that the final state is a death state,
     and \code{death = FALSE} (the default) indicates that there is no
-    death state.
+    death state. See the \code{obstype} argument.
   }
 
   \item{censor}{ A state, or vector of states, which indicates
-    censoring.  Censoring means that the observed state is unknown, but known to be
-    one of a particular set of states. For example, \code{censor=999},
-    indicates that all observations of 999 in the vector of observed
+    censoring.  Censoring means that the observed state is known only to be
+    one of a particular set of states. For example, \code{censor=999}
+    indicates that all observations of \code{999} in the vector of observed
     states denote censoring times.  By default, this means that the true
     state could have been anything other than an absorbing state. To
     specify corresponding true states explicitly, use a \code{censor.states}
@@ -234,7 +340,7 @@ misclassifications.
 
   \item{censor.states}{
     Specifies the underlying states which censored observations can
-    represent. If \code{censor} is a single number (the ddefault) this
+    represent. If \code{censor} is a single number (the default) this
     can be a vector, or a list with one element.  If \code{censor} is a
     vector with more than one element, this should be a list, with each
     element a vector corresponding to the equivalent element of
@@ -248,19 +354,37 @@ misclassifications.
   }
 
   \item{exacttimes}{By default, the transitions of the Markov process
-  are assumed to take place at unknown occasions in between the
-  observation times.  If \code{exacttimes} is
-    set to \code{TRUE}, then the observation times are assumed to
-    represent the exact and complete times of transition of the process. 
+    are assumed to take place at unknown occasions in between the
+    observation times.  If \code{exacttimes} is
+    set to \code{TRUE}, then all observation times are assumed to
+    represent the exact and complete times of transition of the process.
+    See the \code{obstype} argument. 
   }
 
+  \item{cl}{Width of symmetric confidence intervals for maximum
+    likelihood estimates, by default 0.95.}
+  
   \item{fixedpars}{Vector of indices of parameters whose values will be
     fixed at their initial values during the optimisation. These
-    correspond to indices of the \code{inits} vector, whose order is
-    specified above. This can be useful for building complex models
-    stage by stage. }
+    are given in the order: transition intensities (reading across
+    rows of the transition matrix), covariates on intensities (ordered
+    by intensities within covariates), hidden Markov model parameters
+    (ordered by parameters within states), hidden Markov model covariate
+    parameters (ordered by covariates within parameters within states). 
 
-  \item{...}{Optional arguments to the general-purpose R
+    For covariates on misclassification probabilities, this is a change
+    from version 0.4 in the parameter ordering. Previously these were
+    ordered by misclassification probabilities within covariates. 
+    
+    This can be useful for profiling likelihoods, and building complex
+    models stage by stage. To fix all parameters, specify
+    \code{fixedpars = TRUE}. }
+
+  \item{center}{If \code{TRUE} (the default) then covariates are centered at
+    their means during the maximum likelihood estimation. This usually
+    improves convergence. }
+  
+  \item{...}{Optional arguments to the general-purpose \R
     optimization routine \code{\link{optim}}. Useful options include
     \code{method="BFGS"} for using a quasi-Newton optimisation
     algorithm, which can often be faster than the default Nelder-Mead.
@@ -278,9 +402,8 @@ misclassifications.
 \value{
   A list of class \code{msm}, with components:
 
-  \item{misc}{Logical value indicating whether the model includes
-    misclassification.}
-  \item{Qmatrices}{A list of matrices. The first component, labelled
+  \item{call}{The original call to \code{msm}.}
+    \item{Qmatrices}{A list of matrices. The first component, labelled
     \code{logbaseline}, is a matrix containing the estimated
     transition intensities on the log scale with any covariates fixed at
     their means in the data. Each remaining component is a matrix giving the linear
@@ -292,6 +415,10 @@ misclassifications.
   \item{QmatricesSE}{The standard error matrices corresponding to
     \code{Qmatrices}.
   }
+  \item{QmatricesL,QmatricesU}{Corresponding lower and upper symmetric
+    confidence limits, of width 0.95 unless specified otherwise by the
+    \code{cl} argument.
+  }
   \item{Ematrices}{A list of matrices. The first component, labelled
     \code{logitbaseline}, is the estimated misclassification probability
     matrix  with any covariates fixed at their means
@@ -301,6 +428,10 @@ misclassifications.
     probability matrix on the natural scale, at an arbitrary combination
     of covariate values, use the function \code{\link{ematrix.msm}}.}
   \item{EmatricesSE}{The standard error matrices corresponding to \code{Ematrices}.}
+  \item{EmatricesL,EmatricesU}{Corresponding lower and upper symmetric
+    confidence limits, of width 0.95 unless specified otherwise by the
+    \code{cl} argument.
+  }
   \item{sojourn}{
     A list with components:
 
@@ -310,21 +441,52 @@ misclassifications.
     \code{se} = corresponding standard errors.
   }
   \item{minus2loglik}{Minus twice the maximised log-likelihood.}
-  \item{foundse}{Logical value indicating whether the Hessian was positive-definite
-    at the supposed maximum of the likelihood.  If not, the covariance matrix of the
-    parameters is unavailable. Furthermore, it is doubtful whether the optimisation
-    has converged to the maximum. 
-  }
   \item{estimates}{Vector of untransformed maximum likelihood estimates
-    returned from \code{\link{optim}}, with intensities on the log scale
-    and misclassification probabilities on the logit scale.}
+    returned from \code{\link{optim}}.  Transition intensities are on
+    the log scale and misclassification probabilities are the logit scale.}
   \item{estimates.t}{Vector of transformed maximum likelihood estimates
     with intensities and probabilities on their natural scales.}
+  \item{fixedpars}{Indices of \code{estimates} which were fixed during
+    the maximum likelihood estimation.}
   \item{covmat}{Covariance matrix corresponding to \code{estimates}.}
+  \item{ci}{Matrix of confidence intervals corresponding to \code{estimates}}
+  \item{foundse}{Logical value indicating whether the Hessian was positive-definite
+    at the supposed maximum of the likelihood.  If not, the covariance matrix of the
+    parameters is unavailable. In these cases the optimisation has
+    probably not converged to a maximum.
+  }
   \item{data}{A list of constants and vectors giving the data, for use
     in post-processing.}
-  \item{model}{A list of constants and vectors specifying the model, 
-    for use in post-processing.}
+  \item{qmodel}{A list of objects specifying the
+    model for transition intensities, for use in post-processing.}
+  \item{emodel}{A list of objects specifying the model for
+    misclassification.}
+  \item{qcmodel}{A list of objects specifying the
+    model for covariates on the transition intensities.}
+  \item{ecmodel}{A list of objects specifying the model for
+    covariates on misclassification probabilities.}
+  \item{hmodel}{A list of class "hmodel", containing objects specifying the hidden Markov model.
+    Estimates of "baseline" location parameters are
+    presented with any covariates fixed to their means in the data.  }  
+  \item{cmodel}{A list of objects specifying any model for censoring.}
+
+  Printing a \code{msm} object by typing the object's name at the
+  command line implicitly invokes \code{print.msm}.  This
+  formats and prints the important information in the model fit.
+  This includes the fitted transition intensity matrix, matrices
+  containing covariate effects on intensities, and mean sojourn times
+  from a fitted \code{\link{msm}} model.  When there is a hidden Markov
+  model, the chief information in the
+  \code{hmodel} component is also formatted and printed. This includes
+  estimates and confidence intervals for each
+  parameter.
+
+  To extract summary information from the fitted model, it is
+  recommended to use the more flexible extractor functions, such as
+  \code{\link{qmatrix.msm}}, \code{\link{pmatrix.msm}},
+  \code{\link{sojourn.msm}}, instead of directly reading from list
+  components of \code{msm} objects.
+  
 }
 \details{
   For full details about the methodology behind the \pkg{msm} package,
@@ -332,42 +494,50 @@ misclassifications.
   subdirectory of the package. This includes a tutorial in the typical
   use of \pkg{msm}.
 
-  For models without misclassification,
+  Users upgrading from versions of \pkg{msm} less than 0.5 will need to
+  change some of their model fitting syntax. In particular, initial
+  values are now specified in the \code{qmatrix} and \code{covinits}
+  arguments instead of \code{inits}, and \code{qmatrix} is no longer a
+  matrix of \code{0/1} indicators.  See the appendix to the PDF manual
+  or the NEWS file in the top-level installation directory for a full
+  list of changes.
+
+  For simple multi-state Markov models,
   the likelihood is calculated in terms of the transition intensity
   matrix \eqn{Q}. When the data consist of observations of the Markov
   process at arbitrary times, the exact transition times are not known.
   Then the likelihood is calculated using the transition probability
-  matrix \eqn{P(t) = exp(tQ)}. If state \eqn{i} is observed at time
+  matrix \eqn{P(t) = \exp(tQ)}{P(t) = exp(tQ)}, where \eqn{\exp}{exp} is
+  the matrix exponential.  If state \eqn{i} is observed at time
   \eqn{t} and  state \eqn{j} is observed at time \eqn{u}, then the
   contribution to the likelihood from this pair of observations is
-  the \eqn{i,j} element of \eqn{P(u - t)}. See, for example, Kay (1986),
-  or Gentleman \emph{et al.} (1994).
+  the \eqn{i,j} element of \eqn{P(u - t)}. See, for example, Kalbfleisch
+  and Lawless (1985), Kay (1986), or Gentleman \emph{et al.} (1994).
 
-  For models with misclassification, the likelihood for an individual
-  with \eqn{k} observations is calculated by summing over the unknown
-  state at each time,  producing a product of \eqn{k} matrices. The
-  calculation, adapted from Satten and Longini (1996), is given by
-  Jackson and Sharples (2002).
+  For hidden Markov models, the likelihood for an individual
+  with \eqn{k} observations is calculated directly by summing over the
+  unknown state at each time,  producing a product of \eqn{k} matrices. The
+  calculation is a generalisation of the method described by Satten and
+  Longini (1996), and also by Jackson and Sharples (2002), and Jackson
+  \emph{et al.} (2003).
 
   There must be enough information in the data on each state to estimate
   each transition rate, otherwise the likelihood will be flat and the
   maximum will not be found.  It may be appropriate to reduce the
   number of states in the model, or reduce the number of covariate
-  effects, to ensure convergence.
+  effects, to ensure convergence.   Hidden Markov models are
+  particularly susceptible to non-identifiability, especially when
+  combined with a complex transition matrix. 
 
   Choosing an appropriate set of initial values for the optimisation can
   also be important.  For flat likelihoods, 'informative' initial values
   will often be required.
+
 }
 \references{
-  Jackson, C.H., Sharples, L.D., Thompson, S.G. and Duffy, S.W. and
-  Couto, E.  Multi-state Markov models for disease progression with
-  classification error. \emph{The Statistician}, 52(2): 193--209 (2003)
-    
-  Jackson, C.H. and Sharples, L.D. Hidden Markov models for the
-  onset and progresison of bronchiolitis obliterans syndrome in lung
-  transplant recipients \emph{Statistics in Medicine}, 21(1): 113--128
-  (2002).
+  Kalbfleisch, J., Lawless, J.F., The analysis of panel data under a
+  Markov assumption \emph{Journal of the Americal Statistical
+    Association} (1985) 80(392): 863--871.
     
   Kay, R.  A Markov model for analysing cancer markers and disease
   states in survival studies.  \emph{Biometrics} (1986) 42: 855--865.
@@ -376,36 +546,44 @@ misclassifications.
   Markov models for analysing incomplete disease history data with
   illustrations for HIV disease.  \emph{Statistics in Medicine} (1994) 13(3):
   805--821.
-
+  
   Satten, G.A. and Longini, I.M.  Markov chains with measurement error:
   estimating the 'true' course of a marker of the progression of human
   immunodeficiency virus disease (with discussion) \emph{Applied
     Statistics} 45(3): 275-309 (1996)
+    
+  Jackson, C.H. and Sharples, L.D. Hidden Markov models for the
+  onset and progression of bronchiolitis obliterans syndrome in lung
+  transplant recipients \emph{Statistics in Medicine}, 21(1): 113--128
+  (2002).
+
+  Jackson, C.H., Sharples, L.D., Thompson, S.G. and Duffy, S.W. and
+  Couto, E.  Multi-state Markov models for disease progression with
+  classification error. \emph{The Statistician}, 52(2): 193--209 (2003)
 }
 
 \seealso{
-  \code{\link{simmulti.msm}}, \code{\link{print.msm}}, \code{\link{plot.msm}},
+  \code{\link{simmulti.msm}}, \code{\link{plot.msm}},
   \code{\link{summary.msm}}, \code{\link{qmatrix.msm}},
-  \code{\link{pmatrix.msm}},  \code{\link{sojourn.msm}}, 
+  \code{\link{pmatrix.msm}},  \code{\link{sojourn.msm}}. 
 }
 \examples{
-data(aneur)
-print(aneur$from[1:10])
-print(aneur$to[1:10])
-print(aneur$dt[1:10])
-### four states corresponding to increasing disease severity,
-### with progressive transitions only 
-qmat <- rbind( c(0, 1, 0, 0), c(0, 0, 1, 0), c(0, 0, 0, 1), c(0, 0, 0,
-0))
-
-aneurysm.msm <- msm(data=aneur, fromto=TRUE, fromstate=from, tostate=to,
-                    qmatrix=qmat, timelag=dt, inits=c(0.001, 0.03, 0.3),
-                    method="BFGS", control=list(trace=2))
-
-print(aneurysm.msm)
-qmatrix.msm(aneurysm.msm) # Extract only the transition intensities from the printed results
-pmatrix.msm(aneurysm.msm, 10) # Extract the 10 year transition probability matrix
-sojourn.msm(aneurysm.msm) # Extract the mean sojourn times
+### Heart transplant data
+### For further details and background to this example, see
+### the PDF manual in the doc directory. 
+data(heart)
+print(heart[1:10,])
+twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166),
+c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
+statetable.msm(state, PTNUM, data=heart)
+crudeinits.msm(state ~ years, PTNUM, data=heart, qmatrix=twoway4.q)
+heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
+                 qmatrix = twoway4.q, death = 4,
+                 control = list ( trace = 2, REPORT = 1 )  )
+heart.msm
+qmatrix.msm(heart.msm)
+pmatrix.msm(heart.msm, t=10)
+sojourn.msm(heart.msm)
 }
 \author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{models}
