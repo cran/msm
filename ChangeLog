@@ -1,3 +1,33 @@
+2003-06-30 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/outputs.R(qematrix.msm): Didn't work when the baseline rates
+	or probabilities were fixed to zero, bug fixed (now uses
+	x$model$qvector to test whether a transition is allowed, not
+	x$Qmatrices$logbaseline). 
+	
+	* R/outputs.R: New function - pmatrix.piecewise.msm, for
+	calculating P-matrices for processes with non-homogeneous but
+	piecewise-constant intensities. Thanks to Mike Sweeting for
+	suggesting this.
+
+	* DESCRIPTION: Version 0.2.2 released
+	
+2003-06-25 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/msm.R (msm.check.model): Bug fix - was reporting the wrong
+	subject numbers when there were disallowed transitions in the
+	data. Thanks to Stephan Lenz for spotting this. 
+ 
+2003-06-20 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/outputs.R: Covariates argument is now checked that it is a
+	list, to avoid ugly warnings in R 1.7.0
+ 
+2003-06-16 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/msm.R (msm.form.output): Died when only one parameter in the
+	model, fixed by coercing covmat to matrix. 
+ 
 2003-06-03 Chris Jackson   <chris.jackson@imperial.ac.uk>
 
 	* inst/doc/msm-manual.pdf: Edits to manual, e.g. correction of

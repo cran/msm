@@ -435,7 +435,7 @@ msm.form.output <- function(matrix, # matrix of 0/1 indicators for allowed inten
           dimnames(mat) <- list(paste("Stage",1:nstates), paste("Stage",1:nstates))
           if (foundse && !fixed){
               intenscov <- covmat[parinds, parinds]
-              intensse <- sqrt(diag(intenscov))
+              intensse <- sqrt(diag(as.matrix(intenscov)))
               semat <- t(matrix)
               semat[t(matrix)==1] <- intensse 
               semat <- t(semat)
@@ -529,12 +529,10 @@ msm.check.model <- function(state, subject, qmatrix, fromto=FALSE, tostate=NULL)
         fromstate[subj.num != c(NA, subj.num[1:(n-1)])] <- NA
         tostate <- state
     }
-    tostate <- tostate[!is.na(fromstate)]
-    fromstate <- fromstate[!is.na(fromstate)]
     unitprob <- apply(cbind(fromstate, tostate), 1, function(x) { Pmat[x[1], x[2]] } )
     if (identical(all.equal(min(unitprob, na.rm=TRUE), 0),  TRUE))
       {
-          badobs <- min ( (1:n) [unitprob==0], na.rm = TRUE)
+          badobs <- min ( which(unitprob==0), na.rm = TRUE)
           stop (paste ("Data inconsistent with transition matrix for model without misclassification:\n",
                        "individual", if(fromto) "" else subject[badobs], "moves from state", fromstate[badobs],
                        "to state", tostate[badobs], "at observation", badobs, "\n") )

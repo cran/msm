@@ -36,16 +36,23 @@ pmatrix.msm(x, t, covariates="mean")
 }
 \value{
   The matrix of estimated transition probabilities \eqn{P(t)} in the given time. 
+  Rows correspond to "from-state" and columns to "to-state". 
 }
 \details{
   For a continuous-time homogeneous Markov process with transition
   intensity matrix
   \eqn{Q},  the probability of occupying state \eqn{s} at time \eqn{u + t}
   conditional on occupying state \eqn{r} at time \eqn{u} is given by the
-  \eqn{(r,s)} entry of the matrix \eqn{P(t) = exp(tQ)}. 
+  \eqn{(r,s)} entry of the matrix \eqn{P(t) = exp(tQ)}.
+
+  For non-homogeneous processes, where covariates and hence the
+  transition intensity matrix vary but are piecewise-constant within
+  the time interval \code{[u,
+  u+t]}, the function \code{\link{pmatrix.piecewise.msm}} can be used.
+  
 }
 \seealso{
-  \code{\link{qmatrix.msm}}
+  \code{\link{qmatrix.msm}},  \code{\link{pmatrix.piecewise.msm}}
 }
 \author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{}
