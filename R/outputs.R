@@ -8,7 +8,7 @@ print.msm <- function(x,...)
           M <- x[[cpt]]; MSE <- x[[paste(cpt,"SE",sep="")]]
           base <- if (is.list(M)) M[[1]] else M
           nmatrix <- dim(base)[1]
-          covmessage <- if(length(M) == 1) "" else "with covariates set to their means"
+          covmessage <- if(length(M) == 2) "" else "with covariates set to their means"
           cat ("  * Matrix of", matrixtype, covmessage," \n\n")
           print (M[["baseline"]], na.print="."); cat("\n")
           cat ("    corresponding standard errors \n\n")
@@ -34,7 +34,7 @@ print.msm <- function(x,...)
           printmatlist (x, "Qmatrices", "transition intensities", "log")
           if (x$misc)
             printmatlist (x, "Ematrices", "misclassification probabilities", "logit")
-          covmessage <- if(length(x$Qmatrices) == 1) "" else "with covariates set to their means"
+          covmessage <- if (x$data$ncovs == 0) "" else "with covariates set to their means"
           cat ("  * Mean sojourn times in transient states", covmessage, "\n\n")
           print( x$sojourn ); cat("\n")
       }
@@ -788,13 +788,13 @@ viterbi.msm <- function(x)
                 as.integer (x$data$nmisccovs),
                 as.integer (x$model$nmisccoveffs),
                 as.integer (x$model$covmatch),
+                as.integer (x$model$ndeath),                
                 as.integer (x$model$death),
-                as.integer (x$data$tunit),
                 as.integer (x$model$exacttimes),
+                as.integer(0),
                 as.integer(-1),
-                as.double(NULL),
-                as.integer(NULL),
-                fitted = double (x$data$nobs)
+                fitted = double (x$data$nobs),
+                PACKAGE = "msm"
                 )
       
       fitted <- vit$fitted + 1

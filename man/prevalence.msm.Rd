@@ -8,7 +8,7 @@
   forecasts from the fitted model.   
 }
 \usage{
-prevalence.msm(x, times, timezero=min(time), initstates, covariates="mean", misccovariates="mean")
+prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean", misccovariates="mean")
 }
 \arguments{
   \item{x}{A fitted multi-state model, either with or without misclassification, produced

@@ -134,7 +134,7 @@ misclassifications.
     where \code{VALUE1}, \code{VALUE2}, ... are the levels of the factor.
     Make sure the \code{contrasts} option is set appropriately, for
     example, the default \code{options(contrasts=c(contr.treatment,
-      contr.poly))} sets the first (baseline) level of the factor to
+      contr.poly))} sets the first (baseline) level of unordered factors to
     zero.
 
     To assume no covariate effect on a certain transition, set its
@@ -171,10 +171,11 @@ misclassifications.
     transition. If \code{"next"}, then the covariate value is taken from
     the end of the transition.}
 
-  \item{initprobs}{Vector of assumed underlying state occupancy
-    probabilities at the initial time of the process. Defaults to
+  \item{initprobs}{Currently only used in misclassification
+    models.  Vector of assumed underlying state occupancy
+    probabilities at each individual's first observation. Defaults to
     \code{c(1, rep(0, nstates-1))}, that is, in state 1 with a
-probability of 1. 
+    probability of 1.  
   }
 
   \item{data}{Optional data frame in which to interpret the state, time,
@@ -197,23 +198,35 @@ probability of 1.
   \item{timelag}{ Time difference between observing \code{fromstate}
     and \code{tostate}  (required if \code{fromto == TRUE} ). }
 
-  \item{death}{If \code{TRUE}, then the final state represents
-    death. This means that the time of entry into this state is known to
-    within one day, and that the individual remains in this state for
-    ever after. Defaults to \code{FALSE}. Only one absorbing state with
-    this behaviour is permitted. }
+  \item{death}{Vector of indices of the death states.  A death state is
+    an absorbing state whose time of entry is known exactly, but the
+    individual is assumed to be in an unknown transient state ("alive")
+    at the previous instant.  This is the usual situation for times of death in
+    chronic disease monitoring data.  For example, if you specify
+    \code{death = c(4, 5)} then states 4 and 5 are assumed to be death
+    states.
 
-  \item{tunit}{Unit in days of the given time vector (if \code{death == TRUE}).}
+    \code{death = TRUE} indicates that the final state is a death state,
+    and \code{death = FALSE} (the default) indicates that there is no
+    death state.
+  }
 
-  \item{exacttimes}{If \code{TRUE}, then the times are assumed to
-    represent the exact times of transition of the Markov
-    process. Otherwise the transitions are assumed to take place at
-    unknown occasions in between the observation times.}
+  \item{tunit}{No longer used, since msm version 0.3.2. The entry time
+    into death states is now assumed to be exact, rather than known
+    within a day.}
+
+  \item{exacttimes}{By default, the transitions of the Markov process
+  are assumed to take place at unknown occasions in between the
+  observation times.  If \code{exacttimes} is
+    set to \code{TRUE}, then the observation times are assumed to
+    represent the exact and complete times of transition of the process. 
+  }
 
   \item{fixedpars}{Vector of indices of parameters whose values will be
     fixed at their initial values during the optimisation. These
     correspond to indices of the \code{inits} vector, whose order is
-    specified above.}
+    specified above. This can be useful for building complex models
+    stage by stage. }
 
   \item{...}{Optional arguments to the general-purpose R
     optimization routine \code{\link{optim}}. Useful options include
@@ -240,7 +253,7 @@ probability of 1.
     transition intensities on the log scale with any covariates fixed at
     their means in the data. Each remaining component is a matrix giving the linear
     effects of the labelled covariate on the matrix of log
-    intensities.  To extract an intensity matrix on the natural
+    intensities.  To extract an estimated intensity matrix on the natural
     scale, at an arbitrary combination of covariate values, use the
     function \code{\link{qmatrix.msm}}.
   }
@@ -252,10 +265,10 @@ probability of 1.
     matrix  with any covariates fixed at their means
     in the data. Each remaining component is a matrix giving the linear
     effects of the labelled covariate on the matrix of logit
-    misclassification probabilities.   To extract a misclassification
+    misclassification probabilities.   To extract an estimated misclassification
     probability matrix on the natural scale, at an arbitrary combination
-    of covariate values, use the function \code{\link{ematrix.msm}}}
-  \item{EmatricesSE}{The standard error matrices corresponding to \code{Ematrices}}
+    of covariate values, use the function \code{\link{ematrix.msm}}.}
+  \item{EmatricesSE}{The standard error matrices corresponding to \code{Ematrices}.}
   \item{sojourn}{
     A list with components:
 
@@ -264,7 +277,7 @@ probability of 1.
 
     \code{se} = corresponding standard errors.
   }
-  \item{minus2loglik}{Minus twice the maximised log-likelihood}
+  \item{minus2loglik}{Minus twice the maximised log-likelihood.}
   \item{foundse}{Logical value indicating whether the Hessian was positive-definite
     at the supposed maximum of the likelihood.  If not, the covariance matrix of the
     parameters is unavailable. Furthermore, it is doubtful whether the optimisation
@@ -274,7 +287,7 @@ probability of 1.
     returned from \code{\link{optim}}, with intensities on the log scale
     and misclassification probabilities on the logit scale.}
   \item{estimates.t}{Vector of transformed maximum likelihood estimates
-    with intensities ans probabilities on their natural scales.}
+    with intensities and probabilities on their natural scales.}
   \item{covmat}{Covariance matrix corresponding to \code{estimates}.}
   \item{data}{A list of constants and vectors giving the data, for use
     in post-processing.}
@@ -296,8 +309,8 @@ probability of 1.
   For models with misclassification, the likelihood for an individual
   with \eqn{k} observations is calculated by summing over the unknown
   state at each time,  producing a product of \eqn{k} matrices. The
-  calculation is adapted from that in Satten and Longini (1996), and is
-  also given by Jackson and Sharples (2002). 
+  calculation, adapted from Satten and Longini (1996), is given by
+  Jackson and Sharples (2002).
 
   There must be enough information in the data on each state to estimate
   each transition rate, otherwise the likelihood will be flat and the
@@ -307,7 +320,10 @@ probability of 1.
 
   Choosing an appropriate set of initial values for the optimisation can
   also be important.  For flat likelihoods, 'informative' initial values
-  will often be required. 
+  will often be required.
+
+  For further details see the PDF manual supplied with the package, and
+  the references below. 
 }
 \references{
   Jackson, C.H., Sharples, L.D., Thompson, S.G. and Duffy, S.W. and
@@ -349,8 +365,8 @@ qmat <- rbind( c(0, 1, 0, 0), c(0, 0, 1, 0), c(0, 0, 0, 1), c(0, 0, 0,
 0))
 
 aneurysm.msm <- msm(data=aneur, fromto=TRUE, fromstate=from, tostate=to,
-                    qmatrix=qmat, timelag=dt, death=FALSE, inits=c(0.001,
-                    0.03, 0.3), method="BFGS", control=list(trace=2))
+                    qmatrix=qmat, timelag=dt, inits=c(0.001, 0.03, 0.3),
+                    method="BFGS", control=list(trace=2))
 
 print(aneurysm.msm)
 qmatrix.msm(aneurysm.msm) # Extract only the transition intensities from the printed results

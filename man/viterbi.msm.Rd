@@ -4,8 +4,8 @@
 
 \description{
   For a fitted multi state model with misclassification, the Viterbi
-  algorithm recursively constructs the path through the underlying stages with the
-  highest probability.
+  algorithm recursively constructs the path with the
+  highest probability through the underlying stages .
 }
 
 \usage{

@@ -1,7 +1,23 @@
 -*- text -*-
 
-USER-VISIBLE CHANGES 
+USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
+
+Version 0.3.2 (March 25, 2003)
+-------------
+
+* More than one death state is now permitted, through the "death"
+argument. Death states are those whose exact entry time is known,
+but the state at the previous instant before death is unknown.
+
+* The "tunit" argument has been abolished.  Death times are now
+assumed to be exact rather than known within one day.  This makes
+more sense since for longitudinal studies, all observations are
+usually recorded to within one basic time unit, not just death
+times.
+
+* Cleanups of the manual and minor fixes, as detailed in ChangeLog.
+
 
 Version 0.3.1 (October 14, 2003)
 -------------

@@ -58,7 +58,11 @@ crudeinits.msm(state, time, subject, qmatrix, data=NULL, fromto=FALSE,
   total of \eqn{n_r} transitions from state \eqn{r}, then \eqn{q_{rs} /
     q_{rr}}{q_rs / q_rr} can be estimated by \eqn{n_{rs} / n_r}{n_rs / n_r}. Then, given a total of \eqn{T_r} years
   spent in state \eqn{r},  the mean sojourn time \eqn{1 / q_{rr}}{1 / q_rr} can be estimated as \eqn{T_r / n_r}.
-  Thus, \eqn{n_{rs} / T_r}{n_rs / T_r} is a crude estimate of \eqn{q_{rs}}{q_rs}.
+  Thus, \eqn{n_{rs} / T_r}{n_rs / T_r} is a crude estimate of
+  \eqn{q_{rs}}{q_rs}.
+
+  If the data do represent the exact transition times of the Markov
+  process, then these are the exact maximum likelihood estimates.
 
 }
 \seealso{

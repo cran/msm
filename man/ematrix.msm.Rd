@@ -45,9 +45,9 @@ ematrix.msm(x, covariates="mean")
 \details{
   Misclassification probabilities and covariate effects are estimated on the logit
   scale by \code{\link{msm}}. A covariance matrix is estimated from the
-  Hessian of the maximised log-likelihood.  The delta method is used to
-  obtain from these the standard error of the probabilities on the
-  natural scale at arbitrary covariate values. 
+  Hessian of the maximised log-likelihood.  From these, the delta method
+  is used to obtain standard errors of the probabilities on the natural
+  scale at arbitrary covariate values.  
 }
 \seealso{
   \code{\link{qmatrix.msm}}

@@ -38,12 +38,20 @@ simmulti.msm(data, qmatrix, beta, death = FALSE,  tunit = 1)
     by reading across rows of the intensity matrix, starting with the
     first, counting the positive off-diagonal elements of the matrix.}
 
-  \item{death}{If \code{TRUE}, then the final state is an absorbing
-    state whose time of entry is known to within one day.}
+  \item{death}{Vector of indices of the death states.  A death state is
+    an absorbing state whose time of entry is known exactly, but the
+    individual is assumed to be in an unknown transient state ("alive")
+    at the previous instant.  This is the usual situation for times of death in
+    chronic disease monitoring data.  For example, if you specify
+    \code{death = c(4, 5)} then states 4 and 5 are assumed to be death
+    states.
 
-  \item{tunit}{Unit in days of the given time vector (if death is
-    \code{TRUE}). For example if time is measured in years, then
-    \code{tunit = 365}.
+    \code{death = TRUE} indicates that the
+    final state is a death state, and \code{death = FALSE} (the default)
+    indicates that there is no death state. }
+
+  \item{tunit}{No longer used, from msm version 0.3.2. Death times are
+    now assumed to be exact, rather than accurate within one day. 
   }
 
 }
@@ -54,8 +62,7 @@ simmulti.msm(data, qmatrix, beta, death = FALSE,  tunit = 1)
   \item{state}{Simulated state at the corresponding time}
   plus any supplied covariates. 
 }
-\details{
-  
+\details{  
   \code{\link{sim.msm}} is called repeatedly to produce a simulated
   trajectory for each individual. The state at each specified
   observation time is then taken to produce a new column \code{state}.
@@ -64,9 +71,8 @@ simmulti.msm(data, qmatrix, beta, death = FALSE,  tunit = 1)
   which remains constant in between the individual's observation times.
   If the subject enters an absorbing state, then only the first
   observation in that state is kept in the data frame. Rows corresponding to future
-  observations are deleted. If \code{death} is \code{TRUE}, then the
-  exact observation time of death is rounded up to the nearest \code{1 /
-    tunit}.
+  observations are deleted.  The entry times into states given in
+  \code{death} are assumed to be known exactly}.
 }
 \seealso{ \code{\link{sim.msm}}
 }

@@ -11,7 +11,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                 covariates = NULL, # formula specifying covariates on transition rates.
                 constraint = NULL, # which intensities have covariates on them (as in Marshall et al.)
                 misccovariates = NULL, # formula specifying covariates on misclassification probs
-                miscconstraint = NULL, # which misc probs have covariates on them (as in Marshall et al.)
+                miscconstraint = NULL, # which misc probs have covariates on them
                 qconstraint = NULL, # constraints on equality of baseline intensities
                 econstraint = NULL, # constraints on equality of baseline misc probs
                 covmatch = "previous",   # take the covariate value from the previous or next observation
@@ -21,8 +21,8 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                 fromstate, #
                 tostate,   #  data required if fromto is TRUE
                 timelag,   #
-                death = FALSE,  # if final state is death and death date known within a day
-                tunit = 1.0, # unit in days of the given time variable (death date assumed known within a day)
+                death = FALSE,  # 'death' states, ie, entry time known exactly, but unknown transient state at previous instant
+                tunit = 1.0, # no longer used
                 exacttimes = FALSE,
                 fixedpars = NULL, # specify which parameters to fix
                 ... # options to optim
@@ -31,6 +31,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
 
 ### INTENSITY MATRIX
       nstates <- dim(qmatrix)[1]
+      diag(qmatrix) <- 0
       qmatrix <- msm.check.qmatrix(qmatrix)
       qvector <- as.numeric(t(qmatrix)) # matrix to vector by filling rows first
       nintens <- sum(qmatrix)
@@ -46,6 +47,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
 ### MISCLASSIFICATION MATRIX
       if (misc) {
           if (missing(ematrix)) stop("Misclassification matrix not given")
+          diag(ematrix) <- 0
           ematrix <- msm.check.ematrix(ematrix, qmatrix)
           evector <- as.numeric(t(ematrix)) # matrix to vector by filling rows first
           nmisc <- sum(ematrix)
@@ -136,9 +138,8 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       if (nmisccovs>0) misccovvec <- as.numeric(t(matrix(misccovvec, ncol=nmisccovs)[misccovrows.kept %in% final.rows]))
       nmiss <- length(setdiff(1:nobs, final.rows))
       plural <- if (nmiss==1) "" else "s"
-      if (nmiss > 0) warning(paste ( nmiss, " record", plural, " dropped due to missing values",sep=""))
-      msm.check.consistency(qmatrix, misc, fromto=fromto, state=state, subject=subject, time=time,
-                            tostate=tostate, death=death, exacttimes=exacttimes, tunit=tunit)
+      if (nmiss > 0) warning(nmiss, " record", plural, " dropped due to missing values")
+      msm.check.consistency(qmatrix, misc, fromto=fromto, state=state, subject=subject, tostate=tostate, time=time)
       nobs <- length(state)
 
 ### FORM LIST OF INITIAL PARAMETERS
@@ -160,7 +161,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       notfixed <- setdiff(1:npars, fixedpars)
       fixdiff <- setdiff(fixedpars, 1:npars)
       if (length(fixdiff) > 0)
-        stop ( paste ("Elements of fixedpars should be in 1, ..., ",npars, ", fixedpars contains",paste(fixdiff,collapse=" ") ) )
+        stop ( "Elements of fixedpars should be in 1, ..., ",npars, ", fixedpars contains ",paste(fixdiff,collapse=" ") )
       allinits <- inits
       if (length(fixedpars)==length(inits)) ## all parameters are fixed
         fixed <- TRUE
@@ -169,15 +170,28 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
           fixed <- FALSE
       }
 
+### CHECK DEATH ARGUMENT. Logical values allowed for backwards compatibility (TRUE means final state is death, FALSE means no death state)       
+      statelist <- if (nstates==2) "1, 2" else if (nstates==3) "1, 2, 3" else paste("1, 2, ... ,",nstates)
+      if (is.logical(death) && death==TRUE)
+        {ndeath <- 1; death <- nstates - 1}
+      else if (is.logical(death) && death==FALSE)
+        {ndeath <- 0; death <- -1}
+      else if (length(setdiff(death, 1:nstates)) > 0)
+        stop("Death states indicator contains states not in ",statelist)
+      else {ndeath <- length(death); death <- death - 1}
+      if (!missing(tunit)) warning("tunit argument is no longer used. death times are now assumed exact")
+      transient <- which (apply (qmatrix, 1, sum) > 0) - 1
+      if (any (death %in% transient)) stop("Not all the \"death\" states are absorbing states")
+      if (ndeath > 0 && exacttimes==TRUE) warning("Ignoring death argument, as all states have exact entry times")
+      
 ### CALCULATE LIKELIHOOD AT INITIAL VALUES...
       if (fixed) {
           likval <- lik.msm(inits, allinits, misc, subject, time, state, tostate, fromto,
                             qvector, evector, covvec, constrvec, misccovvec, miscconstrvec,
                             baseconstrvec, basemiscconstrvec,
                             initprobs, nstates, nintens, nintenseffs, nmisc, nmisceffs,
-                            nobs, npts,
-                            ncovs, ncoveffs, nmisccovs, nmisccoveffs, covmatch,
-                            death, tunit, exacttimes, fixedpars, plabs)
+                            nobs, npts, ncovs, ncoveffs, nmisccovs, nmisccoveffs, covmatch,
+                            ndeath, death, exacttimes, fixedpars, plabs)
           params <- inits
           covmat <- NULL
           foundse <- FALSE
@@ -194,7 +208,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                        nstates=nstates, nintens=nintens, nintenseffs=nintenseffs, nmisc=nmisc, nmisceffs=nmisceffs,
                        nobs=nobs, npts=npts,
                        ncovs=ncovs, ncoveffs=ncoveffs, nmisccovs=nmisccovs, nmisccoveffs=nmisccoveffs,
-                       covmatch=covmatch, death=death, tunit=tunit, exacttimes=exacttimes,
+                       covmatch=covmatch, ndeath=ndeath, death=death, exacttimes=exacttimes,
                        fixedpars=fixedpars, plabs=plabs)
           params <- allinits
           params[notfixed] <- opt$par
@@ -251,12 +265,11 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                            fromto=fromto, tostate=tostate,
                            covvec=covvec, covmeans=covmeans, 
                            covlabels=covlabels, covfactor=covfactor, ncovs=ncovs,
-                           nmisccovs=nmisccovs, tunit=tunit),
+                           nmisccovs=nmisccovs),
                          model = list(qvector=qvector, evector=evector,
-                           nstates=nstates, nintens=nintens, nintenseffs=nintenseffs,
-                           nmisc=nmisc, 
+                           nstates=nstates, nintens=nintens, nintenseffs=nintenseffs, nmisc=nmisc,
                            constrvec=constrvec, baseconstrvec=baseconstrvec, ncoveffs=ncoveffs,
-                           covmatch=covmatch, initprobs=initprobs, death=death, 
+                           covmatch=covmatch, initprobs=initprobs, ndeath=ndeath, death=death, 
                            exacttimes=exacttimes)
                          )
       
@@ -299,15 +312,22 @@ lik.msm <- function(params, allinits, misc, subject, time, state, tostate, fromt
                     constrvec, misccovvec, miscconstrvec, baseconstrvec, basemiscconstrvec, 
                     initprobs, nstates, nintens, nintenseffs, nmisc, nmisceffs, nobs, npts,
                     ncovs, ncoveffs, nmisccovs, nmisccoveffs, covmatch,
-                    death, tunit, exacttimes, fixedpars, plabs)
+                    ndeath, death, exacttimes, fixedpars, plabs)
   {      
       p <- length(params)
       state <- state - 1  # In R, work with states 1, ... n. In C, work with states 0, ... n-1
+
       npars <- nintenseffs + ncoveffs + nmisceffs + nmisccoveffs
       notfixed <- setdiff(1:npars, fixedpars)
       optplabs <- plabs[notfixed]
-      if (!is.null(fixedpars))  fixedpars <- fixedpars - 1
-      else fixedpars <- -1
+      if (!is.null(fixedpars))  {
+        fixedpars <- fixedpars - 1
+        nfix <- length(fixedpars)
+      }
+      else {
+        fixedpars <- -1
+        nfix <- 0
+      }
       params[optplabs=="qbase"] <- exp(params[optplabs=="qbase"])   ## optimise transition intensities on log scale
       params[optplabs=="ebase"] <- expit(params[optplabs=="ebase"]) ## optimise misclassification probs on logit scale
       allinits[plabs=="qbase"] <- exp(allinits[plabs=="qbase"])   
@@ -320,9 +340,11 @@ lik.msm <- function(params, allinits, misc, subject, time, state, tostate, fromt
       }
       else {
           ematrix <- t(matrix(evector, nrow=nstates))
+          diag(ematrix) <- 0
           esum <- apply(ematrix, 1, sum)
           nms <- max ( seq(along=esum)[esum > 0])
       }
+      
       do.what <- 1
       lik <- .C("msmCEntry",
                 as.integer(do.what),
@@ -357,13 +379,13 @@ lik.msm <- function(params, allinits, misc, subject, time, state, tostate, fromt
                 as.integer(nmisccovs),
                 as.integer(nmisccoveffs),
                 as.integer(covmatch),
+                as.integer(ndeath),
                 as.integer(death),
-                as.double(tunit),
                 as.integer(exacttimes),
+                as.integer(nfix),
                 as.integer(fixedpars),
-                as.double(NULL),
-                as.integer(NULL),
-                endlik = double(1)
+                endlik = double(1),
+                PACKAGE = "msm"
                 )      
       lik$endlik
   }
@@ -403,7 +425,7 @@ msm.process.covs <- function(covariates, # formula:  ~ cov1 + cov2 + ...
                 factor.warn <- if (is.factor(data[, i]))
                   "\n\tFor factor covariates, specify constraints using covnameCOVVALUE = c(...)"
                 else ""                  
-                stop(paste("Covariate \"", i, "\" in constraint statement not in model.", factor.warn, sep=""))
+                stop("Covariate \"", i, "\" in constraint statement not in model.", factor.warn)
             }
           constrvec <- numeric()
           maxc <- 0
@@ -473,7 +495,7 @@ msm.form.output <- function(matrix, # matrix of 0/1 indicators for allowed inten
               semat <- t(matrix)
               semat[t(matrix)==1] <- intensse 
               semat <- t(semat)
-              diag(semat) <- rep(0, nstates)
+              diag(semat) <- 0
               dimnames(semat)  <- list(paste("Stage",1:nstates), paste("Stage",1:nstates))
           }
           else if (!fixed){
@@ -491,16 +513,13 @@ msm.form.output <- function(matrix, # matrix of 0/1 indicators for allowed inten
 ### Check the consistency of the supplied data with the specified model 
 
 msm.check.consistency <- function(qmatrix, misc, fromto=FALSE, subject=NULL,
-                                  state, tostate=NULL, time,
-                                  death=FALSE, exacttimes=FALSE, tunit=NULL)
+                                  state, tostate=NULL, time)
   {
       msm.check.state(nrow(qmatrix), state, fromto, tostate)
       if (!misc)
         msm.check.model(state, subject, qmatrix, fromto, tostate)      
       if (!fromto)
         msm.check.times(time, subject)
-      if (death & !exacttimes)
-        msm.check.tunit(fromto, time, subject, timelag, tunit)
       invisible()
   }
 
@@ -511,7 +530,6 @@ msm.check.qmatrix <- function(qmatrix)
     qmatrix <- as.matrix(qmatrix)
     if (nrow(qmatrix) != ncol(qmatrix))
       stop("Number of rows and columns of qmatrix should be equal")
-    diag(qmatrix) <- 0
     if (!all ( is.element(qmatrix, c(0,1)) ) )
       stop("Not all off-diagonal elements of qmatrix are 1 or 0")
     qmatrix
@@ -524,7 +542,6 @@ msm.check.ematrix <- function(ematrix, qmatrix)
     ematrix <- as.matrix(ematrix)
     if (!all(dim(qmatrix) == dim(ematrix)))
       stop("Dimensions of qmatrix and ematrix should be the same")
-    diag(ematrix) <- 0
     if (!all ( is.element(ematrix, c(0,1)) ))
       stop("Not all off-diagonal elements of ematrix are 1 or 0")
     ematrix
@@ -537,12 +554,12 @@ msm.check.state <- function(nstates, state, fromto=FALSE, tostate=NULL)
       statelist <- if (nstates==2) "1, 2" else if (nstates==3) "1, 2, 3" else paste("1, 2, ... ,",nstates)
       if (fromto) {
           if (length(setdiff(unique(state), 1:nstates)) > 0)
-            stop(paste("From-state vector contains elements not in",statelist))
+            stop("From-state vector contains elements not in ",statelist)
           if (length(setdiff(unique(tostate), 1:nstates)) > 0)
-            stop(paste("To-state vector contains elements not in",statelist))          
+            stop("To-state vector contains elements not in ",statelist)         
       }
       else if (length(setdiff(unique(state), 1:nstates)) > 0)
-        stop(paste("State vector contains elements not in",statelist))
+        stop("State vector contains elements not in ",statelist)
       invisible()
   }
 
@@ -567,9 +584,16 @@ msm.check.model <- function(state, subject, qmatrix, fromto=FALSE, tostate=NULL)
     if (identical(all.equal(min(unitprob, na.rm=TRUE), 0),  TRUE))
       {
           badobs <- min ( which(unitprob==0), na.rm = TRUE)
-          stop (paste ("Data inconsistent with transition matrix for model without misclassification:\n",
-                       "individual", if(fromto) "" else subject[badobs], "moves from state", fromstate[badobs],
-                       "to state", tostate[badobs], "at observation", badobs, "\n") )
+          stop ("Data inconsistent with transition matrix for model without misclassification:\n",
+                "individual ", if(fromto) "" else subject[badobs], "moves from state ", fromstate[badobs],
+                "to state ", tostate[badobs], "at observation ", badobs, "\n")
+      }
+    diag(qmatrix) <- 0
+    absorbing <- which (apply (qmatrix, 1, sum) == 0)
+    absabs <- (fromstate %in% absorbing) & (tostate %in% absorbing)
+    if (any(absabs)) {
+          badobs <- min( which (absabs) )
+          warning("Absorbing - absorbing transition at observation ", badobs)
       }
     invisible()
 }
@@ -582,7 +606,7 @@ msm.check.times <- function(time, subject)
           badsubjs <- sort(unique(subject))[ !orderedpt ]
           badlist <- paste(badsubjs, collapse=", ")
           plural <- if (length(badsubjs)==1) "" else "s"
-          stop (paste ("Observations within subject", plural, " ", badlist, " are not in strictly increasing order of time", sep="") )
+          stop ("Observations within subject", plural, " ", badlist, " are not in strictly increasing order of time")
       }
 ### CHECK IF ANY INDIVIDUALS HAVE ONLY ONE OBSERVATION
       nobspt <- table(subject)
@@ -591,7 +615,7 @@ msm.check.times <- function(time, subject)
           badlist <- paste(badsubjs, collapse=", ")
           plural <- if (length(badsubjs)==1) "" else "s"
           has <-  if (length(badsubjs)==1) "has" else "have"
-          stop (paste ("Subject", plural, " ", badlist, " only ", has, " one observation", sep="") )
+          warning ("Subject", plural, " ", badlist, " only ", has, " one observation")
       }
 ### CHECK IF OBSERVATIONS WITHIN A SUBJECT ARE ADJACENT
       ind <- tapply(1:length(subject), subject, length)
@@ -602,30 +626,10 @@ msm.check.times <- function(time, subject)
           badsubjs <- sort(unique(subject))[ !adjacent ]
           badlist <- paste(badsubjs, collapse=", ")
           plural <- if (length(badsubjs)==1) "" else "s"
-          stop (paste ("Observations within subject", plural, " ", badlist, " are not adjacent in the data file", sep="") )
+          stop ("Observations within subject", plural, " ", badlist, " are not adjacent in the data file")
       }
       invisible()
   }
-
-msm.check.tunit <- function(fromto, time, subject, timelag, tunit)
-{
-### CHECK SETTING OF tunit, the unit in days of observed time variable
-### IF death time known to within a day, then dt should not be less than 1 / tunit
-    n <- length(time)
-    if (!fromto) {
-        prevtime <- c(NA, time[1:(n-1)])
-        subject <- as.numeric(factor(subject))
-        prevtime[subject != c(NA, subject[1:(n-1)])] <- NA
-        timelag <- time - prevtime
-    }
-    eps <- 1e-05 ## fuzz factor for approximate decimals
-    if (any (timelag - 1/tunit + eps<= 0, na.rm=TRUE)) {
-        badobs <- min ( (1:n) [ (timelag - 1/tunit + eps < 0) ], na.rm = TRUE)
-        stop (paste ("tunit =", tunit, "is too small: time difference between observations", badobs-1,
-                     "and", badobs, "is less than 1 /", tunit) )
-    }
-    invisible()
-}
 
 ## Table of 'transitions': previous state versus current state
 

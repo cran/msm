@@ -72,7 +72,7 @@ totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean", ...)
   stay in the disease state.  This is because the mean sojourn time in a
   state is conditional on entering the state, whereas the
   expected total time diseased is a forecast for a healthy
-  individual,  who may die before contracting the disease. 
+  individual,  who may die before getting the disease. 
 
 }
 \seealso{

@@ -47,12 +47,11 @@ void msmCEntry(
     int *nmisccovs,    /* number of covariates on misclassification probabilities */
     int *nmisccoveffs, /* number of distinct misclassification covariate effect parameters */
     int *covmatch,     /* use the covariate value from the previous or next observation */
-    int *death,        /* indicator for death state */
-    double *tunit,     /* time unit in days */
+    int *ndeath,        /* number of death states */
+    int *death,        /* vector of indices of death states */
     int *exacttimes,   /* indicator for exact transition times */
+    int *nfix,    /* number of fixed parameters */
     int *fixedpars,    /* which parameters to fix */
-    double *predtimes, /* prediction times for one-step-ahead prediction */
-    int *npreds,       /* number of prediction times */
     double *returned   /* returned -2 log likelihood , Viterbi fitted values, or predicted values */
     )
 {
@@ -64,20 +63,21 @@ void msmCEntry(
     data d; 
     model m;
 
-    fillparvec ( intens,        params, allinits, fixedpars, *nintenseffs,      &ifix, &iopt, &iall ) ;
-    fillparvec ( coveffect,     params, allinits, fixedpars, *ncoveffs,     &ifix, &iopt, &iall ) ;
-    fillparvec ( miscprobs,     params, allinits, fixedpars, *nmisceffs,        &ifix, &iopt, &iall ) ;
-    fillparvec ( misccoveffect, params, allinits, fixedpars, *nmisccoveffs, &ifix, &iopt, &iall ) ;
+    fillparvec ( intens,        *p,  params, allinits, *nfix, fixedpars, *nintenseffs,  &ifix, &iopt, &iall ) ;
+    fillparvec ( coveffect,     *p,  params, allinits, *nfix, fixedpars, *ncoveffs,     &ifix, &iopt, &iall ) ;
+    fillparvec ( miscprobs,     *p,  params, allinits, *nfix, fixedpars, *nmisceffs,    &ifix, &iopt, &iall ) ;
+    fillparvec ( misccoveffect, *p,  params, allinits, *nfix, fixedpars, *nmisccoveffs, &ifix, &iopt, &iall ) ;
 
     d.subject = subjvec;     d.time = timevec;     d.state = statevec;     d.tostate = tostatevec;
     d.cov = covvec;     d.misccov = misccovvec;    d.fromto = *fromto;   d.nobs = *nobs;   
-    d.npts = *npts;    d.ncovs = *ncovs;    d.nmisccovs = *nmisccovs;    d.tunit = *tunit; 
+    d.npts = *npts;    d.ncovs = *ncovs;    d.nmisccovs = *nmisccovs;     
 
     m.qvector = qvector;    m.evector = evector;    m.constraint = constraint;    m.miscconstraint = miscconstraint;
     m.baseconstraint = baseconstraint;    m.basemiscconstraint = basemiscconstraint;
     m.nst = *nst;  m.nms = *nms;  m.nintens = *nintens;  m.nmisc = *nmisc;  m.ncoveffs = *ncoveffs;
     m.nintenseffs = *nintenseffs; m.nmisceffs = *nmisceffs; 
-    m.nmisccoveffs = *nmisccoveffs;  m.covmatch = *covmatch;  m.death = *death;  m.exacttimes = *exacttimes;
+    m.nmisccoveffs = *nmisccoveffs;  m.covmatch = *covmatch; m.ndeath=*ndeath; m.death = death;  
+    m.exacttimes = *exacttimes;
     m.intens = intens;  m.coveffect = coveffect;  m.miscprobs = miscprobs;  m.misccoveffect = misccoveffect;
     m.initprobs = initprobs;
 
@@ -117,22 +117,24 @@ void msmLikelihood (data *d, model *m, int misc, double *returned) {
 /* Fill a parameter vector with either the current values from the optimisation or the fixed inital values */
 
 void fillparvec(double *parvec, /* named vector to fill (e.g. intens = baseline intensities) */
+		int p, /* number of parameters optimised over */
 		double *params, /* current values of parameters being optimised over */
 		double *allinits, /* full vector of initial values */
-		int *fixi,  /* indices of allinits which are fixed */
+		int nfix,   /* number of fixed parameters, ie length of fixedpars */
+		int *fixedpars,  /* indices of allinits which are fixed */
 		int ni,    /* length of parvec */
-		int *ifix,  /* current index into fixi */
+		int *ifix,  /* current index into fixedpars */
 		int *iopt,  /* current index into params */
 		int *iall   /* current index into allinits */
     )
 {
     int i;
     for (i=0; i<ni; ++i, ++(*iall)){
-	if (*iall == fixi[*ifix]){
+	if ((*ifix < nfix) && (*iall == fixedpars[*ifix])) {
 	    parvec[i] = allinits[*iall];
 	    ++(*ifix);
 	}
-	else {
+	else if (*iopt < p) {
 	    parvec[i] = params[*iopt];
 	    ++(*iopt);
 	}
@@ -171,7 +173,7 @@ double likmisc(int pt, /* ordinal subject ID */
     for (k = first+1; k <= last; ++k)
     {
 	UpdateLik(d->state[k], d->time[k] - d->time[k-1],
-		  k, last, 0, d, m, cumprod, newprod, lweight, &lweight);
+		  k, last, d, m, cumprod, newprod, lweight, &lweight);
 	for (i = 0; i < m->nst; ++i)
 	    cumprod[i] = newprod[i];
     }
@@ -187,7 +189,7 @@ double likmisc(int pt, /* ordinal subject ID */
 
 /* Post-multiply the row-vector cumprod by matrix T to accumulate the likelihood */
 
-void UpdateLik(int state, double dt, int k, int last, int predict_death, data *d, model *m, 
+void UpdateLik(int state, double dt, int k, int last, data *d, model *m, 
 	       double *cumprod, double *newprod, double lweight_old, double *lweight_new)
 {
     int i, j;
@@ -196,29 +198,18 @@ void UpdateLik(int state, double dt, int k, int last, int predict_death, data *d
     double *newintens   = (double *) S_alloc(m->nintens, sizeof(double));
     double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
     double *pmat        = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
-    double *pmatdeath   = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
-    double *pmattodeath = (double *) S_alloc((m->nst)*(m->nst), sizeof(double)); 
     AddCovs(k - 1 + m->covmatch, d, m, newintens);
     AddMiscCovs(k - 1 + m->covmatch, d, m, newmisc);
     /* calculate the transition probability (P) matrix for the time interval dt */
     Pmat(pmat, dt, newintens, m->qvector, m->nst, m->exacttimes);
-    if ((state == m->nst - 1) && (m->death))
-    {
-	/* or dt - 1 day and 1 day, if death time is known within a day */
-	Pmat(pmattodeath, dt - 1 / d->tunit, newintens, m->qvector, m->nst, 0);
-	Pmat(pmatdeath, 1/d->tunit, newintens, m->qvector, m->nst, 0);
-    }
     for(j = 0; j < m->nst; ++j)
     {
 	newprod[j] = 0.0;
 	for(i = 0; i < m->nst; ++i)
 	{
-	    if (predict_death)
-		/* Only for doing prediction - used to calculate probability of death by t conditionally on history */
-		T[MI(i,j,m->nst)] = (j==0  ?  pmat[MI(i, m->nst - 1, m->nst)]  :  0);
-	    else if ((k == last) && (state == m->nst - 1) && (m->death))
+	    if ((k == last) && (m->ndeath > 0) && is_element(state, m->death, m->ndeath))
 		/* last observation was death and death time known exactly */
-		T[MI(i,j,m->nst)] = pmattodeath[MI(i,j,m->nst)] * pmatdeath[MI(j, m->nst - 1, m->nst)];
+		T[MI(i,j,m->nst)] = pmat[MI(i,j,m->nst)] * qij(j, state, newintens, m->qvector, m->nst);
 	    else
 		T[MI(i,j,m->nst)] = pmat[MI(i, j, m->nst)] * PObsTrue(state, j, newmisc, m);
 	    if (T[MI(i,j,m->nst)] < 0) T[MI(i,j,m->nst)] = 0;
@@ -284,7 +275,7 @@ double PObsTrue(int obst,      /* observed state */
     double this_miscprob, probsum;
     double *emat = (double *) S_alloc( (m->nst)*(m->nst), sizeof(double));
     /* construct the misclassification prob matrix from the parameter vector */
-    FillQmatrix(m->evector, miscprobs, emat, m->nst); /* extend this so they sum to 1 instead of 0 ? */
+    FillQmatrix(m->evector, miscprobs, emat, m->nst); /* todo: extend this so they sum to 1 instead of 0 ? */
     if (obst == tst){
 	probsum = 0;
 	for (s = 0; s < m->nst; ++s)
@@ -308,14 +299,19 @@ double liksimple(data *d, model *m)
 	AddCovs(i - 1 + m->covmatch, d, m, newintens);
 	if (d->subject[i-1] == d->subject[i]){ 
 	    dt = d->time[i] - d->time[i-1];
-	    if ((m->death) && (d->state[i] == m->nst - 1)) 
+	    if ((m->ndeath > 0) && is_element(d->state[i], m->death, m->ndeath))
+		/* if state is a "death" state, i.e. entry date is known exactly, with unknown different state at the previous instant. */
 		{
-		    /* if final state is death, then death date is known within a day */
-		    contrib=0;
-		    for (j = 0; j < m->nst - 1; ++j)
-			contrib += 
-			    pijt(d->state[i-1], j,  dt - 1 / d->tunit, newintens, m->qvector, m->nst, 0)*
-			    pijt(j, d->state[i], 1 / d->tunit,  newintens, m->qvector, m->nst, 0);
+		    if (d->state[i-1] == d->state[i]) 
+			contrib = 1; /* death-death transition has probability 1 */
+		    else { 
+			contrib=0;
+			for (j = 0; j < m->nst; ++j) 
+			    if (j != d->state[i])
+				contrib += 
+				    pijt(d->state[i-1], j,  dt, newintens, m->qvector, m->nst, 0)*
+				    qij(j, d->state[i], newintens, m->qvector, m->nst);
+		    }
 		    lik += log(contrib);
 		}
 	    else 
@@ -335,13 +331,18 @@ double liksimple_fromto(data *d, model *m)
     for (i=0; i < d->nobs; ++i)
     {
 	AddCovs(i, d, m, newintens);
-	if ((m->death) && (d->tostate[i] == m->nst - 1)) 
+	if ((m->ndeath > 0) && is_element(d->tostate[i], m->death, m->ndeath))
 	{
-	    contrib=0;
-	    for (j = 0; j < m->nst - 1; ++j)
-	      contrib += 
-		pijt(d->state[i], j, d->time[i] - 1 / d->tunit, newintens, m->qvector, m->nst, 0)*
-		pijt(j, d->tostate[i], 1 / d->tunit, newintens, m->qvector, m->nst, 0);
+	    if (d->state[i] == d->tostate[i]) 
+		contrib = 1; /* death-death transition has probability 1 */
+	    else { 
+		contrib = 0;
+		for (j = 0; j < m->nst; ++j)
+		    if (j != d->tostate[i])
+			contrib += 
+			    pijt(d->state[i], j,  d->time[i], newintens, m->qvector, m->nst, 0)*
+			    qij(j, d->tostate[i], newintens, m->qvector, m->nst);	
+	    }
 	    lik += log(contrib);
 	}
 	else 
@@ -358,8 +359,6 @@ void Viterbi(data *d, model *m, double *fitted)
     double *newintens   = (double *) S_alloc(m->nintens, sizeof(double));
     double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
     double *pmat = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
-    double *pmatdeath   = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
-    double *pmattodeath = (double *) S_alloc((m->nst)*(m->nst), sizeof(double)); 
     int *ptr = (int *) S_alloc((d->nobs)*(m->nst), sizeof(int));
     double *lvold = (double *) S_alloc(m->nst, sizeof(double));
     double *lvnew = (double *) S_alloc(m->nst, sizeof(double));
@@ -376,10 +375,6 @@ void Viterbi(data *d, model *m, double *fitted)
 	    AddCovs(i-1 + m->covmatch, d, m, newintens);
 	    AddMiscCovs(i-1 + m->covmatch, d, m, newmisc);
 	    Pmat(pmat, dt, newintens, m->qvector, m->nst, m->exacttimes);
-	    if ((d->state[k] == m->nst - 1) && (m->death)){
-		Pmat(pmattodeath, dt - 1 / d->tunit, newintens, m->qvector, m->nst, 0);
-		Pmat(pmatdeath, 1 / d->tunit, newintens, m->qvector, m->nst, 0);
-	    }
 	    /* TODO: some sort of utility function for maxima and positional maxima ? */
 	    for (true = 0; true < m->nst; ++true)
 	    {
