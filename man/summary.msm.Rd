@@ -3,21 +3,19 @@
 \alias{summary.msm}
 \alias{print.summary.msm}
 \description{
-  Summary method for fitted \code{\link{msm}} models.
-  For models without misclassification, produces a table of observed and
+  Summary method for fitted \code{\link{msm}} models. Produces a table of observed and
   expected state prevalences for each time. For all models, prints
   hazard ratios with confidence intervals for covariate effects.
 }
 \usage{
-\method{summary}{msm}(object, prevtimes=NULL, timezero=NULL, initstates=NULL,
-hazard.scale=NULL,\dots)
-\method{print}{summary.msm}(x,\dots)
+\method{summary}{msm}(object, times=NULL, timezero=NULL, initstates=NULL,
+covariates="mean", misccovariates="mean", hazard.scale=NULL,\dots)
 }
 \arguments{
   \item{object}{A fitted multi-state model object, as returned by
     \code{\link{msm}}.}
 
-  \item{prevtimes}{A sequence of times at which to compare observed
+  \item{times}{A sequence of times at which to compare observed
     and expected prevalences of each state. Defaults to
     \code{seq(min(times), max(times), (max(times) - min(times))/10).
     }
@@ -27,7 +25,14 @@ hazard.scale=NULL,\dots)
     times given in the data. }
   \item{initstates}{ Optional vector of the same length as the number of
     states. Gives the numbers of individuals occupying each state at
-    \code{timezero}. The default is that all individuals are in state 1.  }
+    \code{timezero}. The default is that all individuals are in state 1.
+  }
+  \item{covariates}{Covariate values for which to forecast expected
+    state occupancy.  See \code{\link{qmatrix.msm}}.  Defaults to the
+    mean values of the covariates in the data set.}
+  \item{misccovariates}{(Misclassification models only) Values of covariates on the misclassification
+    probability matrix for which to forecast expected state occupancy.
+    Defaults to the mean values of the covariates in the data set.}
   \item{hazard.scale}{Vector with same elements as number of covariates
     on transition rates. Corresponds to the increase in each covariate
     used to calculate its hazard ratio. Defaults to all 1.}  
@@ -46,7 +51,7 @@ hazard.scale=NULL,\dots)
 \value{
   A list of class \code{summary.msm}, with components:
   
-  \item{prevalences}{Output from \code{\link{prevalence.msm}} or \code{\link{prevalencemisc.msm}}}
+  \item{prevalences}{Output from \code{\link{prevalence.msm}}}.
 
   \item{hazard}{Output from \code{\link{hazard.msm}}}.
 
@@ -55,7 +60,7 @@ hazard.scale=NULL,\dots)
 }
 \seealso{
   \code{\link{msm}}, \code{\link{print.summary.msm}}
-  \code{\link{prevalence.msm}}, \  \code{\link{prevalencemisc.msm}}, \code{\link{hazard.msm}}
+  \code{\link{prevalence.msm}}, \code{\link{hazard.msm}}
 }
 
 \author{C. H. Jackson \email{chris.jackson@ic.ac.uk}}

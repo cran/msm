@@ -7,7 +7,7 @@
   as not entering the final absorbing state.
 }
 \usage{
-\method{plot}{msm}(x, from, to, legend.pos, ...)
+\method{plot}{msm}(x, from, to, covariates, legend.pos, ...)
 }
 \arguments{
 
@@ -20,13 +20,32 @@
   \item{to}{Absorbing state to consider. Defaults to the
     highest-labelled absorbing state. }
 
+  \item{covariates}{Covariate values for which to evaluate the expected
+    probabilities.  This can either be:\cr
+
+    the string \code{"mean"}, denoting the means of the covariates in
+    the data (this is the default),\cr
+
+    the number \code{0}, indicating that all the covariates should be
+    set to zero,\cr
+
+    or a list of values, with optional names. For example
+
+    \code{list (60, 1)}
+
+    where the order of the list follows the order of the covariates
+    originally given in the model formula, or a named list, 
+
+    \code{list (age = 60, sex = 1)}
+  }
+
   \item{legend.pos}{Vector of the \eqn{x} and \eqn{y} position,
     respectively, of the legend.}
-
-    \item{...}{Other arguments to the generic \code{plot} function}
+  
+  \item{...}{Other arguments to the generic \code{plot} function}
 }
 \seealso{
-    \code{\link{msm}}
+  \code{\link{msm}}
 }
 \author{C. H. Jackson \email{chris.jackson@ic.ac.uk}}
 \keyword{models}

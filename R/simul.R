@@ -66,10 +66,10 @@ sim.msm <- function(qmatrix,   # intensity matrix
 ### Given a simulated Markov model, get the current state at various observation times
 ### Only keep one observation in the absorbing state
 
-getobs.msm <- function(sim,       # output from simMSM
-                       obstimes,        # fixed observation times
-                       death = TRUE,       # whether absorption time is known within 1/tunit time units, in the case whether the highest state is absorbing
-                       tunit = 1.0      # observation time unit in days (e.g. time in months, tunit = 30)
+getobs.msm <- function(sim,          # output from simMSM
+                       obstimes,     # fixed observation times
+                       death = TRUE, # whether absorption time is known within 1/tunit time units, in the case whether the highest state is absorbing
+                       tunit = 1.0   # observation time unit in days (e.g. time in months, tunit = 30)
                        ) 
   {
       censtime <- max(obstimes)
@@ -78,7 +78,7 @@ getobs.msm <- function(sim,       # output from simMSM
       obsstate <- numeric()
       keep.time <- numeric()
       nstates <- dim(sim$qmatrix)[1]
-      absorb <- (sum (sim$qmatrix[nstates, -nstates]) == 0)
+      absorbing <- which(diag(sim$qmatrix == 0))
       absorbed <- FALSE
       cur.j <- 1
       for (i in 1:nobs) {
@@ -86,24 +86,16 @@ getobs.msm <- function(sim,       # output from simMSM
           j <- cur.j
           found <- FALSE
           while (!found & (j < nsim)){
-              if (
-                  (obstimes[i] >= sim$times[j]) &
-                  (obstimes[i] < sim$times[j+1])
-                  ){
+              if ((obstimes[i] >= sim$times[j]) & (obstimes[i] < sim$times[j+1]) ){
                   keep.time[i] <- i
                   obsstate[i] <- sim$states[j]
                   cur.j <- j
                   found <- TRUE
               }
-              else if  (
-                        (obstimes[i] >= max(sim$times)) & 
-                        (absorb) &
-                        (sim$states[j+1] == nstates) &
-                        (death) 
-                        ) {
+              else if ((obstimes[i] >= max(sim$times)) && (sim$states[j+1] %in% absorbing)){
                   obsstate[i] <- nstates
-                  obstimes[i] <- sim$times[j+1]
-                  obstimes[i] <- (1/tunit) * ceiling(obstimes[i] / (1/tunit))
+                  if (death)
+                    obstimes[i] <- (1/tunit) * ceiling(obstimes[i] / (1/tunit))
                   keep.time[i] <- i
                   absorbed <- TRUE
                   found <- TRUE
@@ -120,7 +112,7 @@ getobs.msm <- function(sim,       # output from simMSM
 simmulti.msm <- function(data,           # data frame with subject, times, covariates... 
                          qmatrix,        # intensity matrix
                          beta = NULL,    # list of covariate effects on log intensities
-                         death = TRUE,   # whether absorption time is known within one day
+                         death = FALSE,  # whether absorption time is known within one day
                          tunit = 1.0     # time unit in days
                          )
   {
@@ -128,17 +120,27 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
         stop("\"subject\" column missing from data")
       if (!("time" %in% names(data)))
         stop("\"time\" column missing from data")
+      data <- as.data.frame(data)
       subject <- data[,"subject"]
-      msm.check.times(data[,"time"], subject)
+      time <- data[,"time"]
+      if (is.unsorted(subject)){
+          warning("Data are not ordered by subject ID and time - output will be ordered.")
+          data <- data[order(subject, time),]
+      }
+      if (any(duplicated(data[,c("subject", "time")]))){
+          warning("Data contain duplicated observation times for a subject - removing duplicates.")
+          data <- data[!duplicated(data[,c("subject", "time")]), ]
+      }
+      subject <- data[,"subject"]; time <- data[,"time"]
+      msm.check.times(time, subject)
       if (death)
-        retval <- msm.check.tunit(FALSE, data[,"time"], subject, NULL, tunit)
+        retval <- msm.check.tunit(FALSE, time, subject, NULL, tunit)
       covnames <- setdiff(names(data), c("subject","time"))
       ncovs <- length(covnames)
-      times <- split(data[,"time"], subject)
+      times <- split(time, subject)
       covs <- if (ncovs > 0) split(data[,covnames], subject) else NULL
       n <- length(unique(subject))
-      
-      
+            
 ### Check consistency of qmatrix
       nstates <- dim(qmatrix)[1]
       if (nstates != dim(qmatrix)[2])
@@ -149,8 +151,9 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
 
 ### Check covariate effects
       if (ncovs > 0) {
+          if (is.null(beta)) stop("Covariate effects \"beta\" not provided")
           if (!is.matrix(beta))
-            beta <- as.matrix(beta, ncol=length(beta))
+            beta <- matrix(beta, ncol=length(beta))
           if (nrow(beta) != ncovs)
             stop(paste("Expected",ncovs,"rows in beta corresponding to different covariates, found", nrow(beta)))
           if (!is.null(ncol(beta)) & ncol(beta) != length(qmatrix[qmatrix > 0]))
@@ -168,5 +171,6 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
             keep.data <- rbind(keep.data,
                                cbind(subj[[pt]][obsd$keep], obsd$time, covs[[pt]][obsd$keep,], obsd$state))
         }
+      colnames(keep.data) <- c("subject","time",covnames,"state")
       keep.data
   }

@@ -35,7 +35,6 @@ double pijt(int i, int j, double t, vector intens, ivector qvector, int nstates,
 void Pmat(Matrix pmat, double t, vector intens, ivector qvector, int nstates, int exacttimes)
 {
     Matrix qmat = Calloc( (nstates)*(nstates), double);
-    double pr;
     FillQmatrix(qvector, intens, qmat, nstates);
     MatrixExp(qmat, nstates, pmat, t);
     Free(qmat);
@@ -198,7 +197,7 @@ void MultMat(Matrix A, Matrix B, int arows, int acols, int bcols, Matrix AB)
 
 void MultMatDiag(vector diag, Matrix B, int n, Matrix AB)
 {
-    int i, j, k;
+    int i, j;
     for (i = 0; i < (n*n); ++i)
 	AB[i] = 0;
     for (i = 0; i < n; i++) {

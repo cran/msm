@@ -7,10 +7,10 @@
   This function is called by \code{\link{summary.msm}}.
 }
 \usage{
-hazard.msm(msm, hazard.scale = 1)
+hazard.msm(x, hazard.scale = 1)
 }
 \arguments{
-  \item{msm}{Output from \code{\link{msm}} representing a fitted
+  \item{x}{Output from \code{\link{msm}} representing a fitted
     multi-state model.}
 
   \item{hazard.scale}{Vector with same elements as number of covariates
@@ -20,13 +20,13 @@ hazard.msm(msm, hazard.scale = 1)
 \value{
 
   A list of tables containing hazard ratio estimates, one table for each covariate.
-  Each table has three columns, containing the hazard ratio, upper 95\% and lower 95\%
-  confidence limit respectively, for each Markov chain transition
-  intensity. 
+  Each table has three columns, containing the hazard ratio, and an
+  approximate upper 95\% and lower 95\% confidence limit respectively
+  (assuming normality of the estimator), for each Markov chain transition intensity. 
 
 }
 \seealso{
-  \code{\link{msm}}, \code{\link{summary.msm}}
+  \code{\link{msm}}, \code{\link{summary.msm}}, \code{\link{odds.msm}}
 }
 \author{C. H. Jackson \email{chris.jackson@ic.ac.uk}}
 \keyword{models}

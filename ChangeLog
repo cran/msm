@@ -1,0 +1,121 @@
+ PROGRAMMER CHANGE LOG  (User-visible changes between releases are in NEWS)
+ ---------------------
+	
+2003-01-05  Chris Jackson  <chris.jackson@ic.ac.uk>
+
+	* DESCRIPTION: Version 0.2 released. 
+	
+	* inst/doc/msm-manual.pdf: PDF manual completed. 
+
+2003-01-03  Chris Jackson  <chris.jackson@ic.ac.uk>
+
+	* man: Heart transplant data added as an example data set
+
+	* man: Aesthetic cleanups of all help pages
+
+	* R/msm.R: New function crudeinits.msm to estimate a set of
+	initial values for transition rates by assuming data represent
+	the only transition times. 
+ 
+	* R/msm.R: New function statetable.msm to calculate frequencies of
+	successive state pairs in data
+
+	* R/outputs.R: Methodology changed for prevalencemisc.msm to make
+	it more similar to prevalence.msm, avoiding confusion.  Observed
+	counts now common to both, and separated out into a new function
+	observed.msm. Then prevalencemisc.msm (and the internal C onestep)
+	was removed and prevalence.msm was made general to both
+	misclassification and non-misclassification models.
+
+2002-12-18  Chris Jackson  <chris.jackson@ic.ac.uk>
+
+	* src/lik.c: Bugfix. nms changed to nst in likelihood-calculating
+	functions.  Fixes failure to calculate the likelihood where some
+	states where some states are observed without error, but are not
+	death states (Thanks to Martyn Plummer).
+
+	* R/simul.R: Bugfix in getobs.msm, which led to the entrance to
+	not being observed for models with absorbing states,
+	
+2002-12-09  Chris Jackson  <chris.jackson@ic.ac.uk>
+
+	* R/outputs.R: new function odds.msm to calculate odds ratios for
+	misclassification probabilities.
+
+	* R/outputs.R: new function ematrix.msm. Calls new internal
+	functions, including qematrix.msm. 
+
+2002-12-03  Chris Jackson  <chris.jackson@ic.ac.uk>
+
+	* R/outputs.R: new function qratio.msm for estimating ratios of
+	intensities and (via new function qratio.se.msm) their standard
+	errors. Documentation in man/qratio.msm.Rd.
+	
+2002-12-02  Chris Jackson  <chris.jackson@ic.ac.uk>
+
+	* R/outputs.R: new internal function qmatrix.diagse.msm 
+	
+	* R/msm.R  Null components of msm objects removed, e.g. 
+	misclassification parameters for non-misclassification models. 
+
+2002-11-27  Chris Jackson  <chris.jackson@ic.ac.uk>
+
+	* R:  File msm.R split into msm.R, outputs.R and utils.R. 
+	
+	* R/msm.R. New functions absorbing.msm and transient.msm which 
+	give the indices of the absorbing or transient states of the model. 
+
+	* R/msm.R. (plot.msm) Now accepts a "covariates" argument for
+	covariates at which to evaluate the survival probabilities. 
+
+	* R/msm.R. Functions which operate on msm objects now have the
+	msm object argument named "x", instead of "msm", for consistency.
+
+	* man/qmatrix.msm.Rd, man/pmatrix.msm.Rd, man/sojourn.msm.Rd. Updated
+	documentation.
+
+	* R/msm.R (msm). The contents of msm objects has been
+	reorganised. The first component of Qmatrices is now called
+	"logbaseline" and gives the estimates of the log intensites as
+	returned from the optimisation.  Components "qcenter" and
+	"ecenter" are removed, as they were named confusingly. The
+	component 'Pmatrix' is also removed, as it is obsoleted by the
+	function 'pmatrix.msm'.  New component 'foundse' is a logical
+	indicating whether the Hessian is positive definite, i.e. whether
+	standard errors are available.
+	
+	* R/msm.R (sojourn.msm) Function rewritten to allow a given set of
+	covariate values, using the new qmatrix.msm.  Now takes a fitted
+	msm model as its argument, and the component "mean" in the return
+	is changed to "estimate".
+
+	* R/msm.R (qmatrix.msm). New function to compute transition
+	intensity matrix at given covariate values.
+
+	* R/msm.R (pmatrix.msm). New function to compute transition
+	probability matrix at given covariate values.
+
+	* R/simul.R (simmulti.msm): Check for ordered patient IDs, and
+	sort input data if not ordered.  Also check for duplicated
+	observation times and remove them. Default for 'death' argument
+	changed to FALSE for consistency with msm(). Give column names to
+	the simulated data.
+
+2002-11-13  Chris Jackson  <chris.jackson@ic.ac.uk>
+
+	* R/msm.R: New function msm.check.qmatrix to test for consistency
+	of Markov chain intensity matrices.
+
+	* R/msm.R, man/totlos.Rd: New function totlos.msm to estimate total length of stay in a 
+	state, with documentation.
+
+	* src/lik.c, src/pijt.c: Unused and uninitialised variables fixed so the library builds
+	cleanly with -Wall.		
+
+2002-11-08  Chris Jackson  <chris.jackson@ic.ac.uk>
+
+	* src/lik.c: Debugging print statements removed from onestep
+
+	* msm_0.1.tar.gz: First release 
+
+

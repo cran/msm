@@ -116,7 +116,6 @@ double PObsTrue(int obst,      /* observed state */
 double liksimple(data *d, model *m);
 double liksimple_fromto(data *d, model *m);
 void Viterbi(data *d, model *m, double *fitted);
-void onestep(data *d, model *m, double *predtimes, int npreds, double *result);
 
 
 double pijt(int i, int j, double t, vector intens, int *qvector, int nstates, int exacttimes);

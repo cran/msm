@@ -1,17 +1,17 @@
 \name{prevalence.msm}
-\title{Calculate tables of observed and expected prevalences at a series
-of times}
+\title{Tables of observed and expected prevalences}
 \alias{prevalence.msm}
 \description{
-  This function is called by \code{\link{summary.msm}},  and can provide a
-  rough indication of the goodness of fit of a multi-state model without
-  misclassification. 
+  This provides a rough indication of the goodness of fit of a
+  multi-state model, by estimating the observed numbers of individuals
+  occupying each state at a series of times, and comparing these with
+  forecasts from the fitted model.   
 }
 \usage{
-prevalence.msm(msm, times, timezero=min(time), initstates)
+prevalence.msm(x, times, timezero=min(time), initstates, covariates="mean", misccovariates="mean")
 }
 \arguments{
-  \item{msm}{A fitted multi-state model without misclassification, produced
+  \item{x}{A fitted multi-state model, either with or without misclassification, produced
     by \code{\link{msm}}. The data for the fitted model must originally
     have been provided as a series of states and observation times, not in
     'from-state, to-state, time-difference' format.}
@@ -21,31 +21,36 @@ prevalence.msm(msm, times, timezero=min(time), initstates)
     are forecasted from here. Defaults to the minimum of the observation
     times given in the data. }
   \item{initstates}{Optional vector of the same length as the number of
-    states. Gives the numbers of individuals occupying each state. The
-    default is that all individuals are in state 1 at
-    \code{timezero}. }
+    states. Gives the numbers of individuals occupying each state at the
+    initial time. The default is those observed in the data. }
+  \item{covariates}{Covariate values for which to forecast expected
+    state occupancy.  See \code{\link{qmatrix.msm}}.  Defaults to the
+    mean values of the covariates in the data set.}
+  \item{misccovariates}{(Misclassification models only) Values of covariates on the misclassification
+    probability matrix for which to forecast expected state occupancy.
+    Defaults to the mean values of the covariates in the data set.}
 }
 \value{
   A list with components:
   
-  \code{Observed} = table of observed numbers of individuals in each state at
-  each time
-
-  \code{Observed percentages} = corresponding percentage of the
-  individuals at risk at each time  
-
-  \code{Expected} = table of corresponding expected numbers
-
-  \code{Expected percentages} = corresponding percentage of the
-  individuals at risk at each time.
+  \item{\code{Observed}}{Table of observed numbers of individuals in each state at
+    each time}
+  
+  \item{\code{Observed percentages}}{Corresponding percentage of the
+    individuals at risk at each time.}
+  
+  \item{\code{Expected}}{Table of corresponding expected numbers.}
+  
+  \item{\code{Expected percentages}}{Corresponding percentage of the
+    individuals at risk at each time.}
   
 }
 
 \details{
-  For models without misclassification only. To compute `observed'
-  prevalences at a time \eqn{t}, individuals are assumed to be in the
-  same state as at their last observation time preceding
-  \eqn{t}.
+  To compute `observed'  prevalences at a time \eqn{t}, individuals are
+  assumed to be in the same state as at their last observation time preceding
+  \eqn{t}.  This calculation is rather slow when there are a large
+  number of individuals in the data.  
 
   The fitted transition probability matrix is used to forecast expected prevalences from the
   state occupancy at the initial time.  To
@@ -54,6 +59,15 @@ prevalence.msm(msm, times, timezero=min(time), initstates)
   (including those who have died, but not those lost to follow-up) is
   multiplied by the probability of transition between the initial state
   and state \eqn{j} in a time interval \eqn{t}.
+
+  For misclassification models, this aims to assess the fit of the model for the \emph{observed}
+  states to the data,  that is the combined Markov progression model for the true states and
+  the misclassification model. Thus, expected prevalences of \emph{true}
+  states are estimated from the assumed proportion
+  occupying each state at the initial time using the fitted transition
+  probabiliy matrix. The vector of expected prevalences of true states
+  is then multiplied by the fitted misclassification probability matrix
+  to obtain the expected prevalences of \emph{observed} states. 
 
   This approach only makes sense for processes where all individuals
   start at a common time.  
@@ -71,8 +85,7 @@ prevalence.msm(msm, times, timezero=min(time), initstates)
 }
 
 \seealso{
-  \code{\link{msm}}, \code{\link{summary.msm}}, \code{\link{prevalencemisc.msm}} for the equivalent for models with
-    misclassification}
+  \code{\link{msm}}, \code{\link{summary.msm}}}
 }
 
 \author{C. H. Jackson \email{chris.jackson@ic.ac.uk}}
