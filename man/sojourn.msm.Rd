@@ -3,10 +3,10 @@
 \alias{sojourn.msm}
 \description{
   Estimate the mean sojourn times in the transient states of a
-  multi-state model and their standard errors.
+  multi-state model and their confidence limits. 
 }
 \usage{
-sojourn.msm(x, covariates="mean")
+sojourn.msm(x, covariates="mean", cl=0.95)
 }
 \arguments{
 
@@ -31,19 +31,25 @@ sojourn.msm(x, covariates="mean")
    
   }
   
+  \item{cl}{Width of the symmetric confidence interval to present. 
+    Defaults to 0.95.}
+  
 }
 \value{
-    A list with components:
+    A data frame with components:
 
-    \item{estimate}{Estimated mean sojourn times in the transient states.}
-
-    \item{se}{Corresponding standard errors.}
+    \item{estimates}{Estimated mean sojourn times in the transient states.}
+    \item{SE}{Corresponding standard errors.}
+    \item{L}{Lower confidence limits.}
+    \item{U}{Upper confidence limits.}
 }
 \details{
   The mean sojourn time in a transient state \eqn{r} is estimated by
   \eqn{- 1 / q_{rr}}, where \eqn{q_{rr}} is the \eqn{r}th entry on the diagonal
   of the estimated transition intensity matrix.  Calls
   \code{\link{deltamethod}} to find approximate standard errors.
+  Confidence limits are estimated by assuming normality on the log
+  scale. 
 }
 \seealso{
   \code{\link{msm}}, \code{\link{qmatrix.msm}}, \code{\link{deltamethod}}

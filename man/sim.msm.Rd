@@ -1,6 +1,7 @@
 \name{sim.msm}
 \title{Simulate one individual trajectory from a continuous-time Markov model}
 \alias{sim.msm}
+\concept{Simulation}
 \description{Simulate one realisation from a continuous-time
   Markov process up to a given time.
 }

@@ -7,41 +7,29 @@
   process. 
 }
 \usage{
-crudeinits.msm(state, time, subject, qmatrix, data=NULL, fromto=FALSE,
-               fromstate=NULL, tostate=NULL, timelag=NULL,
-               censor=NULL, censor.states=NULL, check=FALSE)
+crudeinits.msm(formula, subject, qmatrix, data=NULL, censor=NULL, censor.states=NULL)
 }
 \arguments{
-  \item{state}{Observed states, assumed to be ordered by time
-  within each subject.}
-  \item{time}{Times at which the elements of \code{state} were observed.}
-  \item{subject}{Subject identification numbers corresponding to
-    \code{state}. If not given, all observations are assumed to be on
-    the same subject.}
+  \item{formula}{ A formula giving the vectors containing the observed
+    states and the  corresponding observation times. For example,
+    
+    \code{state ~ time}
+
+    Observed states should be in the set \code{1, \dots, n},
+    where \code{n} is the number of states.
+  }
+  \item{subject}{Vector of subject identification numbers for the data
+    specified by \code{formula}. If missing, then all observations
+    are assumed to be on the same subject. These must be sorted so that
+    all observations on the same subject are adjacent.}
+
+  \item{qmatrix}{Matrix of indicators for the allowed
+    transitions.  An initial value will be estimated for each
+    value of qmatrix that is greater than zero.  Transitions are
+    taken as disallowed for each entry of \code{qmatrix} that is 0. }
 
   \item{data}{An optional data frame in which the variables represented
     by \code{subject} and \code{state} can be found.}
-
-  \item{qmatrix}{Matrix of indicators for the allowed
-    transitions.  Specified as described in the help page for
-    \code{\link{msm}}.  An initial value will be estimated for each
-    value of qmatrix that is 1.}
-
-  \item{fromto}{If \code{TRUE}, then the data are given as three vectors, 
-    \emph{from-state, to-state, time-difference},
-    representing the set of observed transitions between states, and the
-    time taken by each one. Otherwise, the data are given by \code{formula},
-    containing observation times, corresponding observed states, and a
-    vector of corresponding subject identification numbers \code{subject}.
-  }
-  \item{fromstate}{ Starting states for the observed transitions
-    (required if \code{fromto == TRUE} ). }
-
-  \item{tostate}{ Finishing states for the observed transitions
-    (required if \code{fromto == TRUE} ). }
-
-  \item{timelag}{ Time difference between observing \code{fromstate}
-    and \code{tostate}  (required if \code{fromto == TRUE} ). }
 
   \item{censor}{ A state, or vector of states, which indicates
     censoring.  See \code{\link{msm}}. 
@@ -51,20 +39,15 @@ crudeinits.msm(state, time, subject, qmatrix, data=NULL, fromto=FALSE,
     Specifies the underlying states which censored observations can
     represent.  See \code{\link{msm}}. 
   }
-
-  \item{check}{ Should the supplied state, time and subject data
-    be checked for inconsistency with the supplied \code{qmatrix}, for
-    example, backward transitions in the data with a forward progression
-    model.  This check is rather slow, and not performed by default. }
 }
 \value{
-  A named vector of estimates for the initial values of each transition
-  intensity.  For simple models with no covariates, this can be used as
-  the \code{inits} argument to \code{\link{msm}}.
+  The estimated transition intensity matrix.  This can be used as
+  the \code{qmatrix} argument to \code{\link{msm}}.  
 }
 \details{
+
   Suppose we want a crude estimate of the transition intensity \eqn{q_{rs}}{q_rs} from state \eqn{r} to
-  state \eqn{s}.  If we observe \eqn{n_{rs}}{n_rs} transitions from state \eqn{r} to state \eqn{s}, and a
+  state \eqn{s}.   If we observe \eqn{n_{rs}}{n_rs} transitions from state \eqn{r} to state \eqn{s}, and a
   total of \eqn{n_r} transitions from state \eqn{r}, then \eqn{q_{rs} /
     q_{rr}}{q_rs / q_rr} can be estimated by \eqn{n_{rs} / n_r}{n_rs / n_r}. Then, given a total of \eqn{T_r} years
   spent in state \eqn{r},  the mean sojourn time \eqn{1 / q_{rr}}{1 / q_rr} can be estimated as \eqn{T_r / n_r}.
@@ -74,21 +57,19 @@ crudeinits.msm(state, time, subject, qmatrix, data=NULL, fromto=FALSE,
   If the data do represent the exact transition times of the Markov
   process, then these are the exact maximum likelihood estimates.
 
-  Censored states are ignored when calculating these estimates. 
+  Observed transitions which are incompatible with the given
+  \code{qmatrix} are ignored.  Censored states are ignored. 
+
 }
 \seealso{
   \code{\link{statetable.msm}}
 }
 \examples{
-## Aortic aneurysm growth data
-data(aneur)
-
-## Three-state one-way progression model 
-oneway.q <- rbind( c(0, 1, 0, 0), c(0, 0, 1, 0), c(0, 0, 0, 1), c(0, 0, 0, 0))
-
-## Crude initial values for 1-2, 2-3 and 3-4 transition intensities 
-crudeinits.msm(fromstate=from, tostate=to, timelag=dt, fromto=TRUE,
-               data=aneur, qmatrix=oneway.q)
+data(heart)
+twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166),
+c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
+statetable.msm(state, PTNUM, data=heart)
+crudeinits.msm(state ~ years, PTNUM, data=heart, qmatrix=twoway4.q)
 }
 \author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{}

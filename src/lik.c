@@ -1,574 +1,616 @@
 /* *****************************************************************
    PROGRAM: lik.c 
    AUTHOR:  Chris Jackson
-   DATE:    November 2001
+   DATE:    July 2004
 
-   Routines for calculating likelihoods for Markov models with and without misclassification
+   Routines for calculating likelihoods for multi-state Markov and
+   hidden Markov models.
 
    ******************************************************************  */ 
 
-
-#include "lik.h"
+#include "msm.h"
+#include "hmm.h"
 #define NODEBUG
-#define NOLIKDEBUG
 
-/* This function is called from R to provide an entry into C code for
-   evaluating likelihoods, doing Viterbi state reconstruction and short
-   term prediction */
+linkfn LINKFNS[3][2] = {
+    {identity, identity},
+    {log, exp},
+    {logit, expit}
+};
 
-void msmCEntry( 
-    int *do_what,      /* 1 = eval likelihood, 2 = Viterbi */
-    double *params,    /* full parameter vector */
-    double *allinits,  /* all initial values */
-    int *misc,
-    int *p,            /* number of parameters */
-    int *subjvec,      /* vector of subject IDs */
-    double *timevec,   /* vector of observation times (fromto==F), or time lags (fromto==T) */
-    int *statevec,     /* vector of observed states (fromto==F), or from-states (fromto==T) */
-    int *tostatevec,     /* vector of observed to-states (fromto==T) */
-    int *fromto,       /* if data is of the alternative form "from state, to state, time interval" */
-    int *qvector,      /* vectorised matrix of allowed transition indicators */
-    int *evector,      /* vectorised matrix of allowed misclassification indicators */
-    double *covvec,    /* vectorised matrix of covariate values */
-    int *constraint,    /* list of constraints for each covariate */
-    double *misccovvec,/* vectorised matrix of misclassification covariate values */
-    int *miscconstraint,/* list of constraints for each misclassification covariate */
-    int *baseconstraint, /* constraints on baseline transition intensities */
-    int *basemiscconstraint, /* constraints on baseline misclassification probabilities */
-    double *initprobs, /* initial state occupancy probabilities */
-    int *nst,      /* number of Markov states */
-    int *nms,          /* number of underlying states which can be misclassified */
-    int *nintens,      /* number of intensity parameters */
-    int *nintenseffs,  /* number of distinct intensity parameters */
-    int *nmisc,        /* number of misclassification rates */
-    int *nmisceffs,    /* number of distinct misclassification rates */
-    int *nobs,         /* number of observations in data set */
-    int *npts,         /* number of individuals in data set */
-    int *ncovs,        /* number of covariates on transition rates */
-    int *ncoveffs,     /* number of distinct covariate effect parameters */
-    int *nmisccovs,    /* number of covariates on misclassification probabilities */
-    int *nmisccoveffs, /* number of distinct misclassification covariate effect parameters */
-    int *covmatch,     /* use the covariate value from the previous or next observation */
-    int *ndeath,        /* number of death states */
-    int *death,        /* vector of indices of death states */
-    int *ncens,
-    int *censor,
-    int *censstates,
-    int *censstind,
-    int *exacttimes,   /* indicator for exact transition times */
-    int *nfix,    /* number of fixed parameters */
-    int *fixedpars,    /* which parameters to fix */
-    double *returned   /* returned -2 log likelihood , Viterbi fitted values, or predicted values */
-    )
+/* MUST KEEP THIS IN SAME ORDER AS .msm.HMODELPARS IN R/constants.R */
+hmmfn HMODELS[] = {
+    hmmCat,
+    hmmIdent,
+    hmmUnif,
+    hmmNorm,
+    hmmLNorm,
+    hmmExp,
+    hmmGamma,
+    hmmWeibull,
+    hmmPois,
+    hmmBinom,
+    hmmTNorm,
+    hmmMETNorm,
+    hmmMEUnif
+};
+
+#define OBS_SNAPSHOT 1 
+#define OBS_EXACT 2
+#define OBS_DEATH 3
+
+double logit(double x)
 {
-    int ifix = 0, iopt = 0, iall = 0;
-    double *intens = (double *) S_alloc(*nintens, sizeof(double));
-    double *coveffect = (double *) S_alloc(*ncoveffs, sizeof(double));
-    double *miscprobs = (double *) S_alloc(*nmisc, sizeof(double));
-    double *misccoveffect = (double *) S_alloc(*nmisccoveffs, sizeof(double));
-    data d; 
-    model m;
-
-    fillparvec ( intens,        *p,  params, allinits, *nfix, fixedpars, *nintenseffs,  &ifix, &iopt, &iall ) ;
-    fillparvec ( coveffect,     *p,  params, allinits, *nfix, fixedpars, *ncoveffs,     &ifix, &iopt, &iall ) ;
-    fillparvec ( miscprobs,     *p,  params, allinits, *nfix, fixedpars, *nmisceffs,    &ifix, &iopt, &iall ) ;
-    fillparvec ( misccoveffect, *p,  params, allinits, *nfix, fixedpars, *nmisccoveffs, &ifix, &iopt, &iall ) ;
-
-    d.subject = subjvec;     d.time = timevec;     d.state = statevec;     d.tostate = tostatevec;
-    d.cov = covvec;     d.misccov = misccovvec;    d.fromto = *fromto;   d.nobs = *nobs;   
-    d.npts = *npts;    d.ncovs = *ncovs;    d.nmisccovs = *nmisccovs;     
-
-    m.qvector = qvector;    m.evector = evector;    m.constraint = constraint;    m.miscconstraint = miscconstraint;
-    m.baseconstraint = baseconstraint;    m.basemiscconstraint = basemiscconstraint;
-    m.nst = *nst;  m.nms = *nms;  m.nintens = *nintens;  m.nmisc = *nmisc;  m.ncoveffs = *ncoveffs;
-    m.nintenseffs = *nintenseffs; m.nmisceffs = *nmisceffs; 
-    m.nmisccoveffs = *nmisccoveffs;  m.covmatch = *covmatch; m.ndeath=*ndeath; m.death = death;  
-    m.ncens = *ncens; m.censor = censor; m.censstates=censstates; m.censstind=censstind;
-    m.exacttimes = *exacttimes;
-    m.intens = intens;  m.coveffect = coveffect;  m.miscprobs = miscprobs;  m.misccoveffect = misccoveffect;
-    m.initprobs = initprobs;
-
-    if (*do_what == 1) {
-	msmLikelihood(&d, &m, *misc, returned);
-    }
-
-    else if (*do_what == 2) {
-	Viterbi(&d, &m, returned);
-    }
+    return log(x / (1 - x));
 }
 
-void msmLikelihood (data *d, model *m, int misc, double *returned) {
-    int pt;
-    double likone;
-    /* Likelihood for misclassification model */
-    if (misc) 
-    {
-	*returned = 0;
-	for (pt = 0;  pt < d->npts; ++pt){
-	    likone = likmisc (pt, d, m);
-#ifdef DEBUG
-	    printf("pt %d, lik %lf\n", pt, likone);
-#endif
-	    *returned += likone;
-	}
-    }
-  
-    /* Likelihood for simple model without misclassification */
-    else 
-    {
-	if (d->fromto)
-	    *returned = liksimple_fromto (d, m);				     
-	else
-	    *returned = liksimple (d, m);
-    }
-}
-
-
-/* Fill a parameter vector with either the current values from the optimisation or the fixed inital values */
-
-void fillparvec(double *parvec, /* named vector to fill (e.g. intens = baseline intensities) */
-		int p, /* number of parameters optimised over */
-		double *params, /* current values of parameters being optimised over */
-		double *allinits, /* full vector of initial values */
-		int nfix,   /* number of fixed parameters, ie length of fixedpars */
-		int *fixedpars,  /* indices of allinits which are fixed */
-		int ni,    /* length of parvec */
-		int *ifix,  /* current index into fixedpars */
-		int *iopt,  /* current index into params */
-		int *iall   /* current index into allinits */
-    )
+double expit(double x)
 {
-    int i;
-    for (i=0; i<ni; ++i, ++(*iall)){
-	if ((*ifix < nfix) && (*iall == fixedpars[*ifix])) {
-	    parvec[i] = allinits[*iall];
-	    ++(*ifix);
-	}
-	else if (*iopt < p) {
-	    parvec[i] = params[*iopt];
-	    ++(*iopt);
-	}
-    }
+    return exp(x) / ( 1 + exp(x) );
 }
 
-/* Form vector of probabilities of a given outcome conditionally on each underlying state */
-/* If outcome has nc=1 (not censored) then outcome probs are defined by misclassification matrix */
-/* If outcome has nc>1 (censored) then no misclassification  */
+double identity(double x)
+{
+    return x;
+}
 
-void GetCensoredPObsTrue(double *pout, int *current, int nc, double *newmisc, model *m)
+/* Good-enough floating point equality comparison */
+
+int all_equal(double x, double y) 
+{
+    return fabs (x - y) <= DBL_EPSILON * fabs(x);
+}
+
+/* 
+   Add effects of covariates at an observation number obs to a set of link-transformed parameters
+   For covs on the qmatrix, we have npars q's, each with the same number of covs on them
+   For HMMs, each set is the set of parameters of the model for one state
+   Only certain of these parameters (means and rates) can have
+   covariates on them, ncovs[i] > 0
+   whichcov[j] is the column of the (vectorised) data matrix "cov" containing the kth covariate
+   totcovs is a call-by-referenced integer which counts the covariates so far, used for indexing whichcov
+   coveffect is a vectorised ncovs * npars matrix, filled by rows
+   (par1) cov1 cov2 ..  (par2) cov1 cov2
+*/ 
+
+void AddCovs(int obs, int nobs, int npars, int *ncovs, 
+	     double *oldpars, double *newpars, 
+	     double *coveffect, double *cov, int *whichcov, 
+	     int *totcovs,
+	     double link(double x), double invlink(double x))
+{
+    int i, j, k=0;
+    for (i = 0; i < npars; ++i)
+	{
+	    if (ncovs[i] > 0) { 
+		newpars[i] = link(oldpars[i]);
+		for (j = 0; j < ncovs[i]; ++j) {
+		    newpars[i] += coveffect[k] * cov[MI(obs, whichcov[j]-1, nobs)];
+		    ++k;
+		}
+		newpars[i] = invlink(newpars[i]);
+		*totcovs += ncovs[i];
+	    }
+	    else newpars[i] = oldpars[i];
+	}
+}
+
+/* Return a vector of the possible states that a censored state could represent */ 
+/* These will be summed over when calculating the likelihood */
+/* Compare one-indexed obs against one-indexed cm->censor. Return one-indexed current (*states) */
+
+void GetCensored (double obs, cmodel *cm, int *nc, double **states) 
+{
+    int j, k=0, n, cens=0;
+    if (cm->ncens == 0)
+	n = 1;
+    else {
+	while (!all_equal(obs, cm->censor[k]) && k < cm->ncens)
+	    ++k;
+	if (k < cm->ncens) { 
+	    cens = 1; 
+	    n =  cm->censstind[k+1] - cm->censstind[k];
+	}
+	else n = 1;
+    } 
+    if (cm->ncens == 0 || !cens)
+	(*states)[0] = obs;
+    else { for (j = cm->censstind[k]; j < cm->censstind[k+1]; ++j)
+	(*states)[j - cm->censstind[k]] = cm->censstates[j]; }
+    *nc = n;    
+}
+
+/*
+  Calculate p (obs curr | true i) for hidden Markov models 
+  If no censoring (nc==1), then this is just the HMM outcome model. 
+  For censored outcomes, there is no misclassification / HMM outcome model. 
+  e.g. censor set 1,2,3,    state set 1,2,3,4, 
+  pout =   if i in curr 1, else 0 
+*/
+
+void GetOutcomeProb(double *pout, double *curr, int nc, double *newpars, hmodel *hm, qmodel *qm)
 {
     int i, j;
-    for (i=0; i<m->nst; ++i) {
+    for (i=0; i<qm->nst; ++i) {
 	pout[i] = 0;
-	if (nc == 1) 
-	    pout[i] =  PObsTrue(current[0], i, newmisc, m);
+	if (nc == 1)
+	    pout[i] = (HMODELS[hm->models[i]])(curr[0], &(newpars[hm->firstpar[i]]));
 	else { 
+	    /* Censored outcomes not subject to misclassification/HMM outcome model */
 	    for (j=0; j<nc; ++j) 
-		if (current[j] == i) 
+		if ((int) curr[j] == i+1) 
 		    pout[i] = 1;
 	}
     }
 }
 
-/* Likelihood for the misclassification model for one individual */
-
-double likmisc(int pt, /* ordinal subject ID */
-	       data *d, model *m
-    )
+void normalize(double *in, double *out, int n, double *lweight)
 {
-    int *current = (int *) S_alloc (1, sizeof(int));
-    double *pout = (double *) S_alloc(m->nst, sizeof(double)); 
-    double *cumprod     = (double *) S_alloc(m->nst, sizeof(double)); 
-    double *newprod     = (double *) S_alloc(m->nst, sizeof(double));  
-    double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
-    double lweight, lik;
-    int i, pti, k, first=0, last=0, nc=1;
-    for (i = 1, pti = 0; i < d->nobs ; i++)
-    {  /* find index in data set of individual's first and last observations */
-	if (pti==pt) {
-	    first = i-1;
-	    while ((d->subject[i] == d->subject[i-1]) && (i < d->nobs)) ++i;
-	    last = i-1;
-	    break;
-	}
-	else if (d->subject[i] != d->subject[i-1]) ++pti;
-    }
-    AddMiscCovs(first, d, m, newmisc); 
-    GetCensored(d->state[first], m, &nc, &current);
-    GetCensoredPObsTrue(pout, current, nc, newmisc, m);
-    for (i = 0; i < m->nst; ++i)
-	cumprod[i] = pout[i] * m->initprobs[i]; /* cumulative matrix product */
-    lweight=0;
-    /* Matrix product loop to accumulate the likelihood */
-    for (k = first+1; k <= last; ++k)
-    {
-	GetCensored(d->state[k], m, &nc, &current);
-#ifdef DEBUG
-	if (nc > 0) {
-	    for (i=0; i<nc; ++i)
-		printf("curr %d = %d, ", i, current[i]);
-	    printf("\n");
-	}
-#endif
-	UpdateLik(current, nc, d->time[k] - d->time[k-1],
-		  k, last, d, m, cumprod, newprod, &lweight);
-	for (i = 0; i < m->nst; ++i)
-	    cumprod[i] = newprod[i];
-#ifdef LIKDEBUG
-	    for (i = 0; i < m->nst; ++i) {
-		printf("cump %d = %lf, ", i, cumprod[i]);
-	    }
-	    printf("lweight = %lf\n", lweight);
-#endif
-    }
-  
-    lik=0;
-    for (i = 0; i < m->nst; ++i)
-	lik = lik + cumprod[i];
+    int i; double ave;
+    for (i=0, ave=0; i<n; ++i)
+	ave += in[i];
+    ave /= n;
+    if (ave == 0) ave = 1;   
+    for (i=0; i<n; ++i)
+	out[i] = in[i] / ave;
+    *lweight -= log(ave);
+}
 
+/* Post-multiply the row-vector cump by matrix T to accumulate the likelihood */
+
+void update_likhidden(double *curr, int nc, int obsno, msmdata *d, qmodel *qm, qcmodel *qcm, 
+		      hmodel *hm, double *cump, double *newp, double *lweight)
+{
+    int i, j, fp, totcovs=0, ideath;
+    double *pout = Calloc(qm->nst, double); 
+    double *T           = Calloc((qm->nst)*(qm->nst), double);
+    double *newintens   = Calloc(qm->npars, double);
+    double *pmat        = Calloc((qm->nst)*(qm->nst), double);
+    double *newpars = Calloc(hm->totpars, double);
+    AddCovs(obsno-1, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens, 
+	    qcm->coveffect, d->cov, d->whichcov, &totcovs, log, exp); 	
+    totcovs = 0;
+    for (i = 0; i < qm->nst; ++i) {
+	fp = hm->firstpar[i]; /* index into concatenated vector of parameters */
+	AddCovs(obsno, d->nobs, hm->npars[i], &(hm->ncovs[fp]), &(hm->pars[fp]), 
+		&(newpars[fp]), &(hm->coveffect[totcovs]), d->cov, 
+		&(d->whichcovh[totcovs]), &totcovs,
+		LINKFNS[hm->links[i]][0], LINKFNS[hm->links[i]][1]);
+    }
+    GetOutcomeProb(pout, curr, nc, newpars, hm, qm);
+    /* calculate the transition probability (P) matrix for the time interval dt */
+    Pmat(pmat, d->time[obsno] - d->time[obsno-1], newintens, qm->ivector, qm->nst,  (d->obstype[obsno] == OBS_EXACT), 0);
+    for(j = 0; j < qm->nst; ++j)
+	{
+	    newp[j] = 0.0;
+	    for(i = 0; i < qm->nst; ++i)
+		{
+ 		    if (d->obstype[obsno] == OBS_DEATH) {
+			/* Find the true state that obs represents.  This should be the state with outcome model hmmIdent(obs) */
+			for (ideath=0; ideath < qm->nst; ++ideath)
+			    if (hm->models[ideath] == 1 && hmmIdent(curr[0], &(newpars[hm->firstpar[ideath]])))
+				break;
+			T[MI(i,j,qm->nst)] = pmat[MI(i,j,qm->nst)] * qij(j, ideath, newintens, qm->ivector, qm->nst);
+		    }
+		    else {
+			T[MI(i,j,qm->nst)] = pmat[MI(i, j, qm->nst)] * pout[j];
+		    }
+		    if (T[MI(i,j,qm->nst)] < 0) T[MI(i,j,qm->nst)] = 0;
+		    newp[j] = newp[j] + cump[i]*T[MI(i,j,qm->nst)];
+		}
+	}
+    /* re-scale the likelihood at each step to prevent it getting too small and underflowing */
+    /*  while cumulatively recording the log scale factor   */
+    normalize (newp, cump, qm->nst, lweight);
+    Free(pout); Free(T); Free(newintens); Free(pmat); Free(newpars); 
+}
+
+/* Likelihood for the hidden Markov model for one individual */
+
+double likhidden(int pt, /* ordinal subject ID */
+		 msmdata *d, qmodel *qm, qcmodel *qcm, 
+		 cmodel *cm, hmodel *hm
+		 )
+{
+    double *curr = Calloc (qm->nst, double);
+    /* no more than nst states allowed */
+    double *cump     = Calloc(qm->nst, double); 
+    double *newp     = Calloc(qm->nst, double);  
+    double *pout = Calloc(qm->nst, double); 
+    double *newpars = Calloc(hm->totpars, double);
+    double lweight, lik;
+    int i, fp, totcovs=0, obsno, nc=1;
+    /* Likelihood for individual's first observation */
+    for (i = 0; i < qm->nst; ++i) {
+	fp = hm->firstpar[i];
+	AddCovs(d->firstobs[pt], d->nobs, hm->npars[i], &(hm->ncovs[fp]), &(hm->pars[fp]), 
+		&(newpars[fp]), &(hm->coveffect[totcovs]), d->cov, &(d->whichcovh[totcovs]),
+		&totcovs, LINKFNS[hm->links[i]][0],LINKFNS[hm->links[i]][1]);
+    }
+    GetCensored((double)d->obs[d->firstobs[pt]], cm, &nc, &curr);
+    GetOutcomeProb(pout, curr, nc, newpars, hm, qm);
+    for (i = 0; i < qm->nst; ++i)
+	cump[i] = pout[i] * hm->initp[i]; 
+    lweight=0;
+    /* Matrix product loop to accumulate the likelihood for subsequent observations */
+    for (obsno = d->firstobs[pt]+1; obsno <= d->firstobs[pt+1] - 1; ++obsno)
+	{
+	    R_CheckUserInterrupt();
+	    GetCensored((double)d->obs[obsno], cm, &nc, &curr);
+	    update_likhidden(curr, nc, obsno, d, qm, qcm, hm, cump, newp, &lweight);
+	}
+    for (i = 0, lik = 0; i < qm->nst; ++i)
+	lik = lik + cump[i];
+    Free(curr); Free(cump);  Free(newp);  Free(pout); Free(newpars); 
     /* Transform the likelihood back to the proper scale */
     return -2*(log(lik) - lweight); 
 }
 
 
-/* Post-multiply the row-vector cumprod by matrix T to accumulate the likelihood */
-
-void UpdateLik(int *current, int nc, double dt, int k, int last, data *d, model *m, 
-	       double *cumprod, double *newprod, double *lweight)
+void update_likcensor(int obsno, double *prev, double *curr, int np, int nc, 
+			msmdata *d, qmodel *qm, qcmodel *qcm, hmodel *hm, 
+			double *cump, double *newp, double *lweight)
 {
-    int i, j;
-    double newprod_ave;
-    double *T           = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
-    double *newintens   = (double *) S_alloc(m->nintens, sizeof(double));
-    double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double)); 
-    double *pmat        = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
-    double *pout = (double *) S_alloc(m->nst, sizeof(double)); 
-    AddCovs(k - 1 + m->covmatch, d, m, newintens);
-    AddMiscCovs(k - 1 + m->covmatch, d, m, newmisc);
-    GetCensoredPObsTrue(pout, current, nc, newmisc, m);
-    
-    /* calculate the transition probability (P) matrix for the time interval dt */
-    Pmat(pmat, dt, newintens, m->qvector, m->nst, m->exacttimes);
-    for(j = 0; j < m->nst; ++j)
-    {
-	newprod[j] = 0.0;
-	for(i = 0; i < m->nst; ++i)
+    double *newintens   = Calloc(qm->npars, double);
+    double *pmat        = Calloc((qm->nst)*(qm->nst), double);
+    double contrib;
+    int i, j, k, totcovs = 0;
+    AddCovs(obsno-1, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens, 
+	    qcm->coveffect, d->cov, d->whichcov, &totcovs, log, exp); 	
+    Pmat(pmat, d->time[obsno] - d->time[obsno-1], newintens, qm->ivector, qm->nst,  (d->obstype[obsno] == OBS_EXACT), 0);
+    for(i = 0; i < nc; ++i)
 	{
-	    if ((k == last) && (m->ndeath > 0) && is_element(current[0], m->death, m->ndeath) && !m->exacttimes) {
-		/* last observation was death and death time known exactly */
-		T[MI(i,j,m->nst)] = pmat[MI(i,j,m->nst)] * qij(j, current[0], newintens, m->qvector, m->nst);
-#ifdef LIKDEBUG	       
-		printf("obs %d, death i=%d, j=%d, state=%d, pmat=%lf, HM=%lf, HM=%lf, res=%lf\n", k, i, j, current[0], pmat[MI(i, j, m->nst)],
-		       pout[j], 
-		       PObsTrue(current[0], j, newmisc, m),
-		       T[MI(i,j,m->nst)]);
-#endif
+	    newp[i] = 0.0;
+	    for(j = 0; j < np; ++j) {
+		if (d->obstype[obsno] == OBS_DEATH) {
+		    contrib = 0;
+		    for (k = 0; k < qm->nst; ++k)
+			if (k != curr[i]-1)
+			    contrib += pmat[MI((int) prev[j]-1, k, qm->nst)] * 
+				qij(k, (int) curr[i]-1, newintens, qm->ivector, qm->nst);
+		    newp[i] += cump[j] * contrib;
+		    
+		}
+		else 
+		    newp[i] += cump[j] * pmat[MI((int) prev[j]-1, (int) curr[i]-1, qm->nst)];
 	    }
-	    else {
-		T[MI(i,j,m->nst)] = pmat[MI(i, j, m->nst)] * pout[j]; 
-#ifdef LIKDEBUG	       
-		printf("obs %d, i=%d, j=%d, state=%d, pmat=%lf, HM=%lf, HM=%lf, res=%lf\n", k, i, j, current[0], pmat[MI(i, j, m->nst)],
-		       pout[j], 
-		       PObsTrue(current[0], j, newmisc, m),
-		       T[MI(i,j,m->nst)]);
-#endif
+	}
+    normalize(newp, cump, nc, lweight); 
+    Free(pmat); Free(newintens);  
+}
+
+double likcensor(int pt, /* ordinal subject ID */
+		 msmdata *d, qmodel *qm, qcmodel *qcm, 
+		 cmodel *cm, hmodel *hm
+		 )
+{
+    double *cump     = Calloc(qm->nst, double);
+    double *newp     = Calloc(qm->nst, double);  
+    double *prev     = Calloc(qm->nst, double);  
+    double *curr     = Calloc(qm->nst, double);  
+    double lweight = 0, lik;
+    int i, obs, np=0, nc=0;
+    for (i = 0; i < qm->nst; ++i)
+	cump[i] = 1; 
+    GetCensored((double)d->obs[d->firstobs[pt]], cm, &np, &prev);
+    for (obs = d->firstobs[pt]+1; obs <= d->firstobs[pt+1] - 1; ++obs)
+	{
+	    /* post-multiply by sub-matrix of P at each obs */
+	    GetCensored((double)d->obs[obs], cm, &nc, &curr);
+	    update_likcensor(obs, prev, curr, np, nc, d, qm, qcm, hm, 
+			     cump, newp, &lweight);
+	    np = nc; 
+	    for (i=0; i<nc; ++i) prev[i] = curr[i];
+	}
+    for (i = 0, lik = 0; i < nc; ++i)
+	lik = lik + cump[i];
+    Free(cump);  Free(newp);  Free(prev); Free(curr);
+    return -2*(log(lik) - lweight); 
+}
+
+/* Likelihood for the non-hidden multi-state Markov model. Data of
+   form "time-difference, covariates, from-state, to-state, number of
+   occurrences" */
+
+double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm, 
+		 cmodel *cm, hmodel *hm)
+{
+    int i,j,totcovs=0;
+    double lik=0, contrib=0;
+    double *pmat        = Calloc((qm->nst)*(qm->nst), double);
+    double *newintens = Calloc ( qm->npars , double);
+    for (i=0; i < d->nobs; ++i)
+	{
+	    R_CheckUserInterrupt();
+	    if ((i==0) || (d->whicha[i] != d->whicha[i-1])) {
+		/* we have a new timelag/covariates combination. Recalculate the 
+		   P matrix for this */
+		AddCovs(i, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens, 
+			qcm->coveffect, d->cov, d->whichcov, &totcovs,
+			log, exp);
+		Pmat(pmat, d->timelag[i], newintens, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), 0);
 	    }
-	    if (T[MI(i,j,m->nst)] < 0) T[MI(i,j,m->nst)] = 0;
-	    newprod[j] = newprod[j] + cumprod[i]*T[MI(i,j,m->nst)];
-	}
-    }
-    /* re-scale the likelihood at each step to prevent it getting too small and underflowing */
-    /*  while cumulatively recording the log scale factor   */
-#ifdef LIKDEBUG
-    for (i = 0; i < m->nst; ++i) {
-	printf("newp %d = %lf, ", i, newprod[i]);
-    }
-    printf("\n");
-#endif
-    for(i = 0, newprod_ave=0.0; i < m->nst ; ++i)
-	newprod_ave += newprod[i];  
-    newprod_ave /=  m->nst;
-    if (newprod_ave == 0)
-	newprod_ave = 1;
-    for(i = 0; i < m->nst ; ++i)
-	newprod[i] = newprod[i] / newprod_ave;
-    *lweight -= log(newprod_ave);
-}
-
-
-
-/* Add effects of covariates to the transition rates at an observation number obs */
-
-void AddCovs(int obs, data *d, model *m, double *newintens)
-{
-    double *lintens =  (double *) S_alloc ( m->nintens, sizeof(double));
-    int j, k;
-    for (j = 0; j < m->nintens; ++j)
-    { 
-	lintens[j] = log(m->intens[m->baseconstraint[j] - 1]);
-	for (k = 0; k < d->ncovs; ++k)
-	    lintens[j] += m->coveffect[m->constraint[MI(k, j, m->nintens)] - 1] * d->cov[MI(d->nobs, obs, k)];
-	newintens[j] = exp(lintens[j]);
-    }
-}
-
-
-/* Add effects of misclassification covariates to the misclassification rates at an observation number obs */
-
-void AddMiscCovs(int obs, data *d, model *m, double *newp)
-{
-    double *logitp = (double *) S_alloc ( m->nmisc , sizeof(double));
-    int j, k;
-    for (j = 0; j < m->nmisc; ++j)
-    { 
-	logitp[j] = logit(m->miscprobs[m->basemiscconstraint[j] - 1]);
-	for (k = 0; k < d->nmisccovs; ++k)
-	    logitp[j] += m->misccoveffect[m->miscconstraint[MI(k, j, m->nmisc)] - 1] * d->misccov[MI(d->nobs, obs, k)];
-	newp[j] = expit(logitp[j]);
-    }
-}
-
-
-/* Misclassification model: 
-   calculate P(obs state | true state, covariates) */
-
-double PObsTrue(int obst,      /* observed state */
-		int tst,       /* true state */
-		double *miscprobs, /* misclassification probabilities */
-		model *m
-    )
-{
-    int s;
-    double this_miscprob, probsum;
-    double *emat = (double *) S_alloc( (m->nst)*(m->nst), sizeof(double));
-    /* construct the misclassification prob matrix from the parameter vector */
-    FillQmatrix(m->evector, miscprobs, emat, m->nst);
-    if (obst == tst){
-	probsum = 0;
-	for (s = 0; s < m->nst; ++s)
-	    if (s != tst)
-		probsum += emat[MI(tst, s, m->nst)];
-	this_miscprob = 1 - probsum;
-    }
-    else 
-	this_miscprob = emat[MI(tst, obst, m->nst)];
-    return this_miscprob;
-}
-
-/* Return a vector of the possible states that a censored state could represent */ 
-/* These will be summed over when calculating the likelihood */
-
-void GetCensored (int obs, model *m, int *nc, int **states) 
-{
-    int j, k=0, n, cens=0;
-    if (m->ncens == 0)
-	n = 1;
-    else {
-	while (obs != m->censor[k] && k < m->ncens)
-	    ++k;
-	if (k < m->ncens) { 
-	    cens = 1; 
-	    n =  m->censstind[k+1] - m->censstind[k];
-	}
-	else n = 1;
-    } 
-    *states = (int *) S_realloc ((char *) *states, n, *nc, sizeof(int));
-    if (m->ncens == 0 || !cens)
-	(*states)[0] = obs;
-    else for (j = m->censstind[k]; j < m->censstind[k+1]; ++j)
-	(*states)[j - m->censstind[k]] = m->censstates[j];
-    *nc = n;    
-}
-
-/* Likelihood for the simple model. Data of form "subject ID, obs time, obs state" */
-
-double liksimple(data *d, model *m)
-{
-    int i,j,k, nc=1, np=1;
-    int *previous = (int *) S_alloc (1, sizeof(int));
-    int *current = (int *) S_alloc (1, sizeof(int));
-    double dt, lik=0, contrib, *newintens = (double *) S_alloc ( m->nintens , sizeof(double));
-    for (i = 1; i < d->nobs; ++i){
-	AddCovs(i - 1 + m->covmatch, d, m, newintens);
-	if (d->subject[i-1] == d->subject[i]){ 
-	    dt = d->time[i] - d->time[i-1];
-	    GetCensored(d->state[i-1], m, &np, &previous);
-	    GetCensored(d->state[i], m, &nc, &current);
-	    if ((m->ndeath > 0) && is_element(d->state[i], m->death, m->ndeath) && !m->exacttimes)
-		/* if state is a "death" state, i.e. entry date is known exactly, with unknown different state at the previous instant. */
+	    if (d->obstype[i] == OBS_DEATH)
 		{
-		    if (d->state[i-1] == d->state[i]) 
+		    if (d->fromstate[i] == d->tostate[i]) 
 			contrib = 1; /* death-death transition has probability 1 */
 		    else { 
-			/*  Sum over states that state[i-1] can represent */
-			contrib=0;
-			for (j = 0; j < np; ++j)
-			    for (k = 0; k < m->nst; ++k)
-				if (k != d->state[i])
-				    contrib += 
-					pijt(previous[j], k,  dt, newintens, m->qvector, m->nst, 0)*
-					qij(k, d->state[i], newintens, m->qvector, m->nst);
+			contrib = 0;						
+			for (j = 0; j < qm->nst; ++j)
+			    if (j != d->tostate[i])
+				contrib += 
+				    pmat[MI(d->fromstate[i], j, qm->nst)] * 
+				    qij(j, d->tostate[i], newintens, qm->ivector, qm->nst);	
 		    }
-		    lik += log(contrib);
 		}
 	    else {
-		/* Sum over states that state[i-1] can represent, and state[i] can represent */
-		contrib = 0;
-		for (j = 0; j < np; ++j) 
-		    for (k = 0; k < nc; ++k) 
-			contrib += pijt(previous[j], current[k], dt, newintens, m->qvector, m->nst, m->exacttimes);
-		lik += log(contrib);
+		contrib = pmat[MI(d->fromstate[i], d->tostate[i], qm->nst)];
 	    }
+	    lik += d->nocc[i] * log(contrib);
 #ifdef DEBUG
- 	    printf("prev=%d, curr=%d, timelag=%lf, con=%lf, lik = %lf\n", previous[0], current[0], dt, log(contrib), lik);
-#endif
+	    printf("obs %d, from %d, to %d, time %lf, ", i, d->fromstate[i], d->tostate[i], d->timelag[i]);
+	    for (j = 0; j < qcm->ncovs[0]; ++j)
+		printf("cov%d %lf, ", j, d->cov[MI(i, d->whichcov[j]-1, d->nobs)]);
+	    printf("nocc %d, con %lf, lik %lf\n", d->nocc[i], log(contrib), lik);
+#endif	    
 	}
-    }
+    Free(pmat); Free(newintens);
     return (-2*lik); 
 }
 
-/* Likelihood for the simple model. Data of form "from-state, to-state, time-difference" */
+/* First derivative of the log-likelihood for the non-hidden
+   multi-state Markov model. TODO */
 
-double liksimple_fromto(data *d, model *m)
+double derivsimple(msmdata *d, qmodel *qm, qcmodel *qcm, 
+		   cmodel *cm, hmodel *hm)
 {
-    int i,j,k,np=1,nc=1;
-    double lik=0, contrib;
-    int *previous = (int *) S_alloc (1, sizeof(int));
-    int *current = (int *) S_alloc (1, sizeof(int));
-    double *newintens = (double *) S_alloc ( m->nintens , sizeof(double));
-    for (i=0; i < d->nobs; ++i)
-    {
-	AddCovs(i, d, m, newintens);
-	GetCensored(d->state[i], m, &np, &previous);
-	GetCensored(d->tostate[i], m, &nc, &current);
-	if ((m->ndeath > 0) && is_element(d->tostate[i], m->death, m->ndeath) && !m->exacttimes)
-	{
-	    if (d->state[i] == d->tostate[i]) 
-		contrib = 1; /* death-death transition has probability 1 */
-	    else { 
-		contrib = 0;
-		for (j = 0; j < np; ++j)
-		    for (k = 0; k < m->nst; ++k)
-			if (k != d->tostate[i])
-			    contrib += 
-				pijt(previous[j], k, d->time[i], newintens, m->qvector, m->nst, 0)*
-				qij(k, d->tostate[i], newintens, m->qvector, m->nst);	
-	    }
-	    lik += log(contrib);
-	}
-	else {
-	    contrib = 0;
-	    for (j = 0; j < np; ++j) 
-		for (k = 0; k < nc; ++k)
-		    contrib += pijt(previous[j], current[k], d->time[i], newintens, m->qvector, m->nst, m->exacttimes);
-	    lik += log(contrib);
-	}
-#ifdef DEBUG
- 	printf("lik = %lf\n", lik);  
-#endif
-    }
-    return (-2*lik); 
+    return 0;
 }
 
 /* Calculates the most likely path through underlying states */ 
 
-void Viterbi(data *d, model *m, double *fitted)
+void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm, 
+	     cmodel *cm, hmodel *hm,  
+	     double *fitted)
 {
-    int i, tru, k, kmax, obs, nc=1;
-    double *newintens   = (double *) S_alloc(m->nintens, sizeof(double));
-    double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
-    double *pmat = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
-    int *ptr = (int *) S_alloc((d->nobs)*(m->nst), sizeof(int));
-    double *lvold = (double *) S_alloc(m->nst, sizeof(double));
-    double *lvnew = (double *) S_alloc(m->nst, sizeof(double));
-    int *current = (int *) S_alloc (1, sizeof(int));
-    double *pout = (double *) S_alloc(m->nst, sizeof(double)); 
+    int i, j, tru, fp, k, kmax, obs, totcovs=0, nc = 1;
+    double *newintens   = (double *) S_alloc(qm->npars, sizeof(double));
+    double *newpars;
+    double *pmat = (double *) S_alloc((qm->nst)*(qm->nst), sizeof(double));
+    int *ptr = (int *) S_alloc((d->nobs)*(qm->nst), sizeof(int));
+    double *lvold = (double *) S_alloc(qm->nst, sizeof(double));
+    double *lvnew = (double *) S_alloc(qm->nst, sizeof(double));
+    double *curr = (double *) S_alloc (qm->nst, sizeof(double));
+    int *fitted_int = (int *) S_alloc (d->nobs, sizeof(int));
+    double *pout = (double *) S_alloc(qm->nst, sizeof(double)); 
     double maxk, try, dt;
-#ifdef DEBUG
-    printf("Starting Viterbi algorithm...\n");
-#endif
 
-    for (k = 0; k < m->nst; ++k) 
+    for (k = 0; k < qm->nst; ++k) 
 	lvold[k] = 0;
+    newpars = (double *) S_alloc(hm->totpars, sizeof(double));    
 
     for (i = 1; i <= d->nobs; ++i)
-    {
+	{
+	    R_CheckUserInterrupt();
 #ifdef DEBUG
 	    printf("obs %d\n", i);
 #endif
-	if ( (i < d->nobs) && (d->subject[i] == d->subject[i-1]) )
-	{
-#ifdef DEBUG
-	    printf("subject %d\n ", d->subject[i]);
-#endif
-	    dt = d->time[i] - d->time[i-1];
-	    AddCovs(i-1 + m->covmatch, d, m, newintens);
-	    AddMiscCovs(i-1 + m->covmatch, d, m, newmisc);
-	    GetCensored(d->state[i], m, &nc, &current);
-	    GetCensoredPObsTrue(pout, current, nc, newmisc, m);
-
-	    Pmat(pmat, dt, newintens, m->qvector, m->nst, m->exacttimes);
-	    /* TODO: some sort of utility function for maxima and positional maxima ? */
-	    for (tru = 0; tru < m->nst; ++tru)
-	    {
-		kmax = 0;
-		maxk = lvold[0] + log( pmat[MI(0, tru, m->nst)] );
-		if (tru > 0) 
+	    if ((i < d->nobs) && (d->subject[i] == d->subject[i-1]))
 		{
-		    for (k = 1; k < m->nst; ++k){
-			try = lvold[k] + log( pmat[MI(k, tru, m->nst)] );
-			if (try > maxk) {
-			    maxk = try;
-			    kmax = k;
-			}
+#ifdef DEBUG
+		    printf("subject %d\n ", d->subject[i]);
+#endif
+		    dt = d->time[i] - d->time[i-1];
+		    AddCovs(i - 1, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens, 
+			    qcm->coveffect, d->cov, d->whichcov, &totcovs,
+			    log, exp); 	
+		    totcovs = 0;
+		    for (j = 0; j < qm->nst; ++j) {
+			fp = hm->firstpar[j];
+			AddCovs(i - 1, d->nobs, hm->npars[j], 
+				&(hm->ncovs[fp]), 
+				&(hm->pars[fp]), 
+				&(newpars[fp]), 
+				&(hm->coveffect[totcovs]), 
+				d->cov, 
+				&(d->whichcovh[totcovs]),
+				&totcovs, 
+				LINKFNS[hm->links[j]][0], LINKFNS[hm->links[j]][1]);
 		    }
-		}
-		lvnew[tru] = log( pout[tru] )  +  maxk;
+		    GetCensored(d->obs[i], cm, &nc, &curr);
+		    GetOutcomeProb(pout, curr, nc, newpars, hm, qm);
+		    
+		    Pmat(pmat, dt, newintens, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), 0);
+		    /* TODO: some sort of utility function for maxima and positional maxima ? */
+		    for (tru = 0; tru < qm->nst; ++tru)
+			{
+			    kmax = 0;
+			    maxk = lvold[0] + log( pmat[MI(0, tru, qm->nst)] );
+			    if (tru > 0) 
+				{
+				    for (k = 1; k < qm->nst; ++k){
+					try = lvold[k] + log( pmat[MI(k, tru, qm->nst)] );
+					if (try > maxk) {
+					    maxk = try;
+					    kmax = k;
+					}
+				    }
+				}
+			    lvnew[tru] = log ( pout[tru] )  +  maxk;
+			    ptr[MI(i, tru, d->nobs)] = kmax;
 #ifdef DEBUG			   
-		printf("obs %d, true %d, pout[%d] = %lf, lvnew = %lf, kmax=%d\n", d->state[i], tru, tru, pout[tru], lvnew[tru], kmax);
+			    printf("true %d, par %lf, pout[%d] = %lf, lvnew = %lf, mi = %d, ptr=%d\n", tru, newpars[hm->firstpar[tru]], tru, pout[tru], lvnew[tru], MI(i, tru, d->nobs), ptr[MI(i, tru, d->nobs)]);
 #endif
-		ptr[MI(i, tru, m->nst)] = kmax;
-	    }
-	    for (k = 0; k < m->nst; ++k)
-		lvold[k] = lvnew[k];
-	}
-	else 
-	{
-#ifdef DEBUG
-	    printf("traceback for subject %d\n ", d->subject[i]);
-#endif
-	    /* Traceback for current patient */
-	    maxk = lvold[0];
-	    kmax = 0;
-	    for (k=1; k < m->nst; ++k)
-	    {
-#ifdef DEBUG
-		printf("lvold[%d] = %lf, ", k, lvold[k]);
-#endif
-		try = lvold[k];
-		if (try > maxk) {
-		    maxk = try;
-		    kmax = k;
+			}
+		    for (k = 0; k < qm->nst; ++k)
+			lvold[k] = lvnew[k];
 		}
-	    }
+	    else 
+		{
 #ifdef DEBUG
-	    printf("kmax = %d\n", kmax);
+		    printf("traceback for subject %d\n ", d->subject[i-1]);
 #endif
-
-	    obs = i-1;
-	    fitted[obs] = kmax;
-	    while   ( (obs > 0) && (d->subject[obs] == d->subject[obs-1]) ) 
-	    {
-		fitted[obs-1] = ptr[MI(obs, fitted[obs], m->nst)];
+		    /* Traceback for current patient */
+		    maxk = lvold[0];
+		    kmax = 0;
+		    for (k=1; k < qm->nst; ++k)
+			{
 #ifdef DEBUG
-		printf("ptr %d = %lf, ", obs-1, fitted[obs-1]);
+			    printf("lvold[%d] = %lf, ", k, lvold[k]);
 #endif
-		--obs;
-	    }
-	    fitted[obs] = 0;
+			    try = lvold[k];
+			    if (try > maxk) {
+				maxk = try;
+				kmax = k;
+			    }
+			}
+#ifdef DEBUG
+		    printf("kmax = %d\n", kmax);
+#endif	  
+		    obs = i-1;
+		    fitted[obs] = kmax;
+		    fitted_int[obs] = kmax;
+		    while   ( (obs > 0) && (d->subject[obs] == d->subject[obs-1]) ) 
+			{
+			    fitted[obs-1] = ptr[MI(obs, fitted[obs], d->nobs)];
+			    fitted_int[obs-1] = ptr[MI(obs, fitted_int[obs], d->nobs)];
+#ifdef DEBUG
+			    printf("mi = %d, ptr %d = %d, ", MI(obs, fitted_int[obs], d->nobs), obs-1, fitted_int[obs-1]);
+#endif
+			    --obs;
+			}
+		    fitted_int[obs] = 0;
+		    fitted[obs] = 0;
 
-	    for (k = 0; k < m->nst; ++k) 
-		lvold[k] = 0;
+		    for (k = 0; k < qm->nst; ++k) 
+			lvold[k] = 0;
+		}
 	}
+}
+
+
+void msmLikelihood (msmdata *d, qmodel *qm, qcmodel *qcm, 
+		    cmodel *cm, hmodel *hm, 
+		    double *returned) 
+{
+    int pt;
+    double likone;
+    /* Likelihood for hidden Markov model */
+    if (hm->hidden) 
+	{
+	    *returned = 0;
+	    for (pt = 0;  pt < d->npts; ++pt){
+		likone = likhidden (pt, d, qm, qcm, cm, hm);
+#ifdef DEBUG
+		printf("pt %d, lik %lf\n", pt, likone);
+#endif
+		*returned += likone;
+	    }
+	}
+    else if (cm->ncens > 0)
+	{
+	    for (pt = 0;  pt < d->npts; ++pt){
+		likone = likcensor (pt, d, qm, qcm, cm, hm);
+#ifdef DEBUG
+		printf("pt %d, lik %lf\n", pt, likone);
+#endif
+		*returned += likone;
+	    }
+	}
+    /* Likelihood for simple non-hidden, non-censored Markov model */
+    else {
+	*returned = liksimple (d, qm, qcm, cm, hm);
+    }
+}
+
+/* Derivative of log-likelihood, currently only available for non-hidden model TODO */
+
+void msmDLikelihood (msmdata *d, qmodel *qm, qcmodel *qcm, 
+		     cmodel *cm, hmodel *hm, 
+		     double *returned) 
+{
+    *returned = derivsimple (d, qm, qcm, cm, hm);
+}
+
+/* This function is called from R to provide an entry into C code for
+   evaluating likelihoods and doing Viterbi state reconstruction  */
+
+void msmCEntry( 
+	       int *do_what,      /* 1 = eval likelihood, 2 = Viterbi */
+	       int *qvector,      /* vectorised matrix of allowed transition indicators */
+	       /* Parameters */
+	       double *intens,    
+	       double *coveffect,    
+	       double *hmmpars, 
+	       double *hcoveffect,
+
+	       /* Data for non-HMM multi-state models */    
+	       int *fromstate,  /* Distinct combinations of from, to, time lag, covariates */
+	       int *tostate,    
+	       double *timelag,
+	       double *covvec,  /* vectorised matrix of covariate data (also used for HMMs) */
+	       int *whichcov,    /* which column in the covariate data each cov corresponds to */
+	       int *nocc,       /* Number of occurrences of each distinct combination */
+	       int *whicha,   /* indicator for the from, to, time lag, covs combination corresponding to the current obs */
+	       int *obstype,   /* observation scheme, 1 snapshot, 2 exact, 3 death */
+
+	       /* Data for HMMs */
+	       int *subjvec,      /* vector of subject IDs */
+	       double *timevec,   /* vector of observation times */
+	       double *obsvec,     /* vector of observations (observed states in the case of misclassification models) */
+	       int *firstobs,   /* 0-based index into data of the first observation for each patient */
+	       
+	       /* HMM specification */
+	       int *hidden,       /* well, is it or isn't it? */
+	       int *hmodels,      /* which hidden Markov distribution */
+	       int *hnpars,       /* number of basic HMM parameters for each state, not including covariate effects */
+	       int *htotpars,      /* total number of HMM parameters */
+	       int *hfirstpar,    /* index into hmmpars of first parameter for each state */
+	       int *hncovs,       /* number of HMM covariate effects for each state */
+	       int *whichcovh,    /* which column in the covariate data */
+	       int *links,        /* link function for each state distribution */
+	       double *initprobs, /* initial state occupancy probabilities */
+
+	       int *nst,      /* number of Markov states */
+	       int *nintens,      /* number of intensity parameters */
+	       int *nobs,         /* number of observations in data set */
+	       int *npts,         /* number of individuals in data set */
+	       int *ncovs,        /* number of covariates on transition rates */
+
+	       int *ncens,     /* number of distinct forms of censoring */
+	       int *censor,    /* censoring indicators in data, of length ncens */
+	       int *censstates, /* list of possible states represented by censoring indicators */
+	       int *censstind,  /* starting index into censstates for each censoring indicator */
+	       double *returned   /* returned -2 log likelihood , Viterbi fitted values, or predicted values */
+	       )
+{
+    msmdata d; qmodel qm; qcmodel qcm; cmodel cm; hmodel hm; 
+
+    d.fromstate = fromstate;     d.tostate = tostate;     d.timelag = timelag;   
+    d.cov = covvec;     d.nocc = nocc;  d.whicha = whicha; d.obstype = obstype; 
+    d.whichcov = whichcov;  d.whichcovh = whichcovh;
+    d.subject = subjvec; d.time = timevec; d.obs = obsvec; d.firstobs = firstobs;
+    d.nobs = *nobs;  d.npts = *npts;
+
+    qm.nst = *nst; qm.npars = *nintens; qm.ivector = qvector; qm.intens = intens;  
+
+    qcm.ncovs = ncovs; qcm.coveffect = coveffect;
+
+    cm.ncens = *ncens; cm.censor = censor; cm.censstates=censstates; cm.censstind=censstind;
+
+    hm.hidden = *hidden;  hm.models = hmodels;  hm.npars = hnpars;  hm.totpars = *htotpars;
+    hm.firstpar = hfirstpar;  hm.ncovs = hncovs;  hm.pars = hmmpars; 
+    hm.coveffect = hcoveffect;  hm.links = links; hm.initp = initprobs;
+
+    if (*do_what == 0) {
+	msmLikelihood(&d, &qm, &qcm, &cm, &hm, returned);
+    }
+
+    else if (*do_what == 1) {
+	msmDLikelihood(&d, &qm, &qcm, &cm, &hm, returned);
+    }
+
+    else if (*do_what == 2) {
+	Viterbi(&d, &qm, &qcm, &cm, &hm, returned);
     }
 }

@@ -1,20 +1,24 @@
 \name{simmulti.msm}
 \title{Simulate multiple trajectories from a multi-state Markov model with arbitrary observation times}
 \alias{simmulti.msm}
+\concept{Simulation}
 \description{Simulate a number of individual realisations from a
   multi-state Markov process. Observations of the process are made at
   specified arbitrary times for each individual. 
 }
 \usage{
-simmulti.msm(data, qmatrix, beta, death = FALSE,  tunit = 1, start)
+simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
+ematrix=NULL, hmodel=NULL, hcovariates=NULL)
 }
 
 \arguments{
 
-  \item{data}{A data frame with mandatory columns named \code{subject},
-    corresponding to subject identification numbers, and \code{time},
-    representing observation times. Other named columns of the data frame
-    represent covariates.
+  \item{data}{A data frame with a mandatory column named \code{time},
+    representing observation times.  The optional column named \code{subject},
+    corresponds to subject identification numbers. If not given, all
+    observations are assumed to be on the same individual. Observation
+    times should be sorted within individuals. Other named
+    columns of the data frame represent any covariates.
   }
   
   \item{qmatrix}{
@@ -31,12 +35,19 @@ simmulti.msm(data, qmatrix, beta, death = FALSE,  tunit = 1, start)
     )}
 
   }
-
-  \item{beta}{Matrix of linear covariate effects on log transition
-    intensities. The rows correspond to different covariates, and the
-    columns to the transition intensities. The intensities are ordered
+ 
+  \item{covariates}{List of covariate effects on log transition
+    intensities. Each element is a vector of the effects of one
+    covariate on all the transition intensities. The intensities are ordered
     by reading across rows of the intensity matrix, starting with the
-    first, counting the positive off-diagonal elements of the matrix.}
+    first, counting the positive off-diagonal elements of the matrix.
+
+    For example, for a multi-state model with three transition
+    intensities, and two covariates \code{x} and \code{y} on each
+    intensity, 
+    
+    \code{covariates=list(x = c(-0.3,-0.3,-0.3), y=c(0.1, 0.1, 0.1))}
+  }
 
   \item{death}{Vector of indices of the death states.  A death state is
     an absorbing state whose time of entry is known exactly, but the
@@ -50,21 +61,36 @@ simmulti.msm(data, qmatrix, beta, death = FALSE,  tunit = 1, start)
     final state is a death state, and \code{death = FALSE} (the default)
     indicates that there is no death state. }
 
-  \item{tunit}{No longer used, from msm version 0.3.2. Death times are
-    now assumed to be exact, rather than accurate within one day.} 
-
   \item{start}{A vector with the same number of elements as there are 
 	distinct subjects in the data, giving the states in which each
 	corresponding individual begins. Defaults to state 1 for each 
 	subject.}
+
+  \item{ematrix}{An optional misclassification matrix for generating observed states
+  conditionally on the simulated true states. As defined in
+  \code{\link{msm}}.}
+
+  \item{hmodel}{An optional hidden Markov model for generating observed
+    outcomes conditionally on the simulated true states. As defined in
+    \code{\link{msm}}.}
+
+  \item{hcovariates}{List of the same length as \code{hmodel}, defining any covariates
+    governing the hidden Markov outcome models.  Unlike in the
+    \code{msm} function, this should also define the values of the
+    covariate effects. Each element of the list is a named vector of the
+    initial values for each set of covariates for that state.  For
+    example, for a three-state hidden Markov model with two, one and no
+    covariates on the state 1, 2 and 3 outcome models respectively, 
+
+    \code{ hcovariates = list (c(acute=-8, age=0), c(acute=-8), NULL) }
   }
-
 }
-
 \value{A data frame with columns,
   \item{subject}{Subject identification indicators}
   \item{time}{Observation times}
-  \item{state}{Simulated state at the corresponding time}
+  \item{state}{Simulated (true) state at the corresponding time}
+  \item{obs}{Observed outcome at the corresponding time, if
+    \code{ematrix} or \code{hmodel} was supplied}
   plus any supplied covariates. 
 }
 \details{  

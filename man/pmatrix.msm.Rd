@@ -42,8 +42,8 @@ pmatrix.msm(x, t, covariates="mean")
   For a continuous-time homogeneous Markov process with transition
   intensity matrix
   \eqn{Q},  the probability of occupying state \eqn{s} at time \eqn{u + t}
-  conditional on occupying state \eqn{r} at time \eqn{u} is given by the
-  \eqn{(r,s)} entry of the matrix \eqn{P(t) = exp(tQ)}.
+  conditionally on occupying state \eqn{r} at time \eqn{u} is given by the
+  \eqn{(r,s)} entry of the matrix \eqn{P(t) = \exp(tQ)}{P(t) = exp(tQ)}.
 
   For non-homogeneous processes, where covariates and hence the
   transition intensity matrix are time-dependent, but are

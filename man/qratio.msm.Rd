@@ -7,7 +7,7 @@
   at a given set of covariate values. 
 }
 \usage{
-qratio.msm(x, ind1, ind2, covariates = "mean")
+qratio.msm(x, ind1, ind2, covariates = "mean", cl = 0.95)
 }
 \arguments{
   \item{x}{A fitted multi-state model, as returned by
@@ -38,10 +38,15 @@ qratio.msm(x, ind1, ind2, covariates = "mean")
 
     \code{list (age = 60, sex = 1)}
   }
+
+  \item{cl}{Width of the symmetric confidence interval to present. 
+    Defaults to 0.95.}
+
 }
 \value{
-  A list with components \code{estimate} and \code{se}, containing the
-  estimate and standard error respectively of the ratio of intensities. 
+  A named vector with elements \code{estimate}, \code{se}, \code{L} and \code{U}
+  containing the estimate, standard error, lower and upper confidence
+  limits, respectively, of the ratio of intensities. 
 }
 \details{
 
@@ -55,7 +60,8 @@ qratio.msm(x, ind1, ind2, covariates = "mean")
 
   \code{qratio.msm(disease.msm, c(1,2), c(2,1))} .
 
-  Standard errors are estimated by the delta method. 
+  Standard errors are estimated by the delta method. Confidence limits
+  are estimated by assuming normality on the log scale.
   
 }
 \seealso{

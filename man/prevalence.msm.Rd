@@ -1,6 +1,7 @@
 \name{prevalence.msm}
 \title{Tables of observed and expected prevalences}
 \alias{prevalence.msm}
+\concept{Goodness of fit}
 \description{
   This provides a rough indication of the goodness of fit of a
   multi-state model, by estimating the observed numbers of individuals
@@ -8,13 +9,11 @@
   forecasts from the fitted model.   
 }
 \usage{
-prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean", misccovariates="mean")
+prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
+               misccovariates="mean")
 }
 \arguments{
-  \item{x}{A fitted multi-state model, either with or without misclassification, produced
-    by \code{\link{msm}}. The data for the fitted model must originally
-    have been provided as a series of states and observation times, not in
-    'from-state, to-state, time-difference' format.}
+  \item{x}{A fitted multi-state model produced by \code{\link{msm}}.}
   \item{times}{Series of times at which to compute the observed and
     expected prevalences of states.}
   \item{timezero}{Initial time of the Markov process. Expected values
@@ -39,9 +38,9 @@ prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean", misccovar
   \item{Observed percentages}{Corresponding percentage of the
     individuals at risk at each time.}
   
-  \item{\code{Expected}}{Table of corresponding expected numbers.}
+  \item{Expected}{Table of corresponding expected numbers.}
   
-  \item{\code{Expected percentages}}{Corresponding percentage of the
+  \item{Expected percentages}{Corresponding percentage of the
     individuals at risk at each time.}
   
 }
@@ -60,15 +59,21 @@ prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean", misccovar
   multiplied by the probability of transition between the initial state
   and state \eqn{j} in a time interval \eqn{t}.
 
-  For misclassification models, this aims to assess the fit of the model for the \emph{observed}
-  states to the data,  that is the combined Markov progression model for the true states and
-  the misclassification model. Thus, expected prevalences of \emph{true}
+  For misclassification models (fitted using an \code{ematrix}), this
+  aims to assess the fit of the full model for the \emph{observed}
+  states.  That is, the combined Markov progression model for the true
+  states and the misclassification model. Thus, expected prevalences of \emph{true}
   states are estimated from the assumed proportion
   occupying each state at the initial time using the fitted transition
   probabiliy matrix. The vector of expected prevalences of true states
   is then multiplied by the fitted misclassification probability matrix
   to obtain the expected prevalences of \emph{observed} states. 
 
+  For general hidden Markov models, the observed state is taken to be the
+  predicted underlying state from Viterbi algorithm
+  (\code{\link{viterbi.msm}}).  The goodness of fit of
+  these states to the underlying Markov model is tested. 
+  
   This approach only makes sense for processes where all individuals
   start at a common time.  
   

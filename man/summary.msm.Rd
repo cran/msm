@@ -3,7 +3,7 @@
 \alias{summary.msm}
 \alias{print.summary.msm}
 \description{
-  Summary method for fitted \code{\link{msm}} models. Produces a table of observed and
+  Summary method for fitted \code{\link{msm}} models. Currently, this produces a table of observed and
   expected state prevalences for each time. For models with covariates, prints
   hazard ratios with confidence intervals for covariate effects.
 }
@@ -37,28 +37,17 @@ covariates="mean", misccovariates="mean", hazard.scale=1, \dots)
     used to calculate its hazard ratio. Defaults to all 1.}  
   \item{...}{further arguments passed to or from other methods}
 }
-
-\note{
-  The prevalence table is not available if the data were specified in
-  \code{fromto} format in the call to \code{\link{msm}}. Expected
-  prevalences only make sense for processes where all individuals
-  start at a common time.
-}
-
 \value{
   A list of class \code{summary.msm}, with components:
   
-  \item{prevalences}{Output from \code{\link{prevalence.msm}}}.
+  \item{prevalences}{Output from \code{\link{prevalence.msm}}.}
 
   \item{hazard}{Output from \code{\link{hazard.msm}}}.
 
   \item{hazard.scale}{Value of the \code{hazard.scale} argument}
-    
 }
 \seealso{
-  \code{\link{msm}}, \code{\link{print.summary.msm}}
-  \code{\link{prevalence.msm}}, \code{\link{hazard.msm}}
+  \code{\link{msm}},\code{\link{prevalence.msm}}, \code{\link{hazard.msm}}
 }
-
 \author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{}

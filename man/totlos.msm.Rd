@@ -10,8 +10,9 @@
 totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean", ...)
 }
 \arguments{
-  \item{x}{A fitted msm model, as given by
+  \item{x}{A fitted multi-state model, as returned by
     \code{\link{msm}}. }
+  
   \item{start}{State at the beginning of the period.}
 
   \item{fromt}{Time from which to estimate total length of
@@ -55,7 +56,8 @@ totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean", ...)
   state \eqn{i} at time 0,
   is defined by the integral from \eqn{t_1} to
   \eqn{t_2} of the \eqn{i,j} entry of the transition probability matrix \eqn{P(t)}.
-  As \eqn{P(t) = exp(tQ)} is not available explicitly in terms of
+  As the individual entries of \eqn{P(t) = \exp(tQ)}{P(t) = exp(tQ)}
+  are not available explicitly in terms of
   \eqn{t} for a general Markov model, this integral is calculated
   numerically, using the \code{\link{integrate}} function.  This may
   take a long time for models with many states where \eqn{P(t)} is
