@@ -121,12 +121,13 @@ void MatrixExpSeries(Matrix A, int n, Matrix expmat, double t)
     int underflow_correct = 3;
     Matrix Apower = (double *) S_alloc(n*n, sizeof(double));
     Matrix Temp = (double *) S_alloc(n*n, sizeof(double));
+    Matrix AA = (double *) S_alloc(n*n, sizeof(double));
     for (i=0; i<(n*n); ++i)
-	A[i] *= (t / pow(2, underflow_correct));
+	AA[i] = A[i] * (t / pow(2, underflow_correct));
     FormIdentity(expmat, n);
     FormIdentity(Apower, n);
     for (i=1; i<=order; i++) {
-	MultMat(A, Apower, n, n, n, Temp);
+	MultMat(AA, Apower, n, n, n, Temp);
 	for (j=0; j<(n*n); ++j){
 	    Apower[j] = Temp[j] / i;
 	    expmat[j] += Apower[j];

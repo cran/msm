@@ -1,3 +1,19 @@
+2003-10-14 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* src/pijt.c(MatrixExpSeries): Bug fix. Don't overwrite the matrix
+	A, as it is needed after the function exits. This had led to wrong
+	results when exacttimes = TRUE and the intensity matrix had
+	repeated eigenvalues.
+
+	* src/lik.c(liksimple, liksimple_fromto, UpdateLik): Don't ignore death argument when
+	exacttimes = TRUE.
+	
+	* R/msm.R(msm.check.times): Use table instead of tapply to count
+	the number of observations per subject. Fixes further problems
+	with running out of memory. 
+
+	* DESCRIPTION: Version 0.3.1 released. 
+
 2003-09-29 Chris Jackson   <chris.jackson@imperial.ac.uk>
 
 	* R/outputs.R: Debugging print statements removed from
