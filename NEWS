@@ -1,0 +1,52 @@
+-*- text -*-
+
+USER-VISIBLE CHANGES 
+--------------------
+
+Version 0.2 (January 2003)
+-----------
+
+* A full manual in PDF format is included in the doc directory. This
+gives the mathematical background behind multi-state modelling, and a
+tutorial in the typical use of the functions in the msm package.
+
+* Many more methods for extracting summary statistics from the fitted
+model are included.  These are generally called with the fitted model
+as the argument, plus an optional argument indicating the assumed
+covariate values. The functions include qmatrix.msm, ematrix.msm,
+pmatrix.msm, qratio.msm, sojourn.msm, totlos.msm, hazard.msm,
+odds.msm, prevalence.msm. 
+
+* New function statetable.msm to calculate frequencies of transitions
+between pairs of states observed in the data.
+
+* New function crudeinits.msm to estimate transition intensities
+assuming the data represent the exact transition times of the Markov
+process. These can be used as initial values in the msm function for
+fitting the model. 
+
+* prevalencemisc.msm has been removed, as its methodology was
+overcomplicated and confusing.  The methods used in prevalence.msm
+have been extended naturally to deal with misclassification models.
+
+* Fix of a bug in the likelihood calculation for misclassification
+models (the number of non-death states was assumed to be the same as
+the number of states that could be misclassified, leading to failure
+to calculate the likelihood for models where some states are observed
+without error, but are not death states. ) Thanks to Martyn Plummer
+for reporting this.
+
+* Fix of a bug in the simulation routines (getobs.msm, called by
+simmulti.msm), where for models with absorbing states, the absorbing 
+state is not retained in the simulated data.   
+
+* New heart transplant example data set, as used in the manual, so
+that all the examples given in the manual can be run by the user.
+
+* Tidying of the help pages. 
+
+
+Version 0.1 (November 2002)
+-----------
+
+* First release. 

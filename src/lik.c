@@ -9,14 +9,13 @@
 
 
 #include "lik.h"
-#include <stdio.h>
 
 /* This function is called from R to provide an entry into C code for
    evaluating likelihoods, doing Viterbi state reconstruction and short
    term prediction */
 
 void msmCEntry( 
-    int *do_what,      /* 1 = eval likelihood, 2 = Viterbi, 3 = prediction */
+    int *do_what,      /* 1 = eval likelihood, 2 = Viterbi */
     double *params,    /* full parameter vector */
     double *allinits,  /* all initial values */
     int *misc,
@@ -53,7 +52,7 @@ void msmCEntry(
     double *returned   /* returned -2 log likelihood , Viterbi fitted values, or predicted values */
     )
 {
-    int i, pt, ifix = 0, iopt = 0, iall = 0;
+    int ifix = 0, iopt = 0, iall = 0;
     double *intens = (double *) S_alloc(*nintens, sizeof(double));
     double *coveffect = (double *) S_alloc(*ncoveffs, sizeof(double));
     double *miscprobs = (double *) S_alloc(*nmisc, sizeof(double));
@@ -84,10 +83,6 @@ void msmCEntry(
 	Viterbi(&d, &m, returned);
     }
 
-    else if (*do_what == 3) {
-	onestep(&d, &m, predtimes, *npreds, returned);
-    }
-  
 }
 
 void msmLikelihood (data *d, model *m, int misc, double *returned) {
@@ -147,11 +142,11 @@ double likmisc(int pt, /* ordinal subject ID */
 	       data *d, model *m
     )
 {
-    double *cumprod     = (double *) S_alloc(m->nms, sizeof(double)); 
-    double *newprod     = (double *) S_alloc(m->nms, sizeof(double));  
+    double *cumprod     = (double *) S_alloc(m->nst, sizeof(double)); 
+    double *newprod     = (double *) S_alloc(m->nst, sizeof(double));  
     double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
-    double lweight, dt, lik;
-    int i, pti, j, k, l, first, last, mini, maxi, wtone;
+    double lweight, lik;
+    int i, pti, k, first=0, last=0;
     for (i = 1, pti = 0; i < d->nobs ; i++)
     {  /* find index in data set of individual's first and last observations */
 	if (pti==pt) {
@@ -163,7 +158,7 @@ double likmisc(int pt, /* ordinal subject ID */
 	else if (d->subject[i] != d->subject[i-1]) ++pti;
     }
     AddMiscCovs(first, d, m, newmisc); 
-    for (i = 0; i < m->nms; ++i)
+    for (i = 0; i < m->nst; ++i)
 	cumprod[i] = PObsTrue(d->state[first], i, newmisc, m) * m->initprobs[i]; /* cumulative matrix product */
     lweight=0;
 
@@ -172,12 +167,12 @@ double likmisc(int pt, /* ordinal subject ID */
     {
 	UpdateLik(d->state[k], d->time[k] - d->time[k-1],
 		  k, last, 0, d, m, cumprod, newprod, lweight, &lweight);
-	for (i = 0; i < m->nms; ++i)
+	for (i = 0; i < m->nst; ++i)
 	    cumprod[i] = newprod[i];
     }
   
     lik=0;
-    for (i = 0; i < m->nms; ++i)
+    for (i = 0; i < m->nst; ++i)
 	lik = lik + cumprod[i];
     /* Transform the likelihood back to the proper scale */
     return -2*(log(lik) - lweight); 
@@ -191,7 +186,7 @@ void UpdateLik(int state, double dt, int k, int last, int predict_death, data *d
 {
     int i, j;
     double newprod_ave;
-    double *T           = (double *) S_alloc((m->nms)*(m->nms), sizeof(double));
+    double *T           = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
     double *newintens   = (double *) S_alloc(m->nintens, sizeof(double) );
     double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
     double *pmat        = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
@@ -207,31 +202,31 @@ void UpdateLik(int state, double dt, int k, int last, int predict_death, data *d
 	Pmat(pmattodeath, dt - 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes);
 	Pmat(pmatdeath, 1/d->tunit, newintens, m->qvector, m->nst, m->exacttimes);
     }
-    for(j = 0; j < m->nms; ++j)
+    for(j = 0; j < m->nst; ++j)
     {
 	newprod[j] = 0.0;
-	for(i = 0; i < m->nms; ++i)
+	for(i = 0; i < m->nst; ++i)
 	{
 	    if (predict_death)
 		/* Only for doing prediction - used to calculate probability of death by t conditionally on history */
-		T[MI(i,j,m->nms)] = (j==0  ?  pmat[MI(i, m->nst - 1, m->nst)]  :  0);
+		T[MI(i,j,m->nst)] = (j==0  ?  pmat[MI(i, m->nst - 1, m->nst)]  :  0);
 	    else if ((k == last) && (state == m->nst - 1) && (m->death))
 		/* last observation was death and death time known exactly */
-		T[MI(i,j,m->nms)] = pmattodeath[MI(i,j,m->nst)] * pmatdeath[MI(j, m->nst - 1, m->nst)];
+		T[MI(i,j,m->nst)] = pmattodeath[MI(i,j,m->nst)] * pmatdeath[MI(j, m->nst - 1, m->nst)];
 	    else
-		T[MI(i,j,m->nms)] = pmat[MI(i, j, m->nst)] * PObsTrue(state, j, newmisc, m);
-	    if (T[MI(i,j,m->nms)] < 0) T[MI(i,j,m->nms)] = 0;
-	    newprod[j] = newprod[j] + cumprod[i]*T[MI(i,j,m->nms)];
+		T[MI(i,j,m->nst)] = pmat[MI(i, j, m->nst)] * PObsTrue(state, j, newmisc, m);
+	    if (T[MI(i,j,m->nst)] < 0) T[MI(i,j,m->nst)] = 0;
+	    newprod[j] = newprod[j] + cumprod[i]*T[MI(i,j,m->nst)];
 	}
     }
     /* re-scale the likelihood at each step to prevent it getting too small and underflowing */
     /*  while cumulatively recording the log scale factor   */
-    for(i = 0, newprod_ave=0.0; i < m->nms ; ++i)
+    for(i = 0, newprod_ave=0.0; i < m->nst ; ++i)
 	newprod_ave += newprod[i];  
-    newprod_ave /=  m->nms;
+    newprod_ave /=  m->nst;
     if (newprod_ave == 0)
 	newprod_ave = 1;
-    for(i = 0; i < m->nms ; ++i)
+    for(i = 0; i < m->nst ; ++i)
 	newprod[i] = newprod[i] / newprod_ave;
     *lweight_new = lweight_old  -  log(newprod_ave);
 }
@@ -279,7 +274,7 @@ double PObsTrue(int obst,      /* observed state */
 		model *m
     )
 {
-    int r, s;
+    int s;
     double this_miscprob, probsum;
     double *emat = (double *) S_alloc( (m->nst)*(m->nst), sizeof(double));
     /* construct the misclassification prob matrix from the parameter vector */
@@ -312,9 +307,9 @@ double liksimple(data *d, model *m)
 		/* if final state is death, then death date is known within a day */
 		contrib=0;
 		for (j = d->state[i-1]; j < d->state[i]; ++j)
-		    contrib += 
-			pijt(d->state[i-1], j,  dt - 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes)*
-			pijt(j, d->state[i], 1 / d->tunit,  newintens, m->qvector, m->nst, m->exacttimes);
+		  contrib += 
+		      pijt(d->state[i-1], j,  dt - 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes)*
+		      pijt(j, d->state[i], 1 / d->tunit,  newintens, m->qvector, m->nst, m->exacttimes);
 		lik += log(contrib);
 	    }
 	    else 
@@ -328,8 +323,8 @@ double liksimple(data *d, model *m)
 
 double liksimple_fromto(data *d, model *m)
 {
-    int i,j,k;
-    double dt, lik=0, contrib;
+    int i,j;
+    double lik=0, contrib;
     double *newintens = (double *) S_alloc ( m->nintens , sizeof(double) );
     for (i=0; i < d->nobs; ++i)
     {
@@ -354,7 +349,7 @@ double liksimple_fromto(data *d, model *m)
 
 void Viterbi(data *d, model *m, double *fitted)
 {
-    int i, true, k, kmax, pt, obs;
+    int i, true, k, kmax, obs;
     double *newintens   = (double *) S_alloc(m->nintens, sizeof(double) );
     double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
     double *pmat = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
@@ -428,127 +423,4 @@ void Viterbi(data *d, model *m, double *fitted)
 		lvold[k] = 0;
 	}
     }
-}
-
-
-/* Calculates one step ahead predictions */
-
-void onestep(data *d, model *m, double *predtimes, int npreds, double *result)
-{
-    int i, j, r, prt, first_pred;
-    double *prod_old, *prod_new, *prod_new_obs, lweight, lweight_new, lweight_obs, 
-	p_bot, p_top, p_bot_obs, p_t, p_tnext;
-    double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
-    double *expected_deaths  = (double *) S_alloc(npreds, sizeof(double));
-    int deathstate = m->nst-1;
-
-    prod_old = (double *) S_alloc ( m->nms , sizeof(double));
-    prod_new = (double *) S_alloc ( m->nms , sizeof(double));   
-    prod_new_obs = (double *) S_alloc ( m->nms , sizeof(double));
-  
-    for (i=0; i < m->nms; ++i)
-	prod_old[i] = 1.0; 
-    lweight_new = 0;
-
-    if (m->death)
-	for (prt = 0; prt < npreds; ++prt)
-	    expected_deaths[prt] = 0;
-    /* time 1: use initial state probabilities */
-    for (i = 0; i < d->nobs; ++i)
-    {
-	/* other times t_r : calculate P(Or | past) = P(O1..Or) / P(O1..O r-1) */
-	/* for the current patient */
-	if ((i > 0) && (d->subject[i] == d->subject[i-1]) && (i < d->nobs))
-	{
-	    for (r = 0; r < m->nms; ++r)
-	    {
-		/* forecast the probability of being in state r at the next observation time, cond on history */
-		UpdateLik(r, d->time[i] - d->time[i+1], i, -1, 0, d, m,
-			  prod_old, prod_new, lweight, &lweight_new);
-	    
-		for (j=0, p_top = 0; j < m->nms; ++j)
-		    p_top += prod_new[j];
-		p_top = (log(p_top) - lweight_new); 
-		result[d->nobs * r + i] = exp (p_top - p_bot); 
-		/* If r was the observed state, then store the current log-likelihood and the underflow-correction term */
-		/*  to do the forecasting at the next time point */ 
-		if (r == d->state[i]) {
-		    for (j = 0; j < m->nms; ++j)
-			prod_new_obs[j] = prod_new[j];
-		    lweight_obs = lweight_new;
-		    p_bot_obs = p_top;
-		}
-	    }
-	    for (j = 0; j < m->nms; ++j)
-		prod_old[j] = prod_new_obs[j];
-	    lweight = lweight_obs;
-	    p_bot = p_bot_obs;
-	}
-	else
-	{
-	    for (r = 0; r < m->nms; ++r)
-	    {
-		AddMiscCovs(i, d, m, newmisc);
-		for (j = 0, p_bot = 0; j < m->nms; ++j) {
-		    prod_old[j] = PObsTrue(r, j, newmisc, m) * m->initprobs[j];
-		    p_bot += prod_old[j];
-		}
-		result[d->nobs * r + i] = p_bot;
-		if (r == d->state[i]){
-		    for (j = 0; j < m->nms; ++j)
-			prod_new_obs[j] = prod_old[j];
-		    p_bot_obs = log(p_bot);
-		}
-	    }
-	    for (j = 0; j < m->nms; ++j)
-		prod_old[j] = prod_new_obs[j];
-	    lweight = 0;
-	    p_bot = p_bot_obs;
-	    if (m->death) {
-		prt = 0;
-		while ((predtimes[prt] <= d->time[i]) && (prt < npreds-1))
-		    ++prt;
-		--prt;
-		first_pred = prt;
-	    }
-	}
-      
-	if (m->death) 
-	{
-	    while ((predtimes[prt] <= d->time[i+1]) && (prt < npreds-1)) 
-	    {
-		if (((d->time[i] < predtimes[prt]) && (predtimes[prt] <= d->time[i+1]))
-		    || (prt == first_pred) )
-		{
-		    if (prt == first_pred)
-			p_t = 0;
-		    else {
-			/* p_t = probability of death by t cond on history<t   */
-			UpdateLik(deathstate, predtimes[prt] - d->time[i], i, -1, 1, d, m, 
-				  prod_old, prod_new, lweight, &lweight_new);
-			for (j=0, p_t = 0; j < m->nms; ++j)
-			    p_t += prod_new[j];
-			p_t = log(p_t) - lweight_new;
-			p_t = exp(p_t - p_bot);
-		    }
-		    /* p_tnext = probability of death by t+1 cond on history<t */
-		    UpdateLik(deathstate, predtimes[prt+1] - d->time[i], i, -1, 1, d, m,
-			      prod_old, prod_new, lweight, &lweight_new);
-		    for (j=0, p_tnext = 0; j < m->nms; ++j)
-			p_tnext += prod_new[j];
-		    p_tnext = log(p_tnext) - lweight_new;
-		    p_tnext = exp(p_tnext - p_bot);
-		    /* Expected number of deaths in the interval is the sum over all individuals of p_t - p_tnext */ 
-		    expected_deaths[prt] += p_tnext - p_t;
-		    printf("%6.3lf %6.3lf %6.3lf %6.3lf %6.3lf\n", predtimes[prt], d->time[i], p_t, p_tnext, expected_deaths[prt]);
-		}
-		++prt;
-	    }
-	}
-    }
-
-    if (m->death)
-	/* Tack the expected number of deaths on the end of the vector of next-stage occupancy probabilities */
-	for (prt = 0; prt < npreds-1; ++prt)
-	    result[(d->nobs * m->nms) + prt] = expected_deaths[prt];
 }

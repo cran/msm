@@ -1,6 +1,6 @@
 Package: msm
-Version: 0.1
-Date: November 2002
+Version: 0.2
+Date: January 2003
 Title: Multi-state Markov models in continuous time
 Author: Christopher H. Jackson <chris.jackson@ic.ac.uk>
 Maintainer: Christopher H. Jackson <chris.jackson@ic.ac.uk>

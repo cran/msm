@@ -6,7 +6,7 @@
   specified arbitrary times for each individual. 
 }
 \usage{
-simmulti.msm(data, qmatrix, beta, death = TRUE,  tunit = 1)
+simmulti.msm(data, qmatrix, beta, death = FALSE,  tunit = 1)
 }
 
 \arguments{
@@ -55,14 +55,15 @@ simmulti.msm(data, qmatrix, beta, death = TRUE,  tunit = 1)
   plus any supplied covariates. 
 }
 \details{
+  
   \code{\link{sim.msm}} is called repeatedly to produce a simulated
   trajectory for each individual. The state at each specified
   observation time is then taken to produce a new column \code{state}.
   The effect of time-dependent covariates on the transition intensity
   matrix for an individual is determined by assuming that the covariate is a step function
   which remains constant in between the individual's observation times.
-  If the subject enters an absorbing state, then only one observation in
-  that state is kept in the data frame. Rows corresponding to future
+  If the subject enters an absorbing state, then only the first
+  observation in that state is kept in the data frame. Rows corresponding to future
   observations are deleted. If \code{death} is \code{TRUE}, then the
   exact observation time of death is rounded up to the nearest \code{1 /
     tunit}.

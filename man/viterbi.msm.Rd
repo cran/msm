@@ -9,10 +9,10 @@
 }
 
 \usage{
-viterbi.msm(msm)
+viterbi.msm(x)
 }
 \arguments{
-  \item{msm}{A fitted multi-state model with misclassification, as
+  \item{x}{A fitted multi-state model with misclassification, as
   produced by \code{\link{msm}}}
 }
 \value{

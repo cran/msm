@@ -9,7 +9,7 @@ MatrixExp(mat, t = 1, n = 20, k = 3)
 }
 \arguments{
   \item{mat}{A square matrix}
-  \item{t}{An optional scaling factor for the eigenvalues of mat}
+  \item{t}{An optional scaling factor for the eigenvalues of \code{mat}}
   \item{n}{Number of terms in the series approximation to the
     exponential}
   \item{k}{Underflow correction factor}

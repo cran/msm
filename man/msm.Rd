@@ -2,7 +2,8 @@
 \title{Multi-state Markov models}
 \alias{msm}
 \description{
-  Fits a multi-state Markov model by maximum likelihood. Observations of the process
+  Fit a continuous-time Markov multi-state model by maximum
+  likelihood. Observations of the process
   can be made at arbitrary times, or the exact times of
   transition between states can be known. 
   Covariates can be fitted to the transition intensities.
@@ -14,9 +15,8 @@
 }
 \usage{
 msm ( formula, qmatrix, misc = FALSE, ematrix, inits, subject,
-      covariates = NULL, constraint = NULL,
-      misccovariates = NULL, miscconstraint = NULL,
-      covmatch = "previous", initprobs = NULL, 
+      covariates = NULL, constraint = NULL, misccovariates = NULL,
+      miscconstraint = NULL, covmatch = "previous", initprobs = NULL, 
       data = list(), fromto = FALSE, fromstate, tostate, timelag,
       death = FALSE, tunit = 1.0, exacttimes = FALSE,
       fixedpars = NULL, ... )
@@ -34,15 +34,15 @@ msm ( formula, qmatrix, misc = FALSE, ematrix, inits, subject,
     If a transition is allowed from state \eqn{r} to state \eqn{s},
     then \code{qmatrix} should have \eqn{(r,s)} entry 1, otherwise
     it should have \eqn{(r,s)} entry 0. The diagonal of \code{qmatrix}
-    is ignored. For example, 
-
+    is ignored. For example,\cr
+    
     \code{
     rbind(
     c( 0, 1, 1 ),
     c( 1, 0, 1 ),
     c( 0, 0, 0 )
     )
-  }
+  }\cr
   
     represents a 'health - disease - death' model, with transitions
     allowed from health to disease, health to death, disease to health, 
@@ -61,7 +61,7 @@ misclassifications.
     occupies underlying state \eqn{r}, then \code{ematrix} should have
     \eqn{(r,s)} entry 1, otherwise
     it should have \eqn{(r,s)} entry 0. The diagonal of \code{ematrix}
-    is ignored. For example, 
+    is ignored. For example, \cr
 
     \code{
       rbind(
@@ -69,7 +69,7 @@ misclassifications.
     c( 1, 0, 1 ),
     c( 0, 1, 0 )
     )
-  }
+  }\cr
   
     represents a model in which misclassifications are only permitted
     between adjacent states. 
@@ -110,9 +110,9 @@ misclassifications.
   \item{constraint}{A list of one vector for each named covariate. The
   vector indicates which covariate effects on intensities are
   constrained to be equal. Take, for example, a model with five
-  transition intensities and two covariates. Specifying
+  transition intensities and two covariates. Specifying\cr
     
-    \code{constraint = list (age = c(1,1,1,2,2),  treatment = c(1,2,3,4,5))}
+    \code{constraint = list (age = c(1,1,1,2,2),  treatment = c(1,2,3,4,5))}\cr
 
     constrains the effect of age to be equal for the first three
     intensities, and equal for the fourth and fifth. The effect of
@@ -122,11 +122,11 @@ misclassifications.
     transition matrix, starting at the first row.
 
     For categorical covariates, defined using \code{factor(covname)},
-    specify constraints as follows:
+    specify constraints as follows:\cr
 
-    \code{list(..., covnameVALUE1 = c(...), covnameVALUE2 = c(...), ...)}
+    \code{list(..., covnameVALUE1 = c(...), covnameVALUE2 = c(...), ...)}\cr
     
-    where VALUE1, VALUE2, ... are the levels of the factor.
+    where \code{VALUE1}, \code{VALUE2}, ... are the levels of the factor.
     Make sure the \code{contrasts} option is set appropriately, for
     example, the default \code{options(contrasts=c(contr.treatment,
       contr.poly))} sets the first (baseline) level of the factor to
@@ -163,9 +163,7 @@ probability of 1.
     subject ID, covariate, fromstate, tostate and timelag vectors.}
 
   \item{fromto}{If \code{TRUE}, then the data are given as three vectors, 
-
-    \emph{from-state, to-state, time-difference}
-
+    \emph{from-state, to-state, time-difference},
     representing the set of observed transitions between states, and the
     time taken by each one. Otherwise, the data are given by \code{formula},
     containing observation times, corresponding observed states, and a
@@ -205,54 +203,65 @@ probability of 1.
     algorithm, which can often be faster than the default Nelder-Mead.
     If the optimisation fails to converge, consider normalising the
     problem using, for example, \code{control=list(fnscale = 2500)}, for
-    example, replacing 2500 by
-    the order of magnitude of the likelihood. If the optimisation takes
-    a long time, intermediate steps can be printed using the
-    \code{trace} argument of the control list. See \code{\link{optim}}
-    for details.
+    example, replacing 2500 by a number of the order of magnitude of the
+    likelihood. If 'false' convergence is reported and the standard
+    errors cannot be calculated due to a non-positive-definite Hessian,
+    then consider tightening the tolerance criteria for convergence. If
+    the optimisation takes a long time, intermediate steps can be
+    printed using the \code{trace} argument of the control list. See
+    \code{\link{optim}} for details.
   }
 }
 \value{
   A list of class \code{msm}, with components:
 
+  \item{misc}{Logical value indicating whether the model includes
+    misclassification.}
   \item{Qmatrices}{A list of matrices. The first component, labelled
-    \code{baseline}, is the estimated
-    transition intensity matrix with any covariates fixed at their means
-    in the data. Each remaining component is a matrix giving the linear
+    \code{logbaseline}, is a matrix containing the estimated
+    transition intensities on the log scale with any covariates fixed at
+    their means in the data. Each remaining component is a matrix giving the linear
     effects of the labelled covariate on the matrix of log
-    intensities. 
+    intensities.  To extract an intensity matrix on the natural
+    scale, at an arbitrary combination of covariate values, use the
+    function \code{\link{qmatrix.msm}}.
   }
   \item{QmatricesSE}{The standard error matrices corresponding to
     \code{Qmatrices}.
   }
-  \item{qcenter}{The estimated transition intensity matrix with any
-    covariates fixed to zero (only returned when there is at least one
-    covariate).
-  }
   \item{Ematrices}{A list of matrices. The first component, labelled
-  \code{baseline}, is the estimated
-  misclassification probability matrix with any covariates fixed at their means
-  in the data. Each remaining component is a matrix giving the linear
-  effects of the labelled covariate on the matrix of logit
-  misclassification probabilities. }
+    \code{logitbaseline}, is the estimated misclassification probability
+    matrix  with any covariates fixed at their means
+    in the data. Each remaining component is a matrix giving the linear
+    effects of the labelled covariate on the matrix of logit
+    misclassification probabilities.   To extract a misclassification
+    probability matrix on the natural scale, at an arbitrary combination
+    of covariate values, use the function \code{\link{ematrix.msm}}}
   \item{EmatricesSE}{The standard error matrices corresponding to \code{Ematrices}}
-  \item{ecenter}{The estimated misclassification probability matrix with any
-    covariates fixed to zero (only returned when there is at least one covariate)}
   \item{sojourn}{
     A list with components:
 
-    \code{mean} = estimated mean sojourn times in the transient states
+    \code{mean} = estimated mean sojourn times in the transient states,
+    with covariates fixed at their means.
 
     \code{se} = corresponding standard errors.
   }
   \item{minus2loglik}{Minus twice the maximised log-likelihood}
-  \item{Pmatrix}{A function with argument \code{time}, returning the
-    estimated transition probability matrix within the interval
-    \code{time}.
-    }
+  \item{foundse}{Logical value indicating whether the Hessian was positive-definite
+    at the supposed maximum of the likelihood.  If not, the covariance matrix of the
+    parameters is unavailable. Furthermore, it is doubtful whether the optimisation
+    has converged to the maximum. 
+  }
   \item{estimates}{Vector of untransformed maximum likelihood estimates
-    returned from \code{\link{optim}}, with intensities on the log scale.}
+    returned from \code{\link{optim}}, with intensities on the log scale
+    and misclassification probabilities on the logit scale.}
+  \item{estimates.t}{Vector of transformed maximum likelihood estimates
+    with intensities ans probabilities on their natural scales.}
   \item{covmat}{Covariance matrix corresponding to \code{estimates}.}
+  \item{data}{A list of constants and vectors giving the data, for use
+    in post-processing.}
+  \item{model}{A list of constants and vectors specifying the model, 
+    for use in post-processing.}
 }
 \details{
   For models without misclassification,
@@ -274,8 +283,9 @@ probability of 1.
 
   There must be enough information in the data on each state to estimate
   each transition rate, otherwise the likelihood will be flat and the
-  maximum will not be found. It will often be appropriate to reduce the
-  number of states in the model to aid convergence.
+  maximum will not be found.  It may be appropriate to reduce the
+  number of states in the model, or reduce the number of covariate
+  effects, to ensure convergence.
 
   Choosing an appropriate set of initial values for the optimisation can
   also be important.  For flat likelihoods, 'informative' initial values
@@ -307,7 +317,8 @@ probability of 1.
 
 \seealso{
   \code{\link{simmulti.msm}}, \code{\link{print.msm}}, \code{\link{plot.msm}},
-  \code{\link{summary.msm}}
+  \code{\link{summary.msm}}, \code{\link{qmatrix.msm}},
+  \code{\link{pmatrix.msm}},  \code{\link{sojourn.msm}}, 
 }
 \examples{
 data("aneur",aneur)
@@ -322,6 +333,9 @@ aneurysm.msm <- msm(data=aneur, fromto=TRUE, fromstate=from, tostate=to,
                     0.03, 0.3), method="BFGS", control=list(trace=2))
 
 print(aneurysm.msm)
+qmatrix.msm(aneurysm.msm) # Extract only the transition intensities from the printed results
+pmatrix.msm(aneurysm.msm, 10) # Extract the 10 year transition probability matrix
+sojourn.msm(aneurysm.msm) # Extract the mean sojourn times
 }
 \author{C. H. Jackson \email{chris.jackson@ic.ac.uk}}
 \keyword{models}
