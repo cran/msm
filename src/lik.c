@@ -31,11 +31,15 @@ void msmCEntry(
     int *constraint,    /* list of constraints for each covariate */
     double *misccovvec,/* vectorised matrix of misclassification covariate values */
     int *miscconstraint,/* list of constraints for each misclassification covariate */
+    int *baseconstraint, /* constraints on baseline transition intensities */
+    int *basemiscconstraint, /* constraints on baseline misclassification probabilities */
     double *initprobs, /* initial state occupancy probabilities */
     int *nst,      /* number of Markov states */
     int *nms,          /* number of underlying states which can be misclassified */
     int *nintens,      /* number of intensity parameters */
+    int *nintenseffs,  /* number of distinct intensity parameters */
     int *nmisc,        /* number of misclassification rates */
+    int *nmisceffs,    /* number of distinct misclassification rates */
     int *nobs,         /* number of observations in data set */
     int *npts,         /* number of individuals in data set */
     int *ncovs,        /* number of covariates on transition rates */
@@ -53,16 +57,16 @@ void msmCEntry(
     )
 {
     int ifix = 0, iopt = 0, iall = 0;
-    double *intens = Calloc(*nintens, double);
-    double *coveffect = Calloc(*ncoveffs, double);
-    double *miscprobs = Calloc(*nmisc, double);
-    double *misccoveffect = Calloc(*nmisccoveffs, double);
+    double *intens = (double *) S_alloc(*nintens, sizeof(double));
+    double *coveffect = (double *) S_alloc(*ncoveffs, sizeof(double));
+    double *miscprobs = (double *) S_alloc(*nmisc, sizeof(double));
+    double *misccoveffect = (double *) S_alloc(*nmisccoveffs, sizeof(double));
     data d; 
     model m;
 
-    fillparvec ( intens,        params, allinits, fixedpars, *nintens,      &ifix, &iopt, &iall ) ;
+    fillparvec ( intens,        params, allinits, fixedpars, *nintenseffs,      &ifix, &iopt, &iall ) ;
     fillparvec ( coveffect,     params, allinits, fixedpars, *ncoveffs,     &ifix, &iopt, &iall ) ;
-    fillparvec ( miscprobs,     params, allinits, fixedpars, *nmisc,        &ifix, &iopt, &iall ) ;
+    fillparvec ( miscprobs,     params, allinits, fixedpars, *nmisceffs,        &ifix, &iopt, &iall ) ;
     fillparvec ( misccoveffect, params, allinits, fixedpars, *nmisccoveffs, &ifix, &iopt, &iall ) ;
 
     d.subject = subjvec;     d.time = timevec;     d.state = statevec;     d.tostate = tostatevec;
@@ -70,7 +74,9 @@ void msmCEntry(
     d.npts = *npts;    d.ncovs = *ncovs;    d.nmisccovs = *nmisccovs;    d.tunit = *tunit; 
 
     m.qvector = qvector;    m.evector = evector;    m.constraint = constraint;    m.miscconstraint = miscconstraint;
+    m.baseconstraint = baseconstraint;    m.basemiscconstraint = basemiscconstraint;
     m.nst = *nst;  m.nms = *nms;  m.nintens = *nintens;  m.nmisc = *nmisc;  m.ncoveffs = *ncoveffs;
+    m.nintenseffs = *nintenseffs; m.nmisceffs = *nmisceffs; 
     m.nmisccoveffs = *nmisccoveffs;  m.covmatch = *covmatch;  m.death = *death;  m.exacttimes = *exacttimes;
     m.intens = intens;  m.coveffect = coveffect;  m.miscprobs = miscprobs;  m.misccoveffect = misccoveffect;
     m.initprobs = initprobs;
@@ -82,8 +88,6 @@ void msmCEntry(
     else if (*do_what == 2) {
 	Viterbi(&d, &m, returned);
     }
-
-    Free(intens); Free(coveffect); Free(miscprobs); Free(misccoveffect);
 }
 
 void msmLikelihood (data *d, model *m, int misc, double *returned) {
@@ -143,9 +147,9 @@ double likmisc(int pt, /* ordinal subject ID */
 	       data *d, model *m
     )
 {
-    double *cumprod     = Calloc(m->nst, double); 
-    double *newprod     = Calloc(m->nst, double);  
-    double *newmisc     = Calloc(m->nmisc, double);
+    double *cumprod     = (double *) S_alloc(m->nst, sizeof(double)); 
+    double *newprod     = (double *) S_alloc(m->nst, sizeof(double));  
+    double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
     double lweight, lik;
     int i, pti, k, first=0, last=0;
     for (i = 1, pti = 0; i < d->nobs ; i++)
@@ -176,7 +180,6 @@ double likmisc(int pt, /* ordinal subject ID */
     for (i = 0; i < m->nst; ++i)
 	lik = lik + cumprod[i];
 
-    Free(cumprod); Free(newprod); Free(newmisc);
     /* Transform the likelihood back to the proper scale */
     return -2*(log(lik) - lweight); 
 }
@@ -189,12 +192,12 @@ void UpdateLik(int state, double dt, int k, int last, int predict_death, data *d
 {
     int i, j;
     double newprod_ave;
-    double *T           = Calloc((m->nst)*(m->nst), double);
-    double *newintens   = Calloc(m->nintens, double );
-    double *newmisc     = Calloc(m->nmisc, double);
-    double *pmat        = Calloc((m->nst)*(m->nst), double);
-    double *pmatdeath   = Calloc((m->nst)*(m->nst), double);
-    double *pmattodeath = Calloc((m->nst)*(m->nst), double); 
+    double *T           = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
+    double *newintens   = (double *) S_alloc(m->nintens, sizeof(double));
+    double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
+    double *pmat        = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
+    double *pmatdeath   = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
+    double *pmattodeath = (double *) S_alloc((m->nst)*(m->nst), sizeof(double)); 
     AddCovs(k - 1 + m->covmatch, d, m, newintens);
     AddMiscCovs(k - 1 + m->covmatch, d, m, newmisc);
     /* calculate the transition probability (P) matrix for the time interval dt */
@@ -232,7 +235,6 @@ void UpdateLik(int state, double dt, int k, int last, int predict_death, data *d
     for(i = 0; i < m->nst ; ++i)
 	newprod[i] = newprod[i] / newprod_ave;
     *lweight_new = lweight_old  -  log(newprod_ave);
-    Free(T); Free(newintens); Free(newmisc); Free(pmat); Free(pmatdeath); Free(pmattodeath);
 }
 
 
@@ -241,16 +243,15 @@ void UpdateLik(int state, double dt, int k, int last, int predict_death, data *d
 
 void AddCovs(int obs, data *d, model *m, double *newintens)
 {
-    double *lintens =  Calloc ( m->nintens, double );
+    double *lintens =  (double *) S_alloc ( m->nintens, sizeof(double));
     int j, k;
     for (j = 0; j < m->nintens; ++j)
     { 
-	lintens[j] = log(m->intens[j]);
+	lintens[j] = log(m->intens[m->baseconstraint[j] - 1]);
 	for (k = 0; k < d->ncovs; ++k)
 	    lintens[j] += m->coveffect[m->constraint[MI(k, j, m->nintens)] - 1] * d->cov[MI(d->nobs, obs, k)];
 	newintens[j] = exp(lintens[j]);
     }
-    Free(lintens);
 }
 
 
@@ -258,16 +259,15 @@ void AddCovs(int obs, data *d, model *m, double *newintens)
 
 void AddMiscCovs(int obs, data *d, model *m, double *newp)
 {
-    double *logitp = Calloc ( m->nmisc , double );
+    double *logitp = (double *) S_alloc ( m->nmisc , sizeof(double));
     int j, k;
     for (j = 0; j < m->nmisc; ++j)
     { 
-	logitp[j] = logit(m->miscprobs[j]);
+	logitp[j] = logit(m->miscprobs[m->basemiscconstraint[j] - 1]);
 	for (k = 0; k < d->nmisccovs; ++k)
 	    logitp[j] += m->misccoveffect[m->miscconstraint[MI(k, j, m->nmisc)] - 1] * d->misccov[MI(d->nobs, obs, k)];
 	newp[j] = expit(logitp[j]);
     }
-    Free(logitp);
 }
 
 
@@ -282,7 +282,7 @@ double PObsTrue(int obst,      /* observed state */
 {
     int s;
     double this_miscprob, probsum;
-    double *emat = Calloc( (m->nst)*(m->nst), double);
+    double *emat = (double *) S_alloc( (m->nst)*(m->nst), sizeof(double));
     /* construct the misclassification prob matrix from the parameter vector */
     FillQmatrix(m->evector, miscprobs, emat, m->nst); /* extend this so they sum to 1 instead of 0 ? */
     if (obst == tst){
@@ -294,7 +294,6 @@ double PObsTrue(int obst,      /* observed state */
     }
     else 
 	this_miscprob = emat[MI(tst, obst, m->nst)];
-    Free(emat);
     return this_miscprob;
 }
 
@@ -304,7 +303,7 @@ double PObsTrue(int obst,      /* observed state */
 double liksimple(data *d, model *m)
 {
     int i,j;
-    double dt, lik=0, contrib, *newintens = Calloc ( m->nintens , double );
+    double dt, lik=0, contrib, *newintens = (double *) S_alloc ( m->nintens , sizeof(double));
     for (i = 1; i < d->nobs; ++i){
 	AddCovs(i - 1 + m->covmatch, d, m, newintens);
 	if (d->subject[i-1] == d->subject[i]){ 
@@ -313,7 +312,7 @@ double liksimple(data *d, model *m)
 	    {
 		/* if final state is death, then death date is known within a day */
 		contrib=0;
-		for (j = d->state[i-1]; j < d->state[i]; ++j)
+		for (j = 0; j < m->nst - 1; ++j)
 		  contrib += 
 		      pijt(d->state[i-1], j,  dt - 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes)*
 		      pijt(j, d->state[i], 1 / d->tunit,  newintens, m->qvector, m->nst, m->exacttimes);
@@ -324,7 +323,6 @@ double liksimple(data *d, model *m)
 	    /*	    printf("%d, lik=%lf\n", d->subject[i], lik); */
 	}
     }
-    Free(newintens);
     return (-2*lik); 
 }
 
@@ -334,23 +332,22 @@ double liksimple_fromto(data *d, model *m)
 {
     int i,j;
     double lik=0, contrib;
-    double *newintens = Calloc ( m->nintens , double );
+    double *newintens = (double *) S_alloc ( m->nintens , sizeof(double));
     for (i=0; i < d->nobs; ++i)
     {
 	AddCovs(i, d, m, newintens);
 	if ((m->death) && (d->tostate[i] == m->nst - 1) && (!m->exacttimes)) 
 	{
 	    contrib=0;
-	    for (j = d->state[i]; j < d->tostate[i]; ++j)
-		contrib += 
-		    pijt(d->state[i], j, d->time[i] - 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes)*
-		    pijt(j, d->tostate[i], 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes);
+	    for (j = 0; j < m->nst - 1; ++j)
+	      contrib += 
+		pijt(d->state[i], j, d->time[i] - 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes)*
+		pijt(j, d->tostate[i], 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes);
 	    lik += log(contrib);
 	}
 	else 
 	    lik += log(pijt(d->state[i], d->tostate[i], d->time[i], newintens, m->qvector, m->nst, m->exacttimes));
     }
-    Free(newintens);
     return (-2*lik); 
 }
 
@@ -359,14 +356,14 @@ double liksimple_fromto(data *d, model *m)
 void Viterbi(data *d, model *m, double *fitted)
 {
     int i, true, k, kmax, obs;
-    double *newintens   = Calloc(m->nintens, double );
-    double *newmisc     = Calloc(m->nmisc, double);
-    double *pmat = Calloc((m->nst)*(m->nst), double);
-    double *pmatdeath   = Calloc((m->nst)*(m->nst), double);
-    double *pmattodeath = Calloc((m->nst)*(m->nst), double); 
-    int *ptr = Calloc((d->nobs)*(m->nst), int);
-    double *lvold = Calloc(m->nst, double);
-    double *lvnew = Calloc(m->nst, double);
+    double *newintens   = (double *) S_alloc(m->nintens, sizeof(double));
+    double *newmisc     = (double *) S_alloc(m->nmisc, sizeof(double));
+    double *pmat = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
+    double *pmatdeath   = (double *) S_alloc((m->nst)*(m->nst), sizeof(double));
+    double *pmattodeath = (double *) S_alloc((m->nst)*(m->nst), sizeof(double)); 
+    int *ptr = (int *) S_alloc((d->nobs)*(m->nst), sizeof(int));
+    double *lvold = (double *) S_alloc(m->nst, sizeof(double));
+    double *lvnew = (double *) S_alloc(m->nst, sizeof(double));
     double maxk, try, dt;
 
     for (k = 0; k < m->nst; ++k) 
@@ -432,5 +429,4 @@ void Viterbi(data *d, model *m, double *fitted)
 		lvold[k] = 0;
 	}
     }
-    Free(newintens); Free(newmisc); Free(pmat); Free(pmatdeath); Free(pmattodeath); Free(ptr); Free(lvold); Free(lvnew);
 }

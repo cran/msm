@@ -3,6 +3,30 @@
 USER-VISIBLE CHANGES 
 --------------------
 
+Version 0.3 (September 29, 2003)
+-------------
+
+* Two errors in the calculation of the likelihood for a multi-state
+model have been corrected. These bugs affect only models with
+reversible transition matrices, that is, models which allow
+progression and regression between states.
+
+* The first bug occurred when death times were known to within one time
+unit (death = TRUE) - the likelihood calculation did not account for
+reversible states.
+
+* The second bug occurred when the data represent exact transition times
+(exacttimes = TRUE). The likelihood calculation did not properly
+account for reversible states.
+
+* Baseline transition intensities, or misclassification probabilities,
+can now be constrained to be equal to each other, in the same manner
+as covariate effects. Specified by new arguments "qconstraint" or
+"econstraint".
+
+* The memory allocation problems of version 0.2 have been fixed. 
+
+
 Version 0.22 (June 30, 2003)
 --------------
 
@@ -21,6 +45,7 @@ Version 0.21 (June 3, 2003)
 * Minor edits and additions to the manual.
 
 * The subject ID can now be factor or character.
+
 
 Version 0.2 (January 2003)
 -------------

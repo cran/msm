@@ -2,8 +2,7 @@
 
 print.msm <- function(x,...)
   {
-      cat ("\n Multi-state Markov models in continuous time \n")
-      cat (" -------------------------------------------- \n\n")
+      cat ("\n Multi-state Markov models in continuous time \n\n")
 
       printmatlist <- function(x, cpt, matrixtype, transformtype) {
           M <- x[[cpt]]; MSE <- x[[paste(cpt,"SE",sep="")]]
@@ -147,6 +146,7 @@ qematrix.msm <- function(x, covariates="mean", which="intens", sojourn=FALSE)
     nst <- x$model$nstates
     if (which=="intens"){
         ni <- x$model$nintens
+        nieffs <- x$model$nintenseffs
         nc <- if (!is.list(covariates) && (covariates == "mean")) 0 else x$data$ncovs
         if (nc==0){
             mat <- exp(x$Qmatrices$logbaseline)
@@ -155,11 +155,13 @@ qematrix.msm <- function(x, covariates="mean", which="intens", sojourn=FALSE)
             diag(mat) <- 0;  diag(mat) <- - apply(mat, 1, sum)
         }
         constrvec <- x$model$constrvec
+        baseconstrvec <- x$model$baseconstrvec
         covlabels <- x$data$covlabels
         covmeans <- x$data$covmeans
     }
     else if (which=="misc"){
-        ni <- x$model$nmiscs
+        ni <- x$model$nmisc
+        nieffs <- x$model$nmisceffs
         nc <- if (!is.list(covariates) && (covariates == "mean")) 0 else x$data$nmisccovs
         if (nc==0){
             mat <- expit(x$Ematrices$logitbaseline)
@@ -168,6 +170,7 @@ qematrix.msm <- function(x, covariates="mean", which="intens", sojourn=FALSE)
             diag(mat) <- 0;  diag(mat) <- 1 - apply(mat, 1, sum)
         }
         constrvec <- x$model$miscconstrvec
+        baseconstrvec <- x$model$basemiscconstrvec
         covlabels <- x$data$misccovlabels
         covmeans <- x$data$misccovmeans
     }
@@ -214,7 +217,11 @@ qematrix.msm <- function(x, covariates="mean", which="intens", sojourn=FALSE)
         coefs <- if (!is.list(covariates) && (covariates=="mean")) 1 else c(1, unlist(covariates) - covmeans)
         trsum <- if (which=="intens") expsum else expitsum
         form <- as.formula(paste("~", trsum(seq(nc + 1), coefs)))
-        inds <- if (which=="intens") c(1:ni, ni + constrvec) else x$model$nintens + x$model$ncoveffs + c(1:ni, ni + constrvec) 
+        inds <-
+          if (which=="intens")
+            c(baseconstrvec, x$model$nintenseffs + constrvec)
+          else
+            x$model$nintenseffs + x$model$ncoveffs + c(baseconstrvec, x$model$nmisceffs + constrvec) 
         for (i in 1 : ni){
             parinds <- inds[seq(i, (nc * ni + i), ni)]
             ests <- x$estimates[parinds]
@@ -227,7 +234,7 @@ qematrix.msm <- function(x, covariates="mean", which="intens", sojourn=FALSE)
         semat[ivector == 1] <- se; semat <- t(semat)
         ## SEs of diagonal entries
         diagse <- qematrix.diagse.msm(x, covariates, which, sojourn,
-                                      ni, ivector, nc, constrvec, covlabels, covmeans, trsum)
+                                      ni, nieffs, ivector, nc, constrvec, baseconstrvec, covlabels, covmeans, trsum)
         diag(semat) <- diagse$diagse
         sojse <- diagse$sojse
         dimnames(semat) <- list(paste("Stage", 1:nst), paste("Stage", 1:nst))
@@ -245,15 +252,15 @@ qematrix.msm <- function(x, covariates="mean", which="intens", sojourn=FALSE)
 ### Work out standard errors of diagonal entries of intensity/misc matrix, or sojourn times, using delta method
 
 qematrix.diagse.msm <- function(x, covariates="mean", which="intens", sojourn,
-                                ni, ivector, nc, constrvec, covlabels, covmeans, trsum)
+                                ni, nieffs, ivector, nc, constrvec, baseconstrvec, covlabels, covmeans, trsum)
   {
       nst <- x$model$nstates
       diagse <- sojse <- numeric(nst)
       indmat <- matrix(ivector, nst, nst)
-      indmat[indmat==1] <- 1 : ni
+      indmat[indmat==1] <- baseconstrvec
       indmat <- t(indmat) # matrix of indices of estimate vector 
-      inds <- c(1:ni, ni + constrvec)
-      if (which=="misc") inds <- inds + x$model$nintens + x$model$ncoveffs
+      inds <- c(baseconstrvec, nieffs + constrvec)
+      if (which=="misc") inds <- inds + x$model$nintenseffs + x$model$ncoveffs
       cur.i <- 1
       if (covariates == 0 && nc > 0)
         {covariates <- list();  for (i in 1 : nc) covariates[[covlabels[i]]] <- 0}
@@ -278,7 +285,7 @@ qematrix.diagse.msm <- function(x, covariates="mean", which="intens", sojourn,
           }
           else diagse[i] <- 0
       }
-      return(diagse, sojse)
+      list(diagse=diagse, sojse=sojse)
   }
 
 ### build a string for the delta-method formula for a diagonal intensity
@@ -294,7 +301,7 @@ qematrix.diagse.formstr <- function(nir, inds, cur.i, ni, nc, coefs, offset, trs
     xinds <- rank(parinds2)[match(parinds, parinds2)] + offset
     for (j in 1:nir)
       formstr[j] <- trsum(xinds[1:(nc+1) + (j-1)*(nc+1)], coefs)
-    return(formstr, parinds, parinds2)
+    list(formstr=formstr, parinds=parinds, parinds2=parinds2)
 }
 
 ## Form a string,  exp ( x1 1 + x2 (cov1 - covmean1) + x3 (cov2 - covmean2) + ... )
@@ -333,7 +340,7 @@ qratio.msm <- function(x, ind1, ind2,
           estimate <- q[ind1[1], ind1[2]]  /  q[ind2[1], ind2[2]]
           se <- if (x$foundse) qratio.se.msm(x, ind1, ind2, covariates) else NULL
       }
-      return(estimate, se)
+      list(estimate=estimate, se=se)
   }
 
 ### Work out standard error of a ratio of intensities using delta method
@@ -343,11 +350,12 @@ qratio.se.msm <- function(x, ind1, ind2, covariates="mean")
   {
       nst <- x$model$nstates
       ni <- x$model$nintens
+      nieffs <- x$model$nintenseffs
       nc <- if (!is.list(covariates) && (covariates == "mean")) 0 else x$data$ncovs
       indmat <- matrix(x$model$qvector, nst, nst)
-      indmat[indmat==1] <- 1 : x$model$nintens
+      indmat[indmat==1] <- x$model$baseconstrvec
       indmat <- t(indmat) # matrix of indices of estimate vector 
-      inds <- c(1:ni, ni + x$model$constrvec) # identifiers for q and beta parameters
+      inds <- c(x$model$baseconstrvec, nieffs + x$model$constrvec) # identifiers for q and beta parameters
       if (covariates == 0)
         {covariates <- list();  for (i in 1 : nc) covariates[[x$data$covlabels[i]]] <- 0}
       coefs <- if (!is.list(covariates) && (covariates=="mean")) 1 else c(1, unlist(covariates) - x$data$covmeans)
@@ -426,7 +434,7 @@ pmatrix.msm <- function(x, # fitted msm model
   {
       q <- qmatrix.msm(x, covariates)
       p <- MatrixExp(q$estimates, t)
-      colnames(p) <- rownames(p)
+      colnames(p) <- rownames(p) <- rownames(q$estimates)
       p
   }
 
@@ -469,8 +477,6 @@ pmatrix.piecewise.msm <- function(x, # fitted msm model
       else if (ind2 == ind1 + 1) {
           P.start <- pmatrix.msm(x, times[ind1] - t1 , covariates[[ind1]])
           P.end <- pmatrix.msm(x, t2 - times[ind2-1], covariates[[ind2]])
-          print(P.start)
-          print(P.end)
           P <- P.start %*% P.end
       }
       ## ind1, ind2 separated by one or more whole intervals
@@ -481,8 +487,6 @@ pmatrix.piecewise.msm <- function(x, # fitted msm model
           for (i in (ind1+1):(ind2-1)) {
               P.middle <- P.middle %*% pmatrix.msm(x, times[i] - times[i-1], covariates[[i]])
           }
-          print(P.start)
-          print(P.end)
           P <- P.start %*% P.middle %*% P.end
       }
       
@@ -656,15 +660,15 @@ observed.msm <- function(x, times)
     }
     obstab <- matrix(0, nrow=length(times), ncol=nst)
     risk <- rep(0, length(times))
-    for (pt in unique(subject)){
-        cont <- getcontrib(pt, subject, time, state, times, nst, absorbing.msm(x))
+    for (pt in unique(as.numeric(subject))){
+        cont <- getcontrib(pt, as.numeric(subject), time, state, times, nst, absorbing.msm(x))
         risk <- risk + cont[[1]]
         obstab <- obstab + cont[[2]]
     }
     obstab <- cbind(obstab, apply(obstab, 1, sum))
     dimnames(obstab) <- list(times, c(paste("Stage",1:nst), "Total"))
     obsperc <- 100*obstab[,1:nst] / obstab[, nst+1]
-    return(obstab, obsperc, risk)
+    list(obstab=obstab, obsperc=obsperc, risk=risk)
 }
 
 
@@ -768,11 +772,15 @@ viterbi.msm <- function(x)
                 as.integer (x$model$constrvec),
                 as.double (x$data$misccovvec),
                 as.integer(x$model$miscconstrvec),
-                as.double(x$model$initprobs),
+                as.integer(x$model$baseconstrvec),
+                as.integer(x$model$basemiscconstrvec),
+                as.double (x$model$initprobs),
                 as.integer (x$model$nstates),
                 as.integer (nms),
                 as.integer (x$model$nintens),
-                as.integer (x$model$nmiscs),
+                as.integer (x$model$nintenseffs),
+                as.integer (x$model$nmisc),
+                as.integer (x$model$nmisceffs),
                 as.integer (x$data$nobs),
                 as.integer (x$data$npts),
                 as.integer (x$data$ncovs),

@@ -1,3 +1,55 @@
+2003-09-29 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/outputs.R: Debugging print statements removed from
+	pmatrix.piecewise.msm
+
+	* msm-manual.pdf: Version number added.
+
+	* DESCRIPTION: Version 0.3 released. 
+	
+2003-09-26 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* src/lik.c, src/pijt.c: Allocate memory using S_alloc, not
+	Calloc. Solves the problem of running out of memory for large
+	datasets.
+
+	* R/outputs.R(observed.msm): Fixed a bug with looping over a
+	factor patient ID, which caused prevalence.msm to fail.
+	
+2003-09-25 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/outputs.R(print.msm) Don't draw ASCII underlines under
+	"Multi-state Markov models" banner - looks ugly in proportional
+	font.
+	
+	* R/msm.R: nmiscs model attribute (number of misclassification
+	probabilities) changed to nmisc for compatibility with C code. 
+	
+	* src/lik.c(liksimple, liksimple_fromto): Bug fixed in the
+	likelhood calculation for non-misclassified reversible models with
+	death time known within one day.  The error assumed the unobserved
+	states on the day before death could only be states greater or
+	equal than the previously observed state. This is not true for
+	reversible models.
+
+	* man/summary.msm.Rd: usage and argument lists made consistent,
+	satisfying new R CMD CHECK.
+
+2003-09-24 Chris Jackson   <chris.jackson@imperial.ac.uk>
+	
+	* R/msm.R, R/outputs.R, src/lik.c: A new argument "qconstraint" to
+	msm now allow equality constraints between baseline transition
+	intensities. A similar argument "econstraint" allows equality
+	constraints between misclassification probabilities. Thanks to
+	Mike Sweeting and Ross Boylan for suggesting this.
+
+2003-09-23 Chris Jackson   <chris.jackson@imperial.ac.uk>
+	
+	* src/pijt.c(pijt): Bug fixed in the likelihood calculation for
+	exact transition times with reversible models.  The error assumed
+	Prr(t) was always equal to exp(-qrr t), when this is only
+	satisfied for a state r which is only visited once.
+ 	
 2003-06-30 Chris Jackson   <chris.jackson@imperial.ac.uk>
 
 	* R/outputs.R(qematrix.msm): Didn't work when the baseline rates

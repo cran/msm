@@ -16,7 +16,8 @@
 \usage{
 msm ( formula, qmatrix, misc = FALSE, ematrix, inits, subject,
       covariates = NULL, constraint = NULL, misccovariates = NULL,
-      miscconstraint = NULL, covmatch = "previous", initprobs = NULL, 
+      miscconstraint = NULL, qconstraint=NULL, econstraint=NULL,
+      covmatch = "previous", initprobs = NULL, 
       data = list(), fromto = FALSE, fromstate, tostate, timelag,
       death = FALSE, tunit = 1.0, exacttimes = FALSE,
       fixedpars = NULL, ... )
@@ -27,7 +28,9 @@ msm ( formula, qmatrix, misc = FALSE, ematrix, inits, subject,
     
     \code{states ~ times}
 
-    See \code{fromto} for an alternative way to specify the data.
+    See \code{fromto} for an alternative way to specify the
+    data. Observed states should be in the set \code{1, \dots, n},
+    where \code{n} is the number of states.
   }
 
   \item{qmatrix}{Matrix of indicators for the allowed transitions.
@@ -150,6 +153,19 @@ misclassifications.
     constrained to be equal, analogously to \code{constraint}.
   }
 
+  \item{qconstraint}{A vector of indicators specifying which baseline
+    transition intensities are equal. For example,
+    
+    \code{qconstraint = c(1,2,3,3)}
+
+    constrains the third and fourth intensities to be equal, in a model
+    with four allowed instantaneous transitions. 
+  }
+
+  \item{econstraint}{A similar vector of indicators specifying which
+    baseline misclassification probabiliities are constrained to be
+    equal. }
+  
   \item{covmatch}{If \code{"previous"}, then time-dependent covariate
     values are taken from the observation at the start of the
     transition. If \code{"next"}, then the covariate value is taken from

@@ -1,0 +1,8 @@
+How to extend so that baselines can be constrained. 
+
+Works like this. 
+
+msm.process.covs(covariates, constraint, ...) 
+
+Add baseconstraint, basemiscconstraint, arguments
+

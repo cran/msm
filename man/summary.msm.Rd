@@ -9,12 +9,11 @@
 }
 \usage{
 \method{summary}{msm}(object, times=NULL, timezero=NULL, initstates=NULL,
-covariates="mean", misccovariates="mean", hazard.scale=NULL,\dots)
+covariates="mean", misccovariates="mean", hazard.scale=NULL, \dots)
 }
 \arguments{
   \item{object}{A fitted multi-state model object, as returned by
     \code{\link{msm}}.}
-
   \item{times}{A sequence of times at which to compare observed
     and expected prevalences of each state. Defaults to
     \code{seq(min(times), max(times), (max(times) - min(times))/10).
@@ -36,8 +35,6 @@ covariates="mean", misccovariates="mean", hazard.scale=NULL,\dots)
   \item{hazard.scale}{Vector with same elements as number of covariates
     on transition rates. Corresponds to the increase in each covariate
     used to calculate its hazard ratio. Defaults to all 1.}  
-  \item{x}{An object of class \code{summary.msm} usually, a result of a
-    call to \code{\link{summary.msm}}}
   \item{...}{further arguments passed to or from other methods}
 }
 

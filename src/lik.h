@@ -14,41 +14,45 @@ typedef double * vector;
 typedef int * ivector;
 
 struct data {
-  int *subject;
-  double *time;
-  int *state;
-  int *tostate;
-  int fromto;
-  double *cov;
-  double *misccov;
-  int nobs;
-  int npts;
-  int ncovs;
-  int nmisccovs;
-  double tunit;
+    int *subject;
+    double *time;
+    int *state;
+    int *tostate;
+    int fromto;
+    double *cov;
+    double *misccov;
+    int nobs;
+    int npts;
+    int ncovs;
+    int nmisccovs;
+    double tunit;
 };
 
 typedef struct data data;
 
 struct model {
-  int *qvector;
-  int *evector;
-  int *constraint;
-  int *miscconstraint;
-  int nst;
-  int nms;
-  int nintens;
-  int nmisc;
-  int ncoveffs;
-  int nmisccoveffs;
-  int covmatch;
-  int death;
-  int exacttimes;
-  double *intens;
-  double *coveffect;
-  double *miscprobs;
-  double *misccoveffect;
-  double *initprobs;
+    int *qvector;
+    int *evector;
+    int *constraint;
+    int *miscconstraint;
+    int *baseconstraint;
+    int *basemiscconstraint;
+    int nst;
+    int nms;
+    int nintens;
+    int nintenseffs;
+    int nmisc;
+    int nmisceffs;
+    int ncoveffs;
+    int nmisccoveffs;
+    int covmatch;
+    int death;
+    int exacttimes;
+    double *intens;
+    double *coveffect;
+    double *miscprobs;
+    double *misccoveffect;
+    double *initprobs;
 };
 
 typedef struct model model;
@@ -69,11 +73,15 @@ void msmCEntry(int *do_what,      /* 1 = eval likelihood, 2 = Viterbi, 3 = predi
 	       int *constrvec,    /* list of constraints for each covariate */
 	       double *misccovvec,/* vectorised matrix of misclassification covariate values */
 	       int *miscconstrvec,/* list of constraints for each misclassification covariate */
+	       int *baseconstraint, /* constraints on baseline transition intensities */
+	       int *basemiscconstraint, /* constraints on baseline misclassification probabilities */
 	       double *initprobs, /* initial state occupancy probabilities */
 	       int *nstates,      /* number of Markov states */
 	       int *nms,          /* number of underlying states which can be misclassified */
 	       int *nintens,      /* number of intensity parameters */
+	       int *nintenseffs,  /* number of distinct intensity parameters */
 	       int *nmisc,        /* number of misclassification rates */
+	       int *nmisceffs,    /* number of distinct misclassification rates */
 	       int *nobs,         /* number of observations in data set */
 	       int *npts,         /* number of individuals in data set */
 	       int *ncovs,        /* number of covariates on transition rates */
@@ -88,7 +96,7 @@ void msmCEntry(int *do_what,      /* 1 = eval likelihood, 2 = Viterbi, 3 = predi
 	       double *predtimes, /* prediction times for one-step-ahead prediction */
 	       int *npreds,       /* number of prediction times */
 	       double *returned   /* returned -2 log likelihood */
-  );
+	       );
 
 void msmLikelihood (data *d, model *m, int misc, double *returned);
 
@@ -102,7 +110,7 @@ void fillparvec(double *parvec, /* named vector to fill (e.g. intens = baseline 
 		int *ifix,  /* current index into fixi */
 		int *iopt,  /* current index into params */
 		int *iall   /* current index into allinits */
-  );
+		);
 
 double likmisc(int pt, data *d, model *m);
 void UpdateLik(int state, double dt, int k, int last, int predict_death, data *d, model *m, 
@@ -113,7 +121,7 @@ double PObsTrue(int obst,      /* observed state */
 		int tst,       /* true state */
 		double *miscprobs, /* misclassification probabilities */
 		model *m
-  );
+		);
 double liksimple(data *d, model *m);
 double liksimple_fromto(data *d, model *m);
 void Viterbi(data *d, model *m, double *fitted);
