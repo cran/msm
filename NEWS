@@ -3,6 +3,20 @@
 USER-VISIBLE CHANGES 
 --------------------
 
+Version 0.3.1 (October 14, 2003)
+-------------
+
+* Bug fix. The likelihood was being wrongly calculated in cases when
+both the data represent exact transition times and the transition
+intensity matrix had repeated eigenvalues. 
+
+* The "death" argument is no longer ignored when exacttimes=TRUE, as
+it is reasonable to have the entry time into one state accurate to
+within one day, and all other times exactly accurate.
+
+* More memory problems should be fixed. 
+
+
 Version 0.3 (September 29, 2003)
 -------------
 

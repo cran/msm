@@ -202,11 +202,11 @@ void UpdateLik(int state, double dt, int k, int last, int predict_death, data *d
     AddMiscCovs(k - 1 + m->covmatch, d, m, newmisc);
     /* calculate the transition probability (P) matrix for the time interval dt */
     Pmat(pmat, dt, newintens, m->qvector, m->nst, m->exacttimes);
-    if ((state == m->nst - 1) && (m->death) && (!m->exacttimes))
+    if ((state == m->nst - 1) && (m->death))
     {
 	/* or dt - 1 day and 1 day, if death time is known within a day */
-	Pmat(pmattodeath, dt - 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes);
-	Pmat(pmatdeath, 1/d->tunit, newintens, m->qvector, m->nst, m->exacttimes);
+	Pmat(pmattodeath, dt - 1 / d->tunit, newintens, m->qvector, m->nst, 0);
+	Pmat(pmatdeath, 1/d->tunit, newintens, m->qvector, m->nst, 0);
     }
     for(j = 0; j < m->nst; ++j)
     {
@@ -308,19 +308,18 @@ double liksimple(data *d, model *m)
 	AddCovs(i - 1 + m->covmatch, d, m, newintens);
 	if (d->subject[i-1] == d->subject[i]){ 
 	    dt = d->time[i] - d->time[i-1];
-	    if ((m->death) && (d->state[i] == m->nst - 1) && (!m->exacttimes)) 
-	    {
-		/* if final state is death, then death date is known within a day */
-		contrib=0;
-		for (j = 0; j < m->nst - 1; ++j)
-		  contrib += 
-		      pijt(d->state[i-1], j,  dt - 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes)*
-		      pijt(j, d->state[i], 1 / d->tunit,  newintens, m->qvector, m->nst, m->exacttimes);
-		lik += log(contrib);
-	    }
+	    if ((m->death) && (d->state[i] == m->nst - 1)) 
+		{
+		    /* if final state is death, then death date is known within a day */
+		    contrib=0;
+		    for (j = 0; j < m->nst - 1; ++j)
+			contrib += 
+			    pijt(d->state[i-1], j,  dt - 1 / d->tunit, newintens, m->qvector, m->nst, 0)*
+			    pijt(j, d->state[i], 1 / d->tunit,  newintens, m->qvector, m->nst, 0);
+		    lik += log(contrib);
+		}
 	    else 
 		lik += log(pijt(d->state[i-1], d->state[i], dt, newintens, m->qvector, m->nst, m->exacttimes));
-	    /*	    printf("%d, lik=%lf\n", d->subject[i], lik); */
 	}
     }
     return (-2*lik); 
@@ -336,13 +335,13 @@ double liksimple_fromto(data *d, model *m)
     for (i=0; i < d->nobs; ++i)
     {
 	AddCovs(i, d, m, newintens);
-	if ((m->death) && (d->tostate[i] == m->nst - 1) && (!m->exacttimes)) 
+	if ((m->death) && (d->tostate[i] == m->nst - 1)) 
 	{
 	    contrib=0;
 	    for (j = 0; j < m->nst - 1; ++j)
 	      contrib += 
-		pijt(d->state[i], j, d->time[i] - 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes)*
-		pijt(j, d->tostate[i], 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes);
+		pijt(d->state[i], j, d->time[i] - 1 / d->tunit, newintens, m->qvector, m->nst, 0)*
+		pijt(j, d->tostate[i], 1 / d->tunit, newintens, m->qvector, m->nst, 0);
 	    lik += log(contrib);
 	}
 	else 
@@ -378,8 +377,8 @@ void Viterbi(data *d, model *m, double *fitted)
 	    AddMiscCovs(i-1 + m->covmatch, d, m, newmisc);
 	    Pmat(pmat, dt, newintens, m->qvector, m->nst, m->exacttimes);
 	    if ((d->state[k] == m->nst - 1) && (m->death)){
-		Pmat(pmattodeath, dt - 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes);
-		Pmat(pmatdeath, 1 / d->tunit, newintens, m->qvector, m->nst, m->exacttimes);
+		Pmat(pmattodeath, dt - 1 / d->tunit, newintens, m->qvector, m->nst, 0);
+		Pmat(pmatdeath, 1 / d->tunit, newintens, m->qvector, m->nst, 0);
 	    }
 	    /* TODO: some sort of utility function for maxima and positional maxima ? */
 	    for (true = 0; true < m->nst; ++true)

@@ -585,7 +585,7 @@ msm.check.times <- function(time, subject)
           stop (paste ("Observations within subject", plural, " ", badlist, " are not in strictly increasing order of time", sep="") )
       }
 ### CHECK IF ANY INDIVIDUALS HAVE ONLY ONE OBSERVATION
-      nobspt <- tapply(subject, subject, length)
+      nobspt <- table(subject)
       if (any (nobspt == 1)) {
           badsubjs <- sort(unique(subject))[ nobspt == 1 ]
           badlist <- paste(badsubjs, collapse=", ")
