@@ -147,10 +147,11 @@ qematrix.msm <- function(x, covariates="mean", which="intens", sojourn=FALSE)
     nst <- x$model$nstates
     if (which=="intens"){
         ni <- x$model$nintens
-        nc <- if (covariates == "mean") 0 else x$data$ncovs
+        nc <- if (!is.list(covariates) && (covariates == "mean")) 0 else x$data$ncovs
         if (nc==0){
             mat <- exp(x$Qmatrices$logbaseline)
-            mat[x$Qmatrices$logbaseline == 0] <- 0
+            qmatrix.ind <- t(matrix(x$model$qvector, nrow=x$model$nstates))
+            mat[qmatrix.ind == 0] <- 0
             diag(mat) <- 0;  diag(mat) <- - apply(mat, 1, sum)
         }
         constrvec <- x$model$constrvec
@@ -159,10 +160,11 @@ qematrix.msm <- function(x, covariates="mean", which="intens", sojourn=FALSE)
     }
     else if (which=="misc"){
         ni <- x$model$nmiscs
-        nc <- if (covariates == "mean") 0 else x$data$nmisccovs
+        nc <- if (!is.list(covariates) && (covariates == "mean")) 0 else x$data$nmisccovs
         if (nc==0){
             mat <- expit(x$Ematrices$logitbaseline)
-            mat[x$Ematrices$logitbaseline == 0] <- 0
+            ematrix.ind <- t(matrix(x$model$evector, nrow=x$model$nstates))
+            mat[ematrix.ind == 0] <- 0
             diag(mat) <- 0;  diag(mat) <- 1 - apply(mat, 1, sum)
         }
         constrvec <- x$model$miscconstrvec
@@ -189,7 +191,8 @@ qematrix.msm <- function(x, covariates="mean", which="intens", sojourn=FALSE)
             for (i in 1 : nc)
               logq <- logq + x$Qmatrices[[i+1]] * (covariates[[i]] - covmeans[i])
             mat <- exp(logq)
-            mat[x$Qmatrices$logbaseline == 0] <- 0
+            qmatrix.ind <- t(matrix(x$model$qvector, nrow=x$model$nstates))
+            mat[qmatrix.ind == 0] <- 0
             diag(mat) <- 0;  diag(mat) <- - apply(mat, 1, sum)
         }
         else if (which=="misc"){
@@ -197,7 +200,8 @@ qematrix.msm <- function(x, covariates="mean", which="intens", sojourn=FALSE)
             for (i in 1 : nc)
               logite <- logite + x$Ematrices[[i+1]] * (covariates[[i]] - covmeans[i])
             mat <- expit(logite)
-            mat[x$Ematrices$logitbaseline == 0] <- 0
+            ematrix.ind <- t(matrix(x$model$evector, nrow=x$model$nstates))
+            mat[ematrix.ind == 0] <- 0
             diag(mat) <- 0;  diag(mat) <- 1 - apply(mat, 1, sum)
         }        
     }
@@ -207,7 +211,7 @@ qematrix.msm <- function(x, covariates="mean", which="intens", sojourn=FALSE)
         ## Work out standard errors. 
         ## Transformation for delta method is
         ##  exp (or expit) (x1 + x2 (cov1 - covmean1) + x3 (cov2 - covmean2) + ... )
-        coefs <- if (covariates=="mean") 1 else c(1, unlist(covariates) - covmeans)
+        coefs <- if (!is.list(covariates) && (covariates=="mean")) 1 else c(1, unlist(covariates) - covmeans)
         trsum <- if (which=="intens") expsum else expitsum
         form <- as.formula(paste("~", trsum(seq(nc + 1), coefs)))
         inds <- if (which=="intens") c(1:ni, ni + constrvec) else x$model$nintens + x$model$ncoveffs + c(1:ni, ni + constrvec) 
@@ -253,7 +257,7 @@ qematrix.diagse.msm <- function(x, covariates="mean", which="intens", sojourn,
       cur.i <- 1
       if (covariates == 0 && nc > 0)
         {covariates <- list();  for (i in 1 : nc) covariates[[covlabels[i]]] <- 0}
-      coefs <- if (covariates=="mean") 1 else c(1, unlist(covariates) - covmeans)
+      coefs <- if (!is.list(covariates) && (covariates=="mean")) 1 else c(1, unlist(covariates) - covmeans)
       for (i in 1:nst){
           ## Transformation for delta method is
           ## exp(x1 + x2 (cov1 - covmean1) + x3 (cov2 - covmean2) + ... ) +
@@ -339,14 +343,14 @@ qratio.se.msm <- function(x, ind1, ind2, covariates="mean")
   {
       nst <- x$model$nstates
       ni <- x$model$nintens
-      nc <- if (covariates == "mean") 0 else x$data$ncovs
+      nc <- if (!is.list(covariates) && (covariates == "mean")) 0 else x$data$ncovs
       indmat <- matrix(x$model$qvector, nst, nst)
       indmat[indmat==1] <- 1 : x$model$nintens
       indmat <- t(indmat) # matrix of indices of estimate vector 
       inds <- c(1:ni, ni + x$model$constrvec) # identifiers for q and beta parameters
       if (covariates == 0)
         {covariates <- list();  for (i in 1 : nc) covariates[[x$data$covlabels[i]]] <- 0}
-      coefs <- if (covariates=="mean") 1 else c(1, unlist(covariates) - x$data$covmeans)
+      coefs <- if (!is.list(covariates) && (covariates=="mean")) 1 else c(1, unlist(covariates) - x$data$covmeans)
       parinds <- numeric()
       indmatrow.n <- indmat[ind1[1],-ind1[1]]
       nir.n <- sum(indmatrow.n > 0)
@@ -425,6 +429,66 @@ pmatrix.msm <- function(x, # fitted msm model
       colnames(p) <- rownames(p)
       p
   }
+
+### Extract the transition probability matrix at given covariate values - where the Q matrix is piecewise-constant
+
+pmatrix.piecewise.msm <- function(x, # fitted msm model
+                                   t1, # start time
+                                   t2, # stop time                                    
+                                   times,  # vector of cut points 
+                                   covariates # list of lists of covariates, for (, times1], (times1, times2], ...
+                                        # of length one greater than times 
+                                   )
+  {
+      ## Input checks
+      if (t2 < t1) stop("Stop time t2 earlier than start time t1")
+      if (length(covariates) != length(times) + 1)
+        stop("Number of covariate lists must be one greater than the number of cut points")
+      ## Locate which intervals t1 and t2 fall in, as indices ind1, ind2 into "times". 
+      if (t1 <= times[1]) ind1 <- 1
+      else {
+          for (i in 2:length(times))
+            if ((t1 > times[i-1]) && (t1 <= times[i]))
+              {ind1 <- i; break}
+          if (t1 > times[i]) ind1 <- i+1
+      }
+      if (t2 <= times[1]) ind2 <- 1
+      else {
+          for (i in 2:length(times))
+            if ((t2 > times[i-1]) && (t2 <= times[i]))
+              {ind2 <- i; break}
+          if (t2 > times[i]) ind2 <- i+1
+      }
+      
+      ## Calculate accumulated pmatrix
+      ## Three cases: ind1, ind2 in the same interval
+      if (ind1 == ind2) {
+          P <- pmatrix.msm(x, t2 - t1, covariates[[ind1]])
+      }
+      ## ind1, ind2 in successive intervals
+      else if (ind2 == ind1 + 1) {
+          P.start <- pmatrix.msm(x, times[ind1] - t1 , covariates[[ind1]])
+          P.end <- pmatrix.msm(x, t2 - times[ind2-1], covariates[[ind2]])
+          print(P.start)
+          print(P.end)
+          P <- P.start %*% P.end
+      }
+      ## ind1, ind2 separated by one or more whole intervals
+      else {
+          P.start <- pmatrix.msm(x, times[ind1] - t1 , covariates[[ind1]])
+          P.end <- pmatrix.msm(x, t2 - times[ind2-1], covariates[[ind2]])
+          P.middle <- diag(x$model$nstates)
+          for (i in (ind1+1):(ind2-1)) {
+              P.middle <- P.middle %*% pmatrix.msm(x, times[i] - times[i-1], covariates[[i]])
+          }
+          print(P.start)
+          print(P.end)
+          P <- P.start %*% P.middle %*% P.end
+      }
+      
+      P   
+  }
+
 
 ### Extract the mean sojourn times for given covariate values (NEW VERSION)
 

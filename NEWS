@@ -3,8 +3,18 @@
 USER-VISIBLE CHANGES 
 --------------------
 
-Version 0.21 (June 2003)
-------------
+Version 0.22 (June 30, 2003)
+--------------
+
+* Fixed some minor bugs, as detailed in ChangeLog. 
+
+* New function, pmatrix.piecewise.msm, for calculating transition
+probability matrices for processes with piecewise-constant
+intensities.
+
+
+Version 0.21 (June 3, 2003)
+--------------
 
 * Fixed a handful of minor bugs, as detailed in ChangeLog. 
 
@@ -13,7 +23,7 @@ Version 0.21 (June 2003)
 * The subject ID can now be factor or character.
 
 Version 0.2 (January 2003)
------------
+-------------
 
 * A full manual in PDF format is included in the doc directory. This
 gives the mathematical background behind multi-state modelling, and a
@@ -56,6 +66,6 @@ that all the examples given in the manual can be run by the user.
 
 
 Version 0.1 (November 2002)
------------
+-------------
 
 * First release. 
