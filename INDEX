@@ -1,34 +1,32 @@
 aneur                   Aortic aneurysm progression data
-coef.msm		Extract multi-state model coefficients
-crudeinits.msm		Calculate crude initial values for transition intensities
+coef.msm                Extract model coefficients
+crudeinits.msm          Calculate crude initial values for transition
+                        intensities
 deltamethod             The delta method
-ematrix.msm		Misclassification probability matrix
+ematrix.msm             Misclassification probability matrix
 expit                   Inverse logit function
 hazard.msm              Calculate tables of hazard ratios for
                         covariates on transition intensities
-heart			Heart transplant monitoring data
+heart                   Heart transplant monitoring data
 logit                   Logit function
 MatrixExp               Matrix exponential
-msm-internal            Internal msm functions
 msm                     Multi-state Markov models
-odds.msm		Calculate tables of odds ratios for covariates on misclassification probabilities
-
+odds.msm                Calculate tables of odds ratios for covariates
+                        on misclassification probabilities
 plot.msm                Plots of multi-state models
-pmatrix.msm		Transition probability matrix
-prevalence.msm          Calculate tables of observed and expected
-                        prevalences at a series of times
+pmatrix.msm             Transition probability matrix
+prevalence.msm          Tables of observed and expected prevalences
 print.msm               Print a fitted multi-state model
-qmatrix.msm		Transition intensity matrix
-qratio.msm		Estimated ratio of transition intensities
+qmatrix.msm             Transition intensity matrix
+qratio.msm              Estimated ratio of transition intensities
 sim.msm                 Simulate one individual trajectory from a
                         continuous-time Markov model
 simmulti.msm            Simulate multiple trajectories from a
                         multi-state Markov model with arbitrary
                         observation times
-sojourn.msm             Calculate mean sojourn times from a multi-state
-                        model
-statetable.msm		Table of transitions observed in the data
-totlos.msm		Total length of stay
+sojourn.msm             Mean sojourn times from a multi-state model
+statetable.msm          Table of transitions
 msm.summary             Summarise a fitted multi-state model
+totlos.msm              Total length of stay
 viterbi.msm             Calculate the most likely path through
                         underlying stages

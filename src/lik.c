@@ -314,6 +314,7 @@ double liksimple(data *d, model *m)
 	    }
 	    else 
 		lik += log(pijt(d->state[i-1], d->state[i], dt, newintens, m->qvector, m->nst, m->exacttimes));
+	    /*	    printf("%d, lik=%lf\n", d->subject[i], lik); */
 	}
     } 
     return (-2*lik); 

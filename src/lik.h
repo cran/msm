@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <R.h>
 #include <R_ext/Applic.h>
+/* #include <stdio.h> */
 
 #define MI(i, j, ncols) ( (int) ((i)*(ncols) + (j)) ) /* index to treat a vector as a matrix. Fills rows first  */
 #define logit(x) (log ( (x) / (1 - (x))))

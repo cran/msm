@@ -58,5 +58,5 @@ estvar <- summary(toy.lm)$cov.unscaled
 ## Approximate standard error of (1 / (alphahat + betahat))
 deltamethod (~ 1 / (x1 + x2), estmean, estvar) 
 }
-\author{C. H. Jackson \email{chris.jackson@ic.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{math}

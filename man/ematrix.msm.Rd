@@ -54,5 +54,5 @@ ematrix.msm(x, covariates="mean")
 }
 \examples{
 }
-\author{C. H. Jackson}
+\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{models}

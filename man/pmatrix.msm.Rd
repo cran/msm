@@ -47,5 +47,5 @@ pmatrix.msm(x, t, covariates="mean")
 \seealso{
   \code{\link{qmatrix.msm}}
 }
-\author{C. H. Jackson}
+\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{}

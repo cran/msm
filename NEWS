@@ -3,6 +3,15 @@
 USER-VISIBLE CHANGES 
 --------------------
 
+Version 0.21 (June 2003)
+------------
+
+* Fixed a handful of minor bugs, as detailed in ChangeLog. 
+
+* Minor edits and additions to the manual.
+
+* The subject ID can now be factor or character.
+
 Version 0.2 (January 2003)
 -----------
 

@@ -95,7 +95,7 @@ getobs.msm <- function(sim,          # output from simMSM
               else if ((obstimes[i] >= max(sim$times)) && (sim$states[j+1] %in% absorbing)){
                   obsstate[i] <- nstates
                   if (death)
-                    obstimes[i] <- (1/tunit) * ceiling(obstimes[i] / (1/tunit))
+                    obstimes[i] <- (1/tunit) * ceiling(sim$times[j+1] / (1/tunit))
                   keep.time[i] <- i
                   absorbed <- TRUE
                   found <- TRUE
@@ -138,7 +138,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
       covnames <- setdiff(names(data), c("subject","time"))
       ncovs <- length(covnames)
       times <- split(time, subject)
-      covs <- if (ncovs > 0) split(data[,covnames], subject) else NULL
+      covs <- if (ncovs > 0) lapply(split(data[,covnames], subject), as.matrix) else NULL
       n <- length(unique(subject))
             
 ### Check consistency of qmatrix

@@ -64,6 +64,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
 ### BASIC DATA: BY OBSERVATION TIME
       else { 
           ## form vectors with subject ID, state and corresponding observation time
+          ## Store subject internally as a factor. 
           mf <- model.frame(formula, data=data)
           state <- mf[,1]
           time <- mf[,2]
@@ -74,7 +75,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
             if (missing(subject)) rep(1, dim(mf)[1])
             else eval(substitute(subject), data, parent.frame())
           subjrows.kept <- (1:nobs) [!is.na(subject)]
-          subject <- na.omit(subject)
+          subject <- factor(na.omit(subject))
           fromstate <- tostate <- timelag <- NULL
       }
       npts <- length(unique(subject))      
@@ -85,11 +86,11 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
           pc <- msm.process.covs(covariates, data, constraint, nobs, nintens)
           covvec <- pc$covvec;  constrvec <- pc$constrvec;  covlabels <- pc$covlabels
           ncovs <- pc$ncovs;  ncoveffs <- pc$ncoveffs; covrows.kept <- pc$kept.rows
-          covmeans <- pc$covmeans
+          covmeans <- pc$covmeans; covfactor <- pc$covfactor
       }
       else {
           ncovs <- ncoveffs <- 0
-          covvec <- constrvec <- covlabels <- covmeans <- NULL
+          covvec <- constrvec <- covlabels <- covmeans <- covfactor <- NULL
       }      
 
 ### MISCLASSIFICATION COVARIATES
@@ -97,22 +98,22 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
           pc <- msm.process.covs(misccovariates, data, miscconstraint, nobs, nmiscs)
           misccovvec <- pc$covvec;  miscconstrvec <- pc$constrvec;  misccovlabels <- pc$covlabels
           nmisccovs <- pc$ncovs;  nmisccoveffs <- pc$ncoveffs; misccovrows.kept <- pc$kept.rows
-          misccovmeans <- pc$covmeans
+          misccovmeans <- pc$covmeans; misccovfactor <- pc$covfactor
       }
       else if (is.null (misccovariates) | (!misc)) {
           if (!is.null (misccovariates))
             warning("misccovariates have been specified, but misc is FALSE. Ignoring misccovariates.")
           nmisccovs <- nmisccoveffs <- 0
-          misccovvec <- miscconstrvec <- misccovlabels <- misccovmeans <- NULL
+          misccovvec <- miscconstrvec <- misccovlabels <- misccovmeans <- misccovfactor <- NULL
       }
 
 ### DROP MISSING DATA      
       final.rows <- intersect(intersect(statetimerows.kept, subjrows.kept),
                               intersect(covrows.kept, misccovrows.kept))
-      subject <- subject[ subjrows.kept %in% final.rows ]
+      if (!fromto) subject <- factor(subject[ subjrows.kept %in% final.rows ])
       time <- time[ statetimerows.kept %in% final.rows ]
       state <- state[ statetimerows.kept %in% final.rows ]
-      tostate <- tostate[ statetimerows.kept %in% final.rows ]
+      if (fromto) tostate <- tostate[ statetimerows.kept %in% final.rows ]
       if (ncovs>0) covvec <- as.numeric(t(matrix(covvec, ncol=ncovs)[covrows.kept %in% final.rows]))
       if (nmisccovs>0) misccovvec <- as.numeric(t(matrix(misccovvec, ncol=nmisccovs)[misccovrows.kept %in% final.rows]))
       nmiss <- length(setdiff(1:nobs, final.rows))
@@ -157,8 +158,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                             initprobs, nstates, nintens, nmiscs, nobs, npts,
                             ncovs, ncoveffs, nmisccovs, nmisccoveffs, covmatch,
                             death, tunit, exacttimes, fixedpars, plabs)
-###          bits <- likval$likbits # for debugging
-###          likval <- likval$endlik
+          likval <- likval$endlik
           params <- inits
           covmat <- NULL
           foundse <- FALSE
@@ -227,7 +227,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                          data = list(nobs=nobs, npts=npts, state=state, time=time, subject=subject,
                            fromto=fromto, tostate=tostate,
                            covvec=covvec, covmeans=covmeans, 
-                           covlabels=covlabels, ncovs=ncovs,
+                           covlabels=covlabels, covfactor=covfactor, ncovs=ncovs,
                            nmisccovs=nmisccovs, tunit=tunit),
                          model = list(qvector=qvector, evector=evector,
                            nstates=nstates, nintens=nintens, nmiscs=nmiscs, 
@@ -254,6 +254,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       if (nmisccovs > 0){
           msmobject$data$misccovvec <- misccovvec;  msmobject$data$misccovmeans <- misccovmeans
           msmobject$data$misccovlabels <- misccovlabels;  msmobject$model$miscconstrvec <- miscconstrvec
+          msmobject$data$misccovfactor <- misccovfactor
       }
       
       ## Calculate mean sojourn times with centered covariates
@@ -330,10 +331,8 @@ lik.msm <- function(params, allinits, misc, subject, time, state, tostate, fromt
                 as.integer(fixedpars),
                 as.double(NULL),
                 as.integer(NULL),
-                endlik = double(1),
-                )
-      
-###      list(endlik=lik$endlik, likbits=lik$likbits) # for debugging
+                endlik = double(1)
+                )      
       lik$endlik
   }
 
@@ -359,6 +358,7 @@ msm.process.covs <- function(covariates, # formula:  ~ cov1 + cov2 + ...
       ## centre the covariates about their means
       covmeans <- apply(mm, 2, mean)
       covstds <- apply(mm, 2, sd)
+      covfactor <- sapply(mf, is.factor)
       mm <- sweep(mm, 2, covmeans)
       ##       mm <- sweep(mm, 2, covstds, "/")
       covvec <- unlist(mm)
@@ -393,6 +393,7 @@ msm.process.covs <- function(covariates, # formula:  ~ cov1 + cov2 + ...
       list(covvec=covvec, # vector of concatenated covariate data
            constrvec=constrvec, 
            covlabels=covlabels, # covariate names
+           covfactor=covfactor, # indicators for whether each covariate is a factor
            ncovs=ncovs,         # number of covariates
            ncoveffs=ncoveffs,   # number of distinct covariate effect parameters
            covmeans=covmeans,
@@ -524,7 +525,8 @@ msm.check.model <- function(state, subject, qmatrix, fromto=FALSE, tostate=NULL)
     if (fromto) fromstate <- state
     else {
         fromstate <- c(NA, state[1:(n-1)])
-        fromstate[subject != c(NA, subject[1:(n-1)])] <- NA
+        subj.num <- as.numeric(factor(subject))
+        fromstate[subj.num != c(NA, subj.num[1:(n-1)])] <- NA
         tostate <- state
     }
     tostate <- tostate[!is.na(fromstate)]
@@ -543,20 +545,32 @@ msm.check.model <- function(state, subject, qmatrix, fromto=FALSE, tostate=NULL)
 msm.check.times <- function(time, subject)
   {
 ### CHECK IF OBSERVATIONS ARE ORDERED IN TIME WITHIN SUBJECT
-      orderedpt <- tapply(time, subject, function(x) { any(duplicated(x)) | all(order(x)==1:length(x)) })
+      orderedpt <- tapply(time, subject, function(x) { all(!duplicated(x) & order(x)==1:length(x)) })
       if (any (!orderedpt)) {
-          badsubjs <- unique(subject)[ !orderedpt ]
+          badsubjs <- sort(unique(subject))[ !orderedpt ]
           badlist <- paste(badsubjs, collapse=", ")
           plural <- if (length(badsubjs)==1) "" else "s"
-          stop (paste ("Observations within subject", plural, " ", badlist, " are not strictly increasing", sep="") )
+          stop (paste ("Observations within subject", plural, " ", badlist, " are not in strictly increasing order of time", sep="") )
       }
 ### CHECK IF ANY INDIVIDUALS HAVE ONLY ONE OBSERVATION
       nobspt <- tapply(subject, subject, length)
       if (any (nobspt == 1)) {
-          badsubjs <- unique(subject)[ nobspt == 1 ]
+          badsubjs <- sort(unique(subject))[ nobspt == 1 ]
           badlist <- paste(badsubjs, collapse=", ")
           plural <- if (length(badsubjs)==1) "" else "s"
-          stop (paste ("Subject", plural, " ", badlist, " only have one observation", sep="") )
+          has <-  if (length(badsubjs)==1) "has" else "have"
+          stop (paste ("Subject", plural, " ", badlist, " only ", has, " one observation", sep="") )
+      }
+### CHECK IF OBSERVATIONS WITHIN A SUBJECT ARE ADJACENT
+      ind <- tapply(1:length(subject), subject, length)
+      imin <- tapply(1:length(subject), subject, min)
+      imax <- tapply(1:length(subject), subject, max)
+      adjacent <- (ind == imax-imin+1)
+      if (any (!adjacent)) {  
+          badsubjs <- sort(unique(subject))[ !adjacent ]
+          badlist <- paste(badsubjs, collapse=", ")
+          plural <- if (length(badsubjs)==1) "" else "s"
+          stop (paste ("Observations within subject", plural, " ", badlist, " are not adjacent in the data file", sep="") )
       }
       invisible()
   }
@@ -568,6 +582,7 @@ msm.check.tunit <- function(fromto, time, subject, timelag, tunit)
     n <- length(time)
     if (!fromto) {
         prevtime <- c(NA, time[1:(n-1)])
+        subject <- as.numeric(factor(subject))
         prevtime[subject != c(NA, subject[1:(n-1)])] <- NA
         timelag <- time - prevtime
     }
@@ -584,10 +599,15 @@ msm.check.tunit <- function(fromto, time, subject, timelag, tunit)
 
 statetable.msm <- function(state, subject, data=NULL)
 {
-    if(!is.null(data)) data <- as.data.frame(data)
-    if (!is.null(data)) state <- eval(substitute(state), data, parent.frame())
+    if(!is.null(data)) {
+        data <- as.data.frame(data)
+        state <- eval(substitute(state), data, parent.frame())
+    }
     n <- length(state)
-    if (!is.null(data)) subject <- if(missing(subject)) rep(1,n) else eval(substitute(subject), data, parent.frame())
+    if (!is.null(data))
+      subject <-
+        if(missing(subject)) rep(1,n) else eval(substitute(subject), data, parent.frame())
+    subject <- as.numeric(factor(subject))
     prevsubj <- c(NA, subject[1:(n-1)])
     previous <- c(NA, state[1:(n-1)])
     previous[prevsubj!=subject] <- NA
@@ -601,25 +621,30 @@ statetable.msm <- function(state, subject, data=NULL)
 crudeinits.msm <- function(state, time, subject, qmatrix, data=NULL, fromto=FALSE,
                            fromstate=NULL, tostate=NULL, timelag=NULL, check=FALSE)
   {
-      if(!is.null(data)) data <- as.data.frame(data)
       if (fromto) {
           if (missing(fromstate) || missing(tostate) || missing(timelag))
             stop("fromstate, tostate and timelag must be specified if fromto is TRUE")
-          state <- eval(substitute(fromstate), data, parent.frame())
-          tostate <- eval(substitute(tostate), data, parent.frame())
-          timelag <- eval(substitute(timelag), data, parent.frame())
+          if(!is.null(data)) {
+              data <- as.data.frame(data)
+              state <- eval(substitute(fromstate), data, parent.frame())
+              tostate <- eval(substitute(tostate), data, parent.frame())
+              timelag <- eval(substitute(timelag), data, parent.frame())
+          }
           tottime <- tapply(timelag, state, sum)
           ntrans <- table(state, tostate)
       }
       else {
           if (missing(state) || missing(time) || missing(subject))
             stop ("state, time, and subject must be specified if fromto is FALSE")
-          state <- eval(substitute(state), data, parent.frame())
+          if(!is.null(data)) {
+              state <- eval(substitute(state), data, parent.frame())
+              time <- eval(substitute(time), data, parent.frame())
+          }
           n <- length(state)
-          subject <- if(missing(subject)) rep(1,n) else eval(substitute(subject), data, parent.frame())
+          if (!is.null(data)) subject <- if(missing(subject)) rep(1,n) else eval(substitute(subject), data, parent.frame())
+          subject <- as.numeric(factor(subject))
           nextsubj <- c(subject[2:n], NA)
           lastsubj <- (subject != nextsubj)
-          time <- eval(substitute(time), data, parent.frame())
           timecontrib <- ifelse(lastsubj, NA, c(time[2:n], 0) - time)
           tottime <- tapply(timecontrib[!lastsubj], state[!lastsubj], sum) # total time spent in each state
           ntrans <- statetable.msm(state, subject, data=NULL) # table of transitions

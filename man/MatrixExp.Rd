@@ -47,5 +47,5 @@ intensity matrix
   Cox, D. R. and Miller, H. D. \emph{The theory of stochastic
     processes}, Chapman and Hall, London (1965)
 }
-\author{C. H. Jackson \email{chris.jackson@ic.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{math}

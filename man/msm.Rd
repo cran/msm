@@ -98,7 +98,9 @@ misclassifications.
 
   \item{subject}{Vector of subject identification numbers, when the data
     are specified by \code{formula}. If missing, then all observations
-    are assumed to be on the same subject. Ignored if \code{fromto == TRUE}.}
+    are assumed to be on the same subject. These must be sorted so that
+    all observations on the same subject are adjacent. Ignored if
+    \code{fromto == TRUE}.}
 
   \item{covariates}{Formula representing the covariates on the
   transition intensities, for example,
@@ -293,8 +295,8 @@ probability of 1.
 }
 \references{
   Jackson, C.H., Sharples, L.D., Thompson, S.G. and Duffy, S.W. and
-  Couto, E.  Multi-state Markov models with
-  misclassification. \emph{The Statistician}, to appear.
+  Couto, E.  Multi-state Markov models for disease progression with
+  classification error. \emph{The Statistician}, 52(2): 193--209 (2003)
     
   Jackson, C.H. and Sharples, L.D. Hidden Markov models for the
   onset and progresison of bronchiolitis obliterans syndrome in lung
@@ -321,8 +323,10 @@ probability of 1.
   \code{\link{pmatrix.msm}},  \code{\link{sojourn.msm}}, 
 }
 \examples{
-data("aneur",aneur)
-
+data(aneur)
+print(aneur$from[1:10])
+print(aneur$to[1:10])
+print(aneur$dt[1:10])
 ### four states corresponding to increasing disease severity,
 ### with progressive transitions only 
 qmat <- rbind( c(0, 1, 0, 0), c(0, 0, 1, 0), c(0, 0, 0, 1), c(0, 0, 0,
@@ -337,5 +341,5 @@ qmatrix.msm(aneurysm.msm) # Extract only the transition intensities from the pri
 pmatrix.msm(aneurysm.msm, 10) # Extract the 10 year transition probability matrix
 sojourn.msm(aneurysm.msm) # Extract the mean sojourn times
 }
-\author{C. H. Jackson \email{chris.jackson@ic.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{models}

@@ -1,6 +1,33 @@
- PROGRAMMER CHANGE LOG  (User-visible changes between releases are in NEWS)
- ---------------------
+2003-06-03 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* inst/doc/msm-manual.pdf: Edits to manual, e.g. correction of
+	covariates formulae to include baseline intensity, lots of typos
+	corrected.
+
+	* DESCRIPTION: Version 0.2.1 released
 	
+2003-04-29 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/simul.R: Bug fix in simmulti.msm: didn't work for one
+	covariate. Thanks to Mike Sweeting for spotting this.
+
+	* R/msm.R: Subject identification variable is now allowed to be
+	factor or character. Thanks to Pablo Emilio Verde for the
+	suggestion.
+
+	* R/msm.R: msm.check.times also checks whether all the
+	observations on a subject are adjacent in the data set. 
+
+2003-03-20  Chris Jackson  <chris.jackson@imperial.ac.uk>
+
+	* R/R: Bug fix in msm.check.times. Thanks to Pablo Emilio Verde
+	for helping to find this.
+
+2003-02-20  Chris Jackson  <chris.jackson@imperial.ac.uk>
+
+	* R/simul.R: Bug fix in getobs.msm: exact death times were
+	ignored. (obstimes[i] replaced by sim$times[j+1]).
+
 2003-01-05  Chris Jackson  <chris.jackson@ic.ac.uk>
 
 	* DESCRIPTION: Version 0.2 released. 

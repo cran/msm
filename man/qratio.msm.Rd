@@ -61,5 +61,5 @@ qratio.msm(x, ind1, ind2, covariates = "mean")
 \seealso{
   \code{\link{qmatrix.msm}}
 }
-\author{C. H. Jackson}
+\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{models}
