@@ -12,6 +12,8 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                 constraint = NULL, # which intensities have covariates on them (as in Marshall et al.)
                 misccovariates = NULL, # formula specifying covariates on misclassification probs
                 miscconstraint = NULL, # which misc probs have covariates on them (as in Marshall et al.)
+                qconstraint = NULL, # constraints on equality of baseline intensities
+                econstraint = NULL, # constraints on equality of baseline misc probs
                 covmatch = "previous",   # take the covariate value from the previous or next observation
                 initprobs = NULL,  # initial state occupancy probabilities
                 data=list(),       # optional data frame in which to interpret variable names
@@ -32,18 +34,34 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       qmatrix <- msm.check.qmatrix(qmatrix)
       qvector <- as.numeric(t(qmatrix)) # matrix to vector by filling rows first
       nintens <- sum(qmatrix)
+      if (!is.null(qconstraint)) {
+          if (length(qconstraint) != nintens)
+            stop("baseline intensity constraint of length" ,length(qconstraint), "should be", nintens)
+          baseconstrvec <- as.numeric(factor(qconstraint))
+      }
+      else 
+        baseconstrvec <- 1:nintens
+      nintenseffs <- max(baseconstrvec)
 
 ### MISCLASSIFICATION MATRIX
       if (misc) {
           if (missing(ematrix)) stop("Misclassification matrix not given")
           ematrix <- msm.check.ematrix(ematrix, qmatrix)
           evector <- as.numeric(t(ematrix)) # matrix to vector by filling rows first
-          nmiscs <- sum(ematrix)
+          nmisc <- sum(ematrix)
           if (is.null(initprobs))
             initprobs <- c(1, rep(0, nstates-1))
+          if (!is.null(econstraint)) {
+              if (length(econstraint) != nmisc)
+                stop("baseline misclassification constraint of length" ,length(econstraint), "should be", nmisc)
+              basemiscconstrvec <- as.numeric(factor(econstraint))
+          }
+          else 
+            basemiscconstrvec <- 1:nmisc
+          nmisceffs <- max(basemiscconstrvec)
       }
       else {
-          nmiscs <- 0; ematrix <- evector <- NULL
+          nmisc <- nmisceffs <- 0; ematrix <- evector <- basemiscconstrvec <- NULL
       }
 
 ### BASIC DATA: BY TRANSITION PAIRS
@@ -95,7 +113,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
 
 ### MISCLASSIFICATION COVARIATES
       if (!is.null(misccovariates) & (misc)) {
-          pc <- msm.process.covs(misccovariates, data, miscconstraint, nobs, nmiscs)
+          pc <- msm.process.covs(misccovariates, data, miscconstraint, nobs, nmisc)
           misccovvec <- pc$covvec;  miscconstrvec <- pc$constrvec;  misccovlabels <- pc$covlabels
           nmisccovs <- pc$ncovs;  nmisccoveffs <- pc$ncoveffs; misccovrows.kept <- pc$kept.rows
           misccovmeans <- pc$covmeans; misccovfactor <- pc$covfactor
@@ -124,13 +142,13 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       nobs <- length(state)
 
 ### FORM LIST OF INITIAL PARAMETERS
-      npars <- nintens + ncoveffs + nmiscs + nmisccoveffs
-      plabs <- c(rep("qbase",nintens), rep("qcov", ncoveffs), rep("ebase",nmiscs), rep("ecov",nmisccoveffs))
+      npars <- nintenseffs + ncoveffs + nmisceffs + nmisccoveffs
+      plabs <- c(rep("qbase",nintenseffs), rep("qcov", ncoveffs), rep("ebase",nmisceffs), rep("ecov",nmisccoveffs))
       if (npars != length(inits)) {
           err.msg <- paste(length(inits),"initial values supplied, expected",
-                           nintens,"intensities,",
+                           nintenseffs,"intensities,",
                            ncoveffs,"covariate effects",
-                           if (misc) paste(", ",nmiscs,"misclassification probabilities and",
+                           if (misc) paste(", ",nmisceffs,"misclassification probabilities and",
                                            nmisccoveffs,"misclassification covariate effects"))
           stop(err.msg)
       }
@@ -154,11 +172,12 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
 ### CALCULATE LIKELIHOOD AT INITIAL VALUES...
       if (fixed) {
           likval <- lik.msm(inits, allinits, misc, subject, time, state, tostate, fromto,
-                            qvector, evector, covvec, constrvec, misccovvec, miscconstrvec, 
-                            initprobs, nstates, nintens, nmiscs, nobs, npts,
+                            qvector, evector, covvec, constrvec, misccovvec, miscconstrvec,
+                            baseconstrvec, basemiscconstrvec,
+                            initprobs, nstates, nintens, nintenseffs, nmisc, nmisceffs,
+                            nobs, npts,
                             ncovs, ncoveffs, nmisccovs, nmisccoveffs, covmatch,
                             death, tunit, exacttimes, fixedpars, plabs)
-          likval <- likval$endlik
           params <- inits
           covmat <- NULL
           foundse <- FALSE
@@ -170,8 +189,10 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                        allinits=allinits, misc=misc, subject=subject, time=time,  # arguments to lik
                        state=state, tostate=tostate, fromto=fromto,
                        qvector=qvector, evector=evector, covvec=covvec, constrvec=constrvec,
-                       misccovvec=misccovvec, miscconstrvec=miscconstrvec, initprobs=initprobs,
-                       nstates=nstates, nintens=nintens, nmiscs=nmiscs, nobs=nobs, npts=npts,
+                       misccovvec=misccovvec, miscconstrvec=miscconstrvec,
+                       baseconstrvec=baseconstrvec, basemiscconstrvec=basemiscconstrvec, initprobs=initprobs,
+                       nstates=nstates, nintens=nintens, nintenseffs=nintenseffs, nmisc=nmisc, nmisceffs=nmisceffs,
+                       nobs=nobs, npts=npts,
                        ncovs=ncovs, ncoveffs=ncoveffs, nmisccovs=nmisccovs, nmisccoveffs=nmisccoveffs,
                        covmatch=covmatch, death=death, tunit=tunit, exacttimes=exacttimes,
                        fixedpars=fixedpars, plabs=plabs)
@@ -193,17 +214,19 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
 
 ### REARRANGE THE VECTOR OF PARAMETER ESTIMATES (LOG-INTENSITIES, MISC PROBS AND
 ### COVARIATE EFFECTS) INTO LISTS OF MATRICES
-      output <- msm.form.output(qmatrix, nstates, nintens,
-                                npars, ncovs, constrvec, fixedpars, fixed, covlabels,
+      output <- msm.form.output(qmatrix, nstates, nintens, nintenseffs, 
+                                npars, ncovs, constrvec, baseconstrvec,
+                                fixedpars, fixed, covlabels,
                                 params, covmat, foundse, 0)
       Qmatrices <- output$Matrices
       QmatricesSE <- if (fixed) NULL else output$MatricesSE 
 
       if (misc) {
-          output <- msm.form.output(ematrix, nstates, nmiscs,
-                                    npars, nmisccovs, miscconstrvec, fixedpars, fixed, misccovlabels,
+          output <- msm.form.output(ematrix, nstates, nmisc, nmisceffs, 
+                                    npars, nmisccovs, miscconstrvec, basemiscconstrvec,
+                                    fixedpars, fixed, misccovlabels,
                                     params, covmat, foundse,
-                                    nintens+ncoveffs)
+                                    nintenseffs + ncoveffs)
           Ematrices <- output$Matrices
           EmatricesSE <- if (fixed) NULL else output$MatricesSE
           names(Ematrices)[1] <- "logitbaseline"
@@ -230,8 +253,9 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                            covlabels=covlabels, covfactor=covfactor, ncovs=ncovs,
                            nmisccovs=nmisccovs, tunit=tunit),
                          model = list(qvector=qvector, evector=evector,
-                           nstates=nstates, nintens=nintens, nmiscs=nmiscs, 
-                           constrvec=constrvec,  ncoveffs=ncoveffs,
+                           nstates=nstates, nintens=nintens, nintenseffs=nintenseffs,
+                           nmisc=nmisc, 
+                           constrvec=constrvec, baseconstrvec=baseconstrvec, ncoveffs=ncoveffs,
                            covmatch=covmatch, initprobs=initprobs, death=death, 
                            exacttimes=exacttimes)
                          )
@@ -245,11 +269,13 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       if (misc) {
           msmobject$Ematrices <- Ematrices
           msmobject$EmatricesSE <- EmatricesSE
+          msmobject$model$basemiscconstrvec <- basemiscconstrvec
+          msmobject$model$nmisccoveffs <- nmisccoveffs
+          msmobject$model$nmisceffs <- nmisceffs
+          msmobject$model$initprobs <- initprobs
           e <- ematrix.msm(msmobject) # misc matrix with centered covariates
           msmobject$Ematrices$baseline <- e$estimates
           msmobject$EmatricesSE$baseline <- e$SE
-          msmobject$model$nmisccoveffs <- nmisccoveffs
-          msmobject$model$initprobs <- initprobs
       }
       if (nmisccovs > 0){
           msmobject$data$misccovvec <- misccovvec;  msmobject$data$misccovmeans <- misccovmeans
@@ -267,15 +293,17 @@ expit <- function(x){exp(x) / (1 + exp(x))}
 logit <- function(x){log (x / (1 - x)) }
 
 ### Wrapper for the C code which evaluates the -2*log-likelihood for a Markov multi-state model with misclassification
-### This is optimised by nlm
+### This is optimised by optim
 
-lik.msm <- function(params, allinits, misc, subject, time, state, tostate, fromto, qvector, evector, covvec, constrvec, misccovvec, miscconstrvec, 
-                    initprobs, nstates, nintens, nmiscs, nobs, npts, ncovs, ncoveffs, nmisccovs, nmisccoveffs, covmatch,
+lik.msm <- function(params, allinits, misc, subject, time, state, tostate, fromto, qvector, evector, covvec,
+                    constrvec, misccovvec, miscconstrvec, baseconstrvec, basemiscconstrvec, 
+                    initprobs, nstates, nintens, nintenseffs, nmisc, nmisceffs, nobs, npts,
+                    ncovs, ncoveffs, nmisccovs, nmisccoveffs, covmatch,
                     death, tunit, exacttimes, fixedpars, plabs)
   {      
       p <- length(params)
       state <- state - 1  # In R, work with states 1, ... n. In C, work with states 0, ... n-1
-      npars <- nintens + ncoveffs + nmiscs + nmisccoveffs
+      npars <- nintenseffs + ncoveffs + nmisceffs + nmisccoveffs
       notfixed <- setdiff(1:npars, fixedpars)
       optplabs <- plabs[notfixed]
       if (!is.null(fixedpars))  fixedpars <- fixedpars - 1
@@ -313,11 +341,15 @@ lik.msm <- function(params, allinits, misc, subject, time, state, tostate, fromt
                 as.integer(constrvec),
                 as.double(misccovvec),
                 as.integer(miscconstrvec),
+                as.integer(baseconstrvec),
+                as.integer(basemiscconstrvec),
                 as.double(initprobs),
                 as.integer(nstates),
                 as.integer(nms),
                 as.integer(nintens),
-                as.integer(nmiscs),
+                as.integer(nintenseffs),
+                as.integer(nmisc),
+                as.integer(nmisceffs),
                 as.integer(nobs),
                 as.integer(npts),
                 as.integer(ncovs),
@@ -383,7 +415,7 @@ msm.process.covs <- function(covariates, # formula:  ~ cov1 + cov2 + ...
                   thiscon <- constraint[[match(covlabels[i], names(constraint))]]
                   if (length(thiscon) != nmatrix)
                     stop("\"",names(constraint)[i],"\"","constraint of length",length(constraint[i]),"should be",nmatrix)
-                  constrvec <- c(constrvec, maxc + codes(factor(thiscon)))
+                  constrvec <- c(constrvec, maxc + as.numeric(factor(thiscon)))
                   maxc <- max(constrvec)
               }
               else constrvec <- c(constrvec, (i-1)*nmatrix + 1:nmatrix)
@@ -409,7 +441,9 @@ msm.process.covs <- function(covariates, # formula:  ~ cov1 + cov2 + ...
 msm.form.output <- function(matrix, # matrix of 0/1 indicators for allowed intensities/misclassifications
                             nstates, # number of states
                             nmatrix, # number of allowed intensities/misclassifications
-                            npars, ncovs, constrvec, fixedpars, fixed, covlabels, # ... inherited from msm
+                            nmatrixeffs, # number of distinct intensities/misclassifications
+                            npars, ncovs, constrvec, baseconstrvec, 
+                            fixedpars, fixed, covlabels, # ... inherited from msm
                             params, covmat, foundse, # ... inherited from msm
                             params.offset # starting index in full vector of parameters
                             )
@@ -427,9 +461,9 @@ msm.form.output <- function(matrix, # matrix of 0/1 indicators for allowed inten
           ## the relevant elements of the parameter vector
           parinds <-
             if (i==0)
-              params.offset + 1:nmatrix
+              params.offset + baseconstrvec
             else
-              (params.offset + nmatrix + constrvec[((i-1)*nmatrix + 1)  :  (i*nmatrix)])
+              (params.offset + nmatrixeffs + constrvec[((i-1)*nmatrix + 1)  :  (i*nmatrix)])
           mat[t(matrix)==1] <- params[parinds]
           mat <- t(mat)
           dimnames(mat) <- list(paste("Stage",1:nstates), paste("Stage",1:nstates))

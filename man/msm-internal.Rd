@@ -28,8 +28,9 @@
 \usage{
 
 lik.msm(params, allinits, misc, subject, time, state, tostate, fromto,
-        qvector, evector, covvec, constrvec, misccovvec, miscconstrvec, initprobs,
-        nstates, nintens, nmiscs, nobs, npts, ncovs, ncoveffs,
+        qvector, evector, covvec, constrvec, misccovvec, miscconstrvec,
+        baseconstrvec, basemiscconstrvec, initprobs,
+        nstates, nintens, nintenseffs, nmisc, nmisceffs, nobs, npts, ncovs, ncoveffs,
         nmisccovs, nmisccoveffs, covmatch, death, tunit, exacttimes, fixedpars, plabs)
 
 getobs.msm(sim, obstimes, death, tunit)
@@ -38,7 +39,8 @@ observed.msm(x, times)
 
 msm.process.covs(covariates, data, constraint, nobs, nmatrix)
 
-msm.form.output(matrix, nstates, nmatrix, npars, ncovs, constrvec, fixedpars, fixed, covlabels,
+msm.form.output(matrix, nstates, nmatrix, nmatrixeffs, npars, ncovs,
+                constrvec, baseconstrvec, fixedpars, fixed, covlabels,
                 params, covmat, foundse, params.offset)
 
 msm.check.qmatrix(qmatrix)
@@ -58,7 +60,8 @@ msm.check.tunit(fromto, time, subject, timelag, tunit)
 
 qematrix.msm(x, covariates="mean", which="intens", sojourn)
 
-qematrix.diagse.msm(x, covariates="mean", which="intens", sojourn, ni, ivector, nc, constrvec, covlabels, covmeans, trsum)
+qematrix.diagse.msm(x, covariates="mean", which="intens", sojourn, ni,
+nieffs, ivector, nc, constrvec, baseconstrvec, covlabels, covmeans, trsum)
 
 qematrix.diagse.formstr(nir, inds, cur.i, ni, nc, coefs, offset, trsum)
 

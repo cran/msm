@@ -14,18 +14,17 @@
 
 double pijt(int i, int j, double t, vector intens, ivector qvector, int nstates, int exacttimes)
 {
-    Matrix qmat = Calloc( (nstates)*(nstates), double);
-    Matrix exptq = Calloc( (nstates)*(nstates), double);
-    double pr;
+    Matrix qmat = (double *) S_alloc( (nstates)*(nstates), sizeof(double));
+    Matrix exptq = (double *) S_alloc( (nstates)*(nstates), sizeof(double));
+    double pr, pii;
     FillQmatrix(qvector, intens, qmat, nstates);
     MatrixExp(qmat, nstates, exptq, t);
-    if (exacttimes)
-	pr = ( i==j  ?  
-	       exptq[MI(i, i, nstates)]  : 
-	       exptq[MI(i, i, nstates)] * qmat[MI(i, j, nstates)] );
+    if (exacttimes) {
+	pii = exp(t * qmat[MI(i, i, nstates)] );
+	pr = ( i==j  ?  pii  : pii * qmat[MI(i, j, nstates)] );
+    }
     else 
 	pr = exptq[MI(i, j, nstates)];
-    Free(qmat); Free(exptq);
     return pr;
     /*  return ((pr < 0) ? 0 : pr); */
 }
@@ -34,10 +33,9 @@ double pijt(int i, int j, double t, vector intens, ivector qvector, int nstates,
 
 void Pmat(Matrix pmat, double t, vector intens, ivector qvector, int nstates, int exacttimes)
 {
-    Matrix qmat = Calloc( (nstates)*(nstates), double);
+    Matrix qmat = (double *) S_alloc( (nstates)*(nstates), sizeof(double));
     FillQmatrix(qvector, intens, qmat, nstates);
     MatrixExp(qmat, nstates, pmat, t);
-    Free(qmat);
 }
 
 /* Fills the required entries of the intensity-matrix with the current intensities */
@@ -66,14 +64,14 @@ void FillQmatrix(ivector qvector, vector intens, Matrix qmat, int nstates)
 
 void MatrixExp(Matrix mat, int n, Matrix expmat, double t)
 {  
-    Matrix work = Calloc(n*n, double);
-    iMatrix worki = Calloc(n*n, int);
-    vector revals = Calloc(n, double);
-    vector ievals = Calloc(n, double);
-    Matrix evecst = Calloc(n*n, double);
-    Matrix evecs = Calloc(n*n, double);
-    Matrix evecsinv = Calloc(n*n, double);
-    Matrix matt = Calloc(n*n, double);
+    Matrix work = (double *) S_alloc(n*n, sizeof(double));
+    iMatrix worki = (int *) S_alloc(n*n, sizeof(int));
+    vector revals = (double *) S_alloc(n, sizeof(double));
+    vector ievals = (double *) S_alloc(n, sizeof(double));
+    Matrix evecst = (double *) S_alloc(n*n, sizeof(double));
+    Matrix evecs = (double *) S_alloc(n*n, sizeof(double));
+    Matrix evecsinv = (double *) S_alloc(n*n, sizeof(double));
+    Matrix matt = (double *) S_alloc(n*n, sizeof(double));
     int i, err, matz = 1;
 
     MatTranspose(mat, matt, n);
@@ -99,8 +97,6 @@ void MatrixExp(Matrix mat, int n, Matrix expmat, double t)
 	MultMatDiag(revals, evecsinv, n, work);
 	MultMat(evecs, work, n, n, n, expmat);
     }
-    Free(work); Free(worki); Free(revals); Free(ievals); 
-    Free(evecs); Free(evecst);  Free(evecsinv); Free(matt);
 }
 
 /* Tests if a vector has any non-unique entries */
@@ -123,8 +119,8 @@ void MatrixExpSeries(Matrix A, int n, Matrix expmat, double t)
     int i, j;
     int order = 20;   /* number of terms in series */
     int underflow_correct = 3;
-    Matrix Apower = Calloc(n*n, double);
-    Matrix Temp = Calloc(n*n, double);
+    Matrix Apower = (double *) S_alloc(n*n, sizeof(double));
+    Matrix Temp = (double *) S_alloc(n*n, sizeof(double));
     for (i=0; i<(n*n); ++i)
 	A[i] *= (t / pow(2, underflow_correct));
     FormIdentity(expmat, n);
@@ -141,7 +137,6 @@ void MatrixExpSeries(Matrix A, int n, Matrix expmat, double t)
 	for (j=0; j<(n*n); ++j)
 	    expmat[j] = Temp[j];
     }
-    Free (Apower); Free (Temp); 
 }
 
 /* Transpose a matrix */
@@ -160,11 +155,11 @@ void MatInv(Matrix A, Matrix Ainv, int n)
 {
     int i, j, rank;
     double tol=1e-07;
-    Matrix work = Calloc(n*n, double);
-    Matrix qraux = Calloc(n*n, double);
-    int info, *pivot = Calloc(n, int);
-    Matrix ident = Calloc(n*n, double);
-    Matrix temp = Calloc(n*n, double);
+    Matrix work = (double *) S_alloc(n*n, sizeof(double));
+    Matrix qraux = (double *) S_alloc(n*n, sizeof(double));
+    int info, *pivot = (int *) S_alloc(n, sizeof(int));
+    Matrix ident = (double *) S_alloc(n*n, sizeof(double));
+    Matrix temp = (double *) S_alloc(n*n, sizeof(double));
     for (i=0; i<(n*n); ++i)
 	temp[i] = A[i];
     F77_CALL(dqrdc2) (temp, &n, &n, &n, &tol, &rank, qraux, pivot, work);
@@ -176,7 +171,6 @@ void MatInv(Matrix A, Matrix Ainv, int n)
 		ident[MI(i,j,n)] = 0;
 	}
     F77_CALL(dqrcf) (temp, &n, &rank, qraux, ident, &n, Ainv, &info);
-    Free(work); Free(qraux); Free(pivot); Free(ident); Free(temp);
 }
 
 /* Multiplies two matrices together */
