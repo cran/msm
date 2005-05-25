@@ -1,3 +1,70 @@
+2005-05-25 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* utils.R: New functions (dpqr)pexp for the exponential
+	distribution with piecewise-constant rate.
+
+	* utils.R: Bug fix: arguments lower.tail and log.p implemented for
+	truncated normal and measurement error distributions.
+	
+	* DESCRIPTION: Version 0.5.1 released.  
+
+2005-05-23 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* tests/*: Tests are now fully automated. Outputs are compared
+	against known results using stopifnot().
+
+	* outputs.R(hazard.msm, odds.msm) Names "L95", "U95" changed to
+	"L","U" for generality. 
+	
+2005-05-20 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* msm.R: Data reorganised so that covariates are stored in a
+	matrix throughout.  These are available from the model output as
+	cov for one per observation time, and covmat for one per time
+	difference.  This fixes a bug which prevented covariates with
+	names such as "state", "time", "subject", among others, from being
+	used.
+	
+2005-05-16 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* simul.R(sim.msm) Re-written. Fixes a bug in simulating from
+	models with time-dependent covariates, where not every covariate
+	change was accounted for.  Uses new function rpexp to simulate
+	from the exponential distribution with piecewise-constant rate.
+	Thanks to Mike Sweeting for the bug report.  
+
+	* simul.R(sim.msm) Simulations now contain a censoring time at
+	maxtime, instead of the future absorption time.
+	
+	* simul.R(getobs.msm) Re-written, replacing ugly loops with
+	vectorised code.
+
+2005-04-11 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* man/simul.Rd: clarified that qmatrix is with covariates set to
+	zero.  Thanks to Anne Presanis.
+	
+2005-04-11 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* outputs.R(pmatrix.piecewise.msm): Bug fix for times of length 1. 
+	Thanks to Anne Presanis.
+	
+2005-03-09 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* pijt.c(Pmat): Don't recalculate pii within j loop.
+	
+2005-03-08 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* pijt.c: New function Eigen. MatrixExp merged into one function.
+	
+2005-03-07 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* msm.R(msm): Argument "hessian" added to msm.  Covariance matrix
+	is set to NULL instead of a string when SEs not available.
+
+	* msm.R(msm): Confidence limits of fixed parameters set to NA, not
+	zero width.
+
 2005-03-06 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 
 	* DESCRIPTION: Version 0.5 released.  This is a major re-write, so

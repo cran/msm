@@ -296,3 +296,5 @@ logLik.msm(heart.msm)
 
 ### viterbi
 try(viterbi.msm("foo"))
+
+cat("errors.R: ALL TESTS PASSED\n")

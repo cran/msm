@@ -7,106 +7,98 @@ sim.msm <- function(qmatrix,   # intensity matrix
                     maxtime,   # maximum time for realisations
                     covs=NULL,     # covariate matrix
                     beta=NULL,     # matrix of cov effects on qmatrix
-                    obstimes=NULL, # times at which time-dependent covariates change
+                    obstimes=0, # times at which time-dependent covariates change
                     start = 1,     # starting state
                     mintime = 0    # time to start from 
                     )
 {
-    nstates <- dim(qmatrix)[1]
-    simstates <- start
-    simtimes <- mintime
-    if (!is.null(covs)) covs <- as.matrix(covs)
-    i <- 1
-    absorb <- (sum ( qmatrix[1, -1] ) == 0)
-    qmatrix <- msm.fixdiag.qmatrix(qmatrix)
-
-### Assume that time-dependent covariates are constant in between observation times.
-### Gets the nearest covariate value prior to t to use to compute the intensity matrix at t 
-    getQcov <- function(cur.time, # Current time of Markov process
-                        obstimes, # Observation times of Markov process
-                        covs      # Covariate matrix at the observation times
-                        )
-      {
-          ret <- NULL
-          covs <- as.matrix(covs)
-          for (i in 1 : (length(obstimes)-1) )
-            if ( (cur.time >= obstimes[i]) && (cur.time < obstimes[i+1]) )
-              ret <- covs[i,]
-          if (is.null(ret)) stop ("Observation times inconsistent with mintime")
-          ret                     # Returns the covariate value at the previous observation time
-      }
-    
-    while ( (simtimes[i] < maxtime) & (!absorb) ){
-        cur.st <- simstates[i]
-        cur.t <- simtimes[i]        
-        if (!is.null(covs)){
-            cur.qmatrix <- t(qmatrix)
-            cur.cov <- as.matrix(getQcov(cur.t, obstimes, covs))
-            intens <- cur.qmatrix[cur.qmatrix > 0]
-            intens <- intens * exp( t(beta) %*% cur.cov )
-            cur.qmatrix[cur.qmatrix > 0] <- intens
-            cur.qmatrix <- msm.fixdiag.qmatrix(t(cur.qmatrix))
-        }
-        else cur.qmatrix <- qmatrix
-        absorb <- (sum ( cur.qmatrix[cur.st, -cur.st] ) == 0)
-        if (!absorb) {
-            nextprobs <- cur.qmatrix[cur.st, ] / sum ( cur.qmatrix[cur.st, -cur.st] )
-            nextprobs[cur.st] <- 0
-            cumprobs <- cumsum(nextprobs)
-            nextstate <- min( (1:nstates) [runif(1) < cumprobs])
-            nextlag <- rexp (1,  - cur.qmatrix[cur.st, cur.st] )
-            simstates <- c(simstates, nextstate)
-            simtimes <- c(simtimes, cur.t + nextlag)
-            i <- i+1
+    ## Keep only times where time-dependent covariates change
+    if (!is.null(covs)) {
+        covs2 <- collapse.covs(covs)
+        covs <- covs2$covs
+        obstimes <- obstimes[covs2$ind]
+    }
+    else {obstimes <- mintime; covs <- beta <- 0}
+    nct <- length(obstimes)
+    nstates <- nrow(qmatrix)
+    ## Form an array of qmatrices, one for each covariate change-time
+    qmatrices <- array(rep(qmatrix, nct), dim=c(dim(qmatrix), nct))
+      qmatrices[rep(qmatrix>0, nct)] <- qmatrices[rep(qmatrix>0, nct)]*exp(t(beta)%*%t(covs))
+    for (i in 1:nct)
+      qmatrices[,,i] <- msm.fixdiag.qmatrix(qmatrices[,,i])
+    cur.t <- mintime; cur.st <- start; rem.times <- obstimes; t.ind <- 1
+    nsim <- 0; max.nsim <- 10
+    simstates <- simtimes <- numeric(max.nsim) ## allocate memory up-front for simulated outcome 
+    absorb <- absorbing.msm(qmatrix=qmatrix)
+    ## Simulate up to maxtime or absorption
+    while (cur.t < maxtime) {
+        nsim <- nsim + 1
+        simstates[nsim] <- cur.st; simtimes[nsim] <- cur.t
+        if (cur.st %in% absorb) break;
+        rate <- -qmatrices[cur.st,cur.st, t.ind:length(obstimes)]
+        nextlag <- rpexp(1, rate, rem.times-rem.times[1])
+        cur.t <- cur.t + nextlag
+        t.ind <- which.min((cur.t - obstimes)[cur.t - obstimes > 0])
+        rem.times <- cur.t
+        if (any(obstimes > cur.t))
+          rem.times <- c(rem.times, obstimes[(t.ind+1): length(obstimes)])
+        cur.q <- qmatrices[,, t.ind]
+        cur.st <- sample((1:nstates)[-cur.st], size=1, prob = cur.q[cur.st, -cur.st])
+        if (nsim > max.nsim) { ## need more memory for simulated outcome, allocate twice as much
+            simstates <- c(simstates, numeric(max.nsim))
+            simtimes <- c(simtimes, numeric(max.nsim))
+            max.nsim <- max.nsim*2
         }
     }
-    list(states = simstates, times = simtimes, qmatrix = qmatrix)
+    ## If process hasn't absorbed by the end, then include a censoring time
+    if (cur.t >= maxtime) { 
+        nsim <- nsim+1
+        simstates[nsim] <- simstates[nsim-1]
+        simtimes[nsim] <- maxtime
+    }
+    list(states = simstates[1:nsim], times = simtimes[1:nsim], qmatrix = qmatrix)
 }
 
+
+## Drop rows of a covariate matrix which are identical to previous row
+## Similar method to R's unique.data.frame
+
+collapse.covs <- function(covs)
+  {
+      pcovs <- apply(covs, 1, function(x) paste(x, collapse="\r"))
+      lpcovs <- c("\r", pcovs[1:(length(pcovs)-1)])
+      ind <- pcovs!=lpcovs
+      list(covs=covs[ind,,drop=FALSE], ind=which(ind))
+  }
 
 ### Given a simulated Markov model, get the current state at various observation times
 ### Only keep one observation in the absorbing state
 
-getobs.msm <- function(sim,          # output from simMSM
-                       obstimes,     # fixed observation times
-                       death = FALSE, # indicators for death states
-                       tunit = 1.0   # observation time unit in days (e.g. time in months, tunit = 30)
-                       ) 
+getobs.msm <- function(sim, obstimes, death=FALSE, tunit=1.0)
   {
-      censtime <- max(obstimes)
-      nsim <- length(sim$states)
-      nobs <- length(obstimes)
-      obsstate <- numeric()
-      keep.time <- numeric()
-      nstates <- dim(sim$qmatrix)[1]
-      absorbing <- absorbing.msm(qmatrix=sim$qmatrix)
-      absorbed <- FALSE
-      cur.j <- 1
-      for (i in 1:nobs) {
-          if (absorbed) break
-          j <- cur.j
-          found <- FALSE
-          while (!found & (j < nsim)){
-              if ((obstimes[i] >= sim$times[j]) & (obstimes[i] < sim$times[j+1]) ){
-                  keep.time[i] <- i
-                  obsstate[i] <- sim$states[j]
-                  cur.j <- j
-                  found <- TRUE
-              }
-              else if ((obstimes[i] >= max(sim$times)) && (sim$states[j+1] %in% absorbing)){
-                  obsstate[i] <- nstates
-                  if (sim$states[j+1] %in% death)
-                    obstimes[i] <- sim$times[j+1] # death times are observed exactly. 
-                  keep.time[i] <- i
-                  absorbed <- TRUE
-                  found <- TRUE
-              }
-              j <- j+1
+      absorb <- absorbing.msm(qmatrix=sim$qmatrix)
+      # Only keep one observation in the absorbing state 
+      if (max(sim$states) %in% absorb) {
+          if (max(sim$states) %in% death)
+            keep <- which(obstimes < max(sim$times))
+          else {
+              lo <- c(-Inf, obstimes[1:(length(obstimes)-1)])
+              keep <- which(lo <= max(sim$times))
           }
       }
-      list(state = obsstate, time = obstimes[keep.time], keep = keep.time)
+      else keep <- 1 : length(obstimes)
+      obstimes <- obstimes[keep]
+      state <- sim$states[rowSums(outer(obstimes, sim$times, ">="))]
+      time <- obstimes
+      if (any(sim$states %in% death)) { # Keep the exact death time if required
+          state <- c(state, sim$states[sim$states %in% death])
+          time <- c(time, sim$times[sim$states %in% death])
+          state <- state[order(time)]
+          time <- time[order(time)]
+          keep <- c(keep, max(keep)+1)
+      }
+      list(state = state, time = time, keep=keep)
   }
-
 
 ### Simulate a multi-state Markov or hidden Markov model dataset using fixed observation times
 
@@ -203,8 +195,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
             sim.mod <- sim.msm(qmatrix, max(times[[pt]]), covs[[pt]], beta, times[[pt]], start[pt], min(times[[pt]]))
             obsd <- getobs.msm(sim.mod, times[[pt]], death)
             keep.data <- rbind(keep.data,
-                               cbind(subj[[pt]][obsd$keep], obsd$time,
-                                     covs[[pt]][obsd$keep,], hcovs[[pt]][obsd$keep,], obsd$state))
+                               cbind(subj[[pt]][obsd$keep], obsd$time, covs[[pt]][obsd$keep,,drop=FALSE], hcovs[[pt]][obsd$keep,,drop=FALSE], obsd$state))
         }
       colnames(keep.data) <- c("subject","time",covnames,setdiff(hcovnames, covnames),"state")
       keep.data <- as.data.frame(keep.data)
@@ -216,6 +207,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
         keep.data <- cbind(keep.data, obs=simhidden.msm(keep.data$state, hmodel, nstates, hcovariates, keep.data[,hcovnames,drop=FALSE]))
       keep.data 
   }
+
 
 ## Simulate misclassification conditionally on an underlying state
 
@@ -231,9 +223,9 @@ simmisc.msm <- function(state, ematrix)
           nstates <- nrow(ematrix)
           ematrix <- msm.fixdiag.ematrix(ematrix)
           ostate <- state
-          for (i in seq(nstates))
+          for (i in 1:nstates)
             if (any(state[state==i]))
-              ostate[state==i] <- sample(seq(nstates), size=length(state[state==i]), prob=ematrix[i,], replace=TRUE)
+              ostate[state==i] <- sample(1:nstates, size=length(state[state==i]), prob=ematrix[i,], replace=TRUE)
       }
       ostate
   }
@@ -244,7 +236,7 @@ simhidden.msm <- function(state, hmodel, nstates, beta=NULL, x=NULL)
   {
       y <- state
       msm.check.hmodel(hmodel, nstates)
-      for (i in seq(nstates))
+      for (i in 1:nstates)
         if (any(state==i)) {
             ## don't change the underlying state if the HMM is the null (identity) model
             if (!(hmodel[[i]]$label=="identity" && (length(hmodel[[i]]$pars) == 0)))  {

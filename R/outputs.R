@@ -529,13 +529,15 @@ pmatrix.piecewise.msm <- function(x, # fitted msm model
         stop("Number of covariate lists must be one greater than the number of cut points")
       ## Locate which intervals t1 and t2 fall in, as indices ind1, ind2 into "times". 
       if (t1 <= times[1]) ind1 <- 1
-      else {
+      else if (length(times)==1) ind1 <- 2
+      else {          
           for (i in 2:length(times))
             if ((t1 > times[i-1]) && (t1 <= times[i]))
               {ind1 <- i; break}
           if (t1 > times[i]) ind1 <- i+1
       }
       if (t2 <= times[1]) ind2 <- 1
+      else if (length(times)==1) ind2 <- 2
       else {
           for (i in 2:length(times))
             if ((t2 > times[i-1]) && (t2 <= times[i]))
@@ -647,11 +649,10 @@ transient.msm <- function(x=NULL, qmatrix=NULL)
         nst <- x$qmodel$nstates
     }
     else if (!is.null(qmatrix)) {
-        msm.check.qmatrix(qmatrix)
         nst <- nrow(qmatrix)
     }
     else stop("Neither a fitted msm model nor a qmatrix have been supplied") 
-    seq(nst)[diag(qmatrix) < 0]
+    (1:nst)[diag(qmatrix) < 0]
 }
 
 ## Return indices of absorbing states (can either call for a fitted model or a qmatrix)
@@ -664,11 +665,10 @@ absorbing.msm <- function(x=NULL, qmatrix=NULL)
         nst <- x$qmodel$nstates
     }
     else if (!is.null(qmatrix)) {
-        msm.check.qmatrix(qmatrix)
         nst <- nrow(qmatrix)
     }
     else stop("Neither a fitted msm model nor a qmatrix have been supplied") 
-    seq(nst)[diag(qmatrix) == 0]
+    (1:nst)[diag(qmatrix) == 0]
 }
 
 
@@ -813,7 +813,7 @@ hazard.msm <- function(x, hazard.scale = 1, cl = 0.95)
                   u95 <- exp(hazard.scale[i]*(x$Qmatrices[[cov]] + qnorm(1 - 0.5*(1 - cl))*x$QmatricesSE[[cov]]) )[keepvec]
                   haz.tab <- cbind(haz.rat, l95, u95)
                   dimnames(haz.tab) <- list(paste(fromlabs, "-", tolabs),
-                                            c("HR", "L95", "U95"))
+                                            c("HR", "L", "U"))
                   haz.list[[cov]] <- haz.tab
               }
           }
@@ -856,7 +856,7 @@ odds.msm <- function(x, odds.scale = 1, cl = 0.95)
                   u95 <- exp(odds.scale[i]*(x$Ematrices[[cov]] + qnorm(1 - 0.5*(1 - cl))*x$EmatricesSE[[cov]]) )[keepvec]
                   odds.tab <- cbind(odds.rat, l95, u95)
                   dimnames(odds.tab) <- list(paste("Obs", obslabs, "|", truelabs),
-                                             c("OR", "L95", "U95"))
+                                             c("OR", "L", "U"))
                   odds.list[[cov]] <- odds.tab
               }
           }
@@ -904,7 +904,7 @@ viterbi.msm <- function(x)
                       as.integer(x$data$fromstate),
                       as.integer(x$data$tostate),
                       as.double(x$data$timelag),
-                      as.double(unlist(x$data[x$data$covlabels])),
+                      as.double(unlist(x$data$covmat)),
                       as.integer(x$data$covdata$whichcov), # this is really part of the model 
                       as.integer(x$data$nocc),
                       as.integer(x$data$whicha),

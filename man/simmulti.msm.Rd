@@ -23,7 +23,8 @@ ematrix=NULL, hmodel=NULL, hcovariates=NULL)
   
   \item{qmatrix}{
     The transition intensity matrix of the
-    Markov process. The diagonal of \code{qmatrix} is ignored,
+    Markov process, with any covariates set to zero.  The diagonal of
+    \code{qmatrix} is ignored,
     and computed as appropriate so that the rows sum to zero. For
     example, a possible \code{qmatrix} for a three state illness-death
     model with recovery is:
@@ -84,6 +85,7 @@ ematrix=NULL, hmodel=NULL, hcovariates=NULL)
 
     \code{ hcovariates = list (c(acute=-8, age=0), c(acute=-8), NULL) }
   }
+
 }
 \value{A data frame with columns,
   \item{subject}{Subject identification indicators}

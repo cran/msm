@@ -13,52 +13,59 @@ twoway4.i <- twoway4.q; twoway4.i[twoway4.i!=0] <- 1
 oneway4.i <- oneway4.q; oneway4.i[oneway4.i!=0] <- 1
 
 ### HEART DATA
-statetable.msm(state, PTNUM, data=heart)
+(stab <- statetable.msm(state, PTNUM, data=heart))
+stopifnot(all(stab == c(1367, 46, 4, 204, 134, 13, 44, 54, 107, 148, 48, 55)))
 (cinits <- crudeinits.msm(state ~ years, PTNUM, data=heart, qmatrix=twoway4.q))
+stopifnot(isTRUE(all.equal(c(-0.117314905786477, 0.116817878212849, 0, 0, 0.067989320398981, -0.375848825554382, 0.049084006577444, 0, 0, 0.137134030945518, -0.256747111328168, 0, 0.049325585387496, 0.121896916396016, 0.207663104750724, 0), as.numeric(cinits))))
 
 ## Simple model
 heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
                  qmatrix = twoway4.q, death = TRUE, fixedpars=TRUE,
                  method="BFGS", control=list(trace=5, REPORT=1)) 
-heart.msm
+stopifnot(isTRUE(all.equal(4908.81676837903, heart.msm$minus2loglik, tol=1e-06)))
 heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
                  qmatrix = cinits, death = TRUE, fixedpars=TRUE,
                  method="BFGS", control=list(trace=5, REPORT=1)) 
-heart.msm
+stopifnot(isTRUE(all.equal(4113.16601901957, heart.msm$minus2loglik, tol=1e-06)))
 if (developer.local) {
     system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
                                  qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE,
                                  method="BFGS", control=list(trace=5, REPORT=1)) ) # 9.81 on new, 55.14 on old! 
-    print(heart.msm)
+    stopifnot(isTRUE(all.equal(3968.7978930519, heart.msm$minus2loglik, tol=1e-06)))
+#    system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
+#                                 qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE, use.deriv=TRUE,
+#                                 method="BFGS", control=list(trace=5, REPORT=1)) ) # FIXME hangs with derivs, in balanc_ eigen.f:144
 }
 
 ## auto-generated initial values. 
 state.g <- heart$state; time.g <- heart$years; subj.g <- heart$PTNUM
 heart.msm <- msm(state.g ~ time.g, subject=subj.g, qmatrix = twoway4.i, gen.inits=TRUE, fixedpars=TRUE)
-heart.msm
+stopifnot(isTRUE(all.equal(4119.9736299032, heart.msm$minus2loglik, tol=1e-06)))
 
 if (developer.local) {
     system.time(heart.msm <- msm(state.g ~ time.g, subject=subj.g, qmatrix = twoway4.i, gen.inits=TRUE, fixedpars=TRUE))
-    print(heart.msm)
+    stopifnot(isTRUE(all.equal(4119.9736299032, heart.msm$minus2loglik, tol=1e-06)))
     heart.msm <- msm(state.g ~ time.g, subject=subj.g, qmatrix = crudeinits.msm(state ~ years, PTNUM, twoway4.i, data=heart), fixedpars=TRUE)
-    print(heart.msm)
+    stopifnot(isTRUE(all.equal(4119.9736299032, heart.msm$minus2loglik, tol=1e-06)))
 }
 
 ## Covariates
+
 heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
                  qmatrix = twoway4.q, death = TRUE, fixedpars=TRUE, 
                  covariates = ~ sex, covinits = list(sex=rep(0.01, 7)), # , dage=rep(0, 7)),
                  method="BFGS", control=list(trace=5, REPORT=1))
-heart.msm$minus2loglik 
-heart.msm
+stopifnot(isTRUE(all.equal(4909.08442586298, heart.msm$minus2loglik, tol=1e-06)))
 
 if (developer.local) {
     system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
                                  qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE, 
                                  covariates = ~ sex, method="BFGS", control=list(trace=5, REPORT=1))) # 44.13 on new, 260.14 on old
-    print(heart.msm) # Close enough. 
-    print(qmatrix.msm(heart.msm)[c("estimates","SE")])
-    print(sojourn.msm(heart.msm))
+    stopifnot(isTRUE(all.equal(3954.77699876128, heart.msm$minus2loglik, tol=1e-06)))
+    qmat <- qmatrix.msm(heart.msm)[c("estimates","SE")]
+    stopifnot(isTRUE(all.equal(c(0.226768225214069, -0.583572966218831, 0.337068668450776, 0.0197360725539862), as.numeric(qmat$estimates[2,]), tol=1e-06)))
+    stopifnot(isTRUE(all.equal(c(0.0341912476474469, 0.177757314782152, 0.0383135782775986, 0.171176619065207), as.numeric(qmat$SE[2,]), tol=1e-02)))   ### SEs slightly different on different machines. 
+    stopifnot(isTRUE(all.equal(5.29003443121721, sojourn.msm(heart.msm)[1,3], tol=1e-06)))
 }
 
 if (developer.local) {
@@ -68,32 +75,36 @@ if (developer.local) {
                                  qconstraint = c(1,1,2,2,2,3,3),
                                  method="BFGS", control=list(trace=2, REPORT=1)
                                  )) # 3.22 on new, 17.55 on old
-    print(heart.msm) # 4116.226864
-    print(qmatrix.msm(heart.msm)[c("estimates","SE")])
-    print(sojourn.msm(heart.msm))
+    stopifnot(isTRUE(all.equal(4116.22686367935, heart.msm$minus2loglik, tol=1e-06)))
+
+    qmat <- qmatrix.msm(heart.msm)[c("estimates","SE")]
+    stopifnot(isTRUE(all.equal(0.171691686850913, qmat$estimates[2,1], tol=1e-06)))
+    stopifnot(isTRUE(all.equal(2.96494230954565, sojourn.msm(heart.msm)[3,1], tol=1e-06)))
 
     ## Covariate constraints. 
     system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE, 
                                  covariates = ~ sex, covinits = list(sex=rep(0.01, 7)), constraint=list(sex=c(1,2,3,1,2,3,2)), 
                                  method="BFGS", control=list(trace=1, REPORT=1))) # 21.2 on new, 86.58 on old
-    print(heart.msm)
-    print(qmatrix.msm(heart.msm)[c("estimates","SE")])
+    stopifnot(isTRUE(all.equal(3959.35551766943, heart.msm$minus2loglik, tol=1e-06)))
+    qmat <- qmatrix.msm(heart.msm)[c("estimates","SE")]
+    stopifnot(isTRUE(all.equal(0.228458428847816, qmat$estimates[2,1], tol=1e-06)))
 }
 
 ## Constraints with psoriatic arthritis data
 data(psor)
 psor.q <- rbind(c(0,0.1,0,0),c(0,0,0.1,0),c(0,0,0,0.1),c(0,0,0,0))
 psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
-                qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn,
+                qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn, # covinits=list(hieffusn = c(0.5, 0.1, 0), ollwsdrt=c(0.2, 0.1, -0.1)), 
                 constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
                 fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS")
-psor.msm
-qmatrix.msm(psor.msm)[c("estimates","SE")]
+stopifnot(isTRUE(all.equal(1114.89946121717, psor.msm$minus2loglik, tol=1e-06)))
+stopifnot(isTRUE(all.equal(0.0953882330391683, qmatrix.msm(psor.msm)$estimates[1,2], tol=1e-06)))
+
 
 ## No death state
 heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
                  qmatrix = twoway4.q, death = FALSE, fixedpars=TRUE)
-heart.msm
+stopifnot(isTRUE(all.equal(4833.0064065267, heart.msm$minus2loglik, tol=1e-06)))
 
 ## Multiple death states (Jean-Luc's data)
 if (developer.local) { 
@@ -102,23 +113,23 @@ if (developer.local) {
     c2.msm <- msm(state~years, subject=PTNUM, data=c2.df,
                   qmatrix=qx, death=c(4, 5), method="BFGS", fixedpars = 1:5, 
                   control=list(trace=2, REPORT=1, fnscale=100000))
-    print(c2.msm$minus2loglik)
+    stopifnot(isTRUE(all.equal(70646.727505836, c2.msm$minus2loglik, tol=1e-06)))
     c2.msm <- msm(state~years, subject=PTNUM, data=c2.df,
                   qmatrix=qx, method="BFGS", fixedpars = 1:5, 
                   control=list(trace=2, REPORT=1, fnscale=100000))
-    print(c2.msm$minus2loglik)
+    stopifnot(isTRUE(all.equal(62915.1638036017, c2.msm$minus2loglik, tol=1e-06)))
 
     ## Same using an "obstype" vector. 
     obstype <- ifelse(c2.df$state %in% c(4,5), 3, 1)
     c2.msm <- msm(state~years, subject=PTNUM, data=c2.df, qmatrix=qx,
                   obstype=obstype, method="BFGS", fixedpars = 1:5, 
                   control=list(trace=2, REPORT=1, fnscale=100000))
-    print(c2.msm$minus2loglik)
+    stopifnot(isTRUE(all.equal(70646.727505836, c2.msm$minus2loglik, tol=1e-06)))
     obstype <- rep(1, length(c2.df$state))
     c2.msm <- msm(state~years, subject=PTNUM, data=c2.df, obstype=obstype, 
                   qmatrix=qx, method="BFGS", fixedpars = 1:5, 
                   control=list(trace=2, REPORT=1, fnscale=100000))
-    print(c2.msm$minus2loglik)
+    stopifnot(isTRUE(all.equal(62915.1638036017, c2.msm$minus2loglik, tol=1e-06)))
 
 ### G Marshall's diabetic retinopathy data
     marsh.df <- read.table("~/msm/tests/markov/test.dat", col.names=c("subject","eyes","time","duration","hba1"))
@@ -126,27 +137,34 @@ if (developer.local) {
     marsh.msm <-
       msm(eyes ~ time, subject=subject, qmatrix = rbind(c(0,0.02039,0,0), c(0.007874,0,0.01012,0), c(0,0.01393,0,0.01045), c(0,0,0,0)),
           covariates = ~ hba1, data = marsh.df, fixedpars=TRUE)
+    stopifnot(isTRUE(all.equal(335.897217906310, marsh.msm$minus2loglik, tol=1e-06)))
     marsh.msm <-
       msm(eyes ~ time, subject=subject, qmatrix = rbind(c(0,0.02039,0,0), c(0.007874,0,0.01012,0), c(0,0.01393,0,0.01045), c(0,0,0,0)),
-          covariates = ~ hba1, data = marsh.df, control=list(trace=1, REPORT=1))
-    print(qmatrix.msm(marsh.msm, covariates=0))
-    print(marsh.msm)
-
+          covariates = ~ hba1, data = marsh.df)
+    stopifnot(isTRUE(all.equal(310.989863258621, marsh.msm$minus2loglik, tol=1e-06)))
+    stopifnot(isTRUE(all.equal(-0.0496235211442196, qmatrix.msm(marsh.msm, covariates=0)$estimates[1,1], tol=1e-06)))
 }
 
 ## Exact times (BOS data)
 fiveq <- rbind(c(0,0.01,0,0,0.002), c(0,0,0.07,0,0.01), c(0,0,0,0.07,0.02), c(0,0,0,0,0.03), c(0,0,0,0,0))
 data(bos)
 (msmtest5 <- msm(state ~ time, qmatrix = fiveq,  subject = ptnum, data = bos, exacttimes=TRUE, fixedpars=1:7))
+stopifnot(isTRUE(all.equal(3057.85781916437, msmtest5$minus2loglik, tol=1e-06)))
 (msmtest5 <- msm(state ~ time, qmatrix = fiveq,  subject = ptnum, data = bos, obstype=rep(2, nrow(bos)), fixedpars=1:7))
+stopifnot(isTRUE(all.equal(3057.85781916437, msmtest5$minus2loglik, tol=1e-06)))
 (msmtest5 <- msm(state ~ time, qmatrix = fiveq,  subject = ptnum, data = bos, obstype=rep(1, nrow(bos)), fixedpars=1:7))
+stopifnot(isTRUE(all.equal(1868.19375282517, msmtest5$minus2loglik, tol=1e-06)))
 ## Death and exact times (should be same!) 
 (msmtest5 <- msm(state ~ time, qmatrix = fiveq,  subject = ptnum, data = bos, death=5, obstype=rep(2, nrow(bos)), exacttimes=TRUE, fixedpars=1:7))
+stopifnot(isTRUE(all.equal(3057.85781916437, msmtest5$minus2loglik, tol=1e-06)))
 (msmtest5 <- msm(state ~ time, qmatrix = fiveq,  subject = ptnum, data = bos, death=5, obstype=rep(2, nrow(bos)), fixedpars=1:7))
+stopifnot(isTRUE(all.equal(3057.85781916437, msmtest5$minus2loglik, tol=1e-06)))
 ## Autogenerated inits (start at MLE, shouldn't need any optimisation)
 fiveq.i <- fiveq; fiveq.i[fiveq.i!=0] <- 1
 (msmtest5 <- msm(state ~ time, qmatrix = fiveq.i, gen.inits=TRUE, subject = ptnum, data = bos, exacttimes=TRUE, fixedpars=1:7))
+stopifnot(isTRUE(all.equal(3025.47316457165, msmtest5$minus2loglik, tol=1e-06)))
 (msmtest5 <- msm(state ~ time, qmatrix = fiveq.i, gen.inits=TRUE, subject = ptnum, data = bos, exacttimes=TRUE))
+stopifnot(isTRUE(all.equal(3025.47316457165, msmtest5$minus2loglik, tol=1e-06)))
 
 ### Aneurysm dataset different in 0.5 (not fromto, includes imputed initial states)
 
@@ -154,48 +172,96 @@ fiveq.i <- fiveq; fiveq.i[fiveq.i!=0] <- 1
 ##########    OUTPUT FUNCTIONS    ###################
 
 qmatrix.msm(psor.msm)
-qmatrix.msm(psor.msm, covariates=list(hieffusn=0.1, ollwsdrt=0.4))
+stopifnot(isTRUE(all.equal(c(-0.0953882330391683, 0, 0, 0, 0.0953882330391683, -0.163370011525553, 0, 0, 0, 0.163370011525553, -0.255229343798597, 0, 0, 0, 0.255229343798597, 0), as.numeric(qmatrix.msm(psor.msm)$estimates), tol=1e-06)))
+stopifnot(isTRUE(all.equal(c(0.0115507014188511, 0, 0, 0, 0.0115507014188511, 0.0195265275850904, 0, 0, 0, 0.0195265275850904, 0.0378507662232158, 0, 0, 0, 0.0378507662232158, 0), as.numeric(qmatrix.msm(psor.msm)$SE), tol=1e-04)))
+qmat <- qmatrix.msm(psor.msm, covariates=list(hieffusn=0.1, ollwsdrt=0.4))
+stopifnot(isTRUE(all.equal(c(-0.121430585652200, 0, 0, 0, 0.121430585652200, -0.207972362475868, 0, 0, 0, 0.207972362475868, -0.257535341208494, 0, 0, 0, 0.257535341208494, 0), as.numeric(qmat$estimates), tol=1e-06)))
+stopifnot(isTRUE(all.equal(c(0.0162156605802465, 0, 0, 0, 0.0162156605802465, 0.0266727053124233, 0, 0, 0, 0.0266727053124233, 0.0364321127089265, 0, 0, 0, 0.0364321127089265, 0), as.numeric(qmat$SE), tol=1e-04)))
 try(qmatrix.msm(psor.msm, covariates=list(hieffusn=0.1, foo=0.4))) # deliberate error
-qmatrix.msm(psor.msm, covariates=list(hieffusn=0.1, ollwsdrt=0.4), cl=0.99)
-qmatrix.msm(psor.msm, covariates=list(hieffusn=0.1, ollwsdrt=0.4), sojourn=TRUE)$sojourn
+qmat <- qmatrix.msm(psor.msm, covariates=list(hieffusn=0.1, ollwsdrt=0.4), cl=0.99)
+stopifnot(isTRUE(all.equal(c(-0.171282667596986, 0, 0, 0, 0.0860880282792585, -0.289385121267802, 0, 0, 0, 0.149463467106753, -0.370756460718086, 0, 0, 0, 0.178889538008097, 0), as.numeric(qmat$L), tol=1e-04)))
+soj <- qmatrix.msm(psor.msm, covariates=list(hieffusn=0.1, ollwsdrt=0.4), sojourn=TRUE)$sojourn
+stopifnot(isTRUE(all.equal(c(8.23515751512713, 4.80833120370037, 3.88296221911705, Inf), as.numeric(soj), tol=1e-06)))
 
-sojourn.msm(psor.msm, covariates=list(hieffusn=0.1, ollwsdrt=0.4))
-sojourn.msm(psor.msm, covariates=list(hieffusn=0.1, ollwsdrt=0.4), cl=0.99)
+soj <- sojourn.msm(psor.msm, covariates=list(hieffusn=0.1, ollwsdrt=0.4))
+stopifnot(isTRUE(all.equal(c(8.23515751512713, 4.80833120370037, 3.88296221911705, 1.09971073904434, 0.616674252838334, 0.549301375677405, 6.33875136203292, 3.73961380505919, 2.94271599303942, 10.6989240349703, 6.18246967994404, 5.12363260020806), as.numeric(unlist(soj)), tol=1e-04)))
+soj <- sojourn.msm(psor.msm, covariates=list(hieffusn=0.1, ollwsdrt=0.4), cl=0.99)
+stopifnot(isTRUE(all.equal(5.83830234564607, soj[1,"L"], tol=1e-04)))
 
-pmatrix.msm(psor.msm, t=10)
+stopifnot(isTRUE(all.equal(0.148036812842411, pmatrix.msm(psor.msm, t=10)[1,3], tol=1e-06)))
 try(pmatrix.msm(psor.msm, t=10, covariates=list(hieffusn=0.1))) # deliberate error
-pmatrix.msm(psor.msm, t=10, covariates=list(hieffusn=0.1, ollwsdrt=0.2))
+p <- pmatrix.msm(psor.msm, t=10, covariates=list(hieffusn=0.1, ollwsdrt=0.2))
+stopifnot(isTRUE(all.equal(0.18196160265907, p[1,3], tol=1e-06)))
 
-qratio.msm(psor.msm, c(1,2), c(2,3))
-qratio.msm(psor.msm, c(1,2), c(2,3), cl=0.99)
-qratio.msm(psor.msm, c(1,1), c(2,3))
-qratio.msm(psor.msm, c(2,2), c(2,3))
+q <- qratio.msm(psor.msm, c(1,2), c(2,3))
+stopifnot(isTRUE(all.equal(c(0.583878474075081, 0.0996029045389022, 0.417943274168735, 0.815694601537263), as.numeric(q), tol=1e-04)))
+q <- qratio.msm(psor.msm, c(1,2), c(2,3), cl=0.99)
+stopifnot(isTRUE(all.equal(0.376262194364283, as.numeric(q["L"]), tol=1e-04)))
+q <- qratio.msm(psor.msm, c(1,1), c(2,3))
+stopifnot(isTRUE(all.equal(c(-0.583878474075081, 0.0996029045389022, -0.815694601537263, -0.417943274168735), as.numeric(q), tol=1e-04)))
+q <- qratio.msm(psor.msm, c(2,2), c(2,3))
+stopifnot(isTRUE(all.equal(c(-1,0,-1,-1), as.numeric(q), tol=1e-06)))
 
-prevalence.msm(psor.msm)
-prevalence.msm(psor.msm, times=seq(0,60,5))
+p <- prevalence.msm(psor.msm)
+stopifnot(isTRUE(all.equal(59, p$Observed[5,5], tol=1e-06)))
+stopifnot(isTRUE(all.equal(77, p$Expected[5,5], tol=1e-06)))
+stopifnot(isTRUE(all.equal(57.3529411764706, p$"Observed percentages"[4,4], tol=1e-06)))
+stopifnot(isTRUE(all.equal(47.3990470279541, p$"Expected percentages"[4,4], tol=1e-06)))
+p <- prevalence.msm(psor.msm, times=seq(0,60,5))
+stopifnot(isTRUE(all.equal(63, p$Observed[5,5], tol=1e-06)))
+stopifnot(isTRUE(all.equal(84, p$Expected[5,5], tol=1e-06)))
+stopifnot(isTRUE(all.equal(50.7042253521127, p$"Observed percentages"[4,4], tol=1e-06)))
+stopifnot(isTRUE(all.equal(39.2884374332881, p$"Expected percentages"[4,4], tol=1e-06)))
 
-summary.msm(psor.msm)
+summ <- summary.msm(psor.msm)
+p <- summ$prevalences
+stopifnot(isTRUE(all.equal(59, p$Observed[5,5], tol=1e-06)))
+stopifnot(isTRUE(all.equal(77, p$Expected[5,5], tol=1e-06)))
+stopifnot(isTRUE(all.equal(57.3529411764706, p$"Observed percentages"[4,4], tol=1e-06)))
+stopifnot(isTRUE(all.equal(47.3990470279541, p$"Expected percentages"[4,4], tol=1e-06)))
+stopifnot(isTRUE(all.equal(0.385347226135311, summ$hazard$ollwsdrt[1,2], tol=1e-04)))
+stopifnot(isTRUE(all.equal(0.385347226135311, summ$hazard$ollwsdrt[2,2], tol=1e-04)))
+stopifnot(isTRUE(all.equal(2.35928404626333, summ$hazard$hieffusn[1,3], tol=1e-04)))
+stopifnot(isTRUE(all.equal(2.35928404626333, summ$hazard$hieffusn[3,3], tol=1e-04)))
 
 print(interactive())
 if (interactive()) plot.msm(psor.msm)
 if (interactive()) plot.msm(psor.msm, from=c(1,3), to=4, range=c(10,30))
 if (interactive()) plot.msm(psor.msm, from=c(1,2), to=4, range=c(10,80), legend.pos=c(70,0.1))
 
-coef.msm(psor.msm)
+co <- coef.msm(psor.msm)
+stopifnot(isTRUE(all.equal(0.498319866154661, co$hieffusn[1,2], tol=1e-06)))
 
-hazard.msm(psor.msm)
-hazard.msm(psor.msm, hazard.scale=2)
-hazard.msm(psor.msm, hazard.scale=c(1,2))
+haz <- hazard.msm(psor.msm)
+stopifnot(isTRUE(all.equal(0.385347226135311, haz$ollwsdrt[1,2], tol=1e-04)))
+stopifnot(isTRUE(all.equal(0.385347226135311, haz$ollwsdrt[2,2], tol=1e-04)))
+stopifnot(isTRUE(all.equal(2.35928404626333, haz$hieffusn[1,3], tol=1e-04)))
+stopifnot(isTRUE(all.equal(2.35928404626333, haz$hieffusn[3,3], tol=1e-04)))
 
-transient.msm(psor.msm)
+haz <- hazard.msm(psor.msm, hazard.scale=2)
+stopifnot(isTRUE(all.equal(0.148492484690178, haz$ollwsdrt[1,2], tol=1e-04)))
+stopifnot(isTRUE(all.equal(0.148492484690178, haz$ollwsdrt[2,2], tol=1e-04)))
+stopifnot(isTRUE(all.equal(5.56622121095267, haz$hieffusn[1,3], tol=1e-04)))
+stopifnot(isTRUE(all.equal(5.56622121095267, haz$hieffusn[3,3], tol=1e-04)))
 
-absorbing.msm(psor.msm)
+haz <- hazard.msm(psor.msm, hazard.scale=c(1,2))
+stopifnot(isTRUE(all.equal(0.385347226135311, haz$ollwsdrt[1,2], tol=1e-04)))
+stopifnot(isTRUE(all.equal(0.385347226135311, haz$ollwsdrt[2,2], tol=1e-04)))
+stopifnot(isTRUE(all.equal(5.56622121095267, haz$hieffusn[1,3], tol=1e-04)))
+stopifnot(isTRUE(all.equal(5.56622121095267, haz$hieffusn[3,3], tol=1e-04)))
 
-totlos.msm(psor.msm)
-totlos.msm(psor.msm, fromt=1, tot=30)
-totlos.msm(psor.msm, start=2, fromt=10, tot=30)
+stopifnot(isTRUE(all.equal(c(1,2,3), transient.msm(psor.msm), tol=1e-06)))
 
-logLik.msm(psor.msm)
+stopifnot(isTRUE(all.equal(4, absorbing.msm(psor.msm), tol=1e-06)))
+
+tot <- totlos.msm(psor.msm)
+stopifnot(isTRUE(all.equal(c(10.4834733848813, 6.12107442888416, 3.91804478713086), as.numeric(tot), tol=1e-04)))
+tot <- totlos.msm(psor.msm, fromt=1, tot=30)
+stopifnot(isTRUE(all.equal(c(8.93029895281672, 5.30015645647272, 3.16781869820008), as.numeric(tot), tol=1e-04)))
+tot <- totlos.msm(psor.msm, start=2, fromt=10, tot=30)
+stopifnot(isTRUE(all.equal(c(0, 1.14933919741426, 1.50453194710682), as.numeric(tot), tol=1e-04)))
+
+stopifnot(isTRUE(all.equal(557.449730608585, as.numeric(logLik.msm(psor.msm)), tol=1e-06)))
 
 ### pmatrix.piecewise.msm
 pmatrix.msm(psor.msm, 10)
@@ -205,12 +271,24 @@ covariates <- list(list(hieffusn=0, ollwsdrt=0),
                    list(hieffusn=1, ollwsdrt=0),
                    list(hieffusn=1, ollwsdrt=1)
                    )
-pmatrix.msm(psor.msm, 3, covariates=covariates[[1]])
-pmatrix.piecewise.msm(psor.msm, 0, 3, times, covariates)
-pmatrix.piecewise.msm(psor.msm, 0, 7, times, covariates)
-pmatrix.piecewise.msm(psor.msm, 0, 19, times, covariates)
-pmatrix.msm(psor.msm, 5, covariates[[1]]) %*% pmatrix.msm(psor.msm, 5, covariates[[2]]) %*% pmatrix.msm(psor.msm, 5, covariates[[3]]) %*% pmatrix.msm(psor.msm, 4, covariates[[4]])
+p <- pmatrix.msm(psor.msm, 3, covariates=covariates[[1]])
+stopifnot(isTRUE(all.equal(0.0526636335836266, p[1,3], tol=1e-06)))
+p <- pmatrix.piecewise.msm(psor.msm, 0, 3, times, covariates)
+stopifnot(isTRUE(all.equal(0.0526636335836266, p[1,3], tol=1e-06)))
+p <- pmatrix.piecewise.msm(psor.msm, 0, 7, times, covariates)
+stopifnot(isTRUE(all.equal(0.172773087945103, p[1,3], tol=1e-06)))
+p <- pmatrix.piecewise.msm(psor.msm, 0, 19, times, covariates)
+stopifnot(isTRUE(all.equal(0.0510873669808412, p[1,3], tol=1e-06)))
+p <- pmatrix.msm(psor.msm, 5, covariates[[1]]) %*% pmatrix.msm(psor.msm, 5, covariates[[2]]) %*% pmatrix.msm(psor.msm, 5, covariates[[3]]) %*% pmatrix.msm(psor.msm, 4, covariates[[4]])
+stopifnot(isTRUE(all.equal(0.0510873669808412, p[1,3], tol=1e-06)))
 
+## bug with one time in 0.5
+times <- c(5)
+covariates <- list(list(hieffusn=0, ollwsdrt=0),
+                   list(hieffusn=0, ollwsdrt=1)
+                   )
+p <- pmatrix.piecewise.msm(psor.msm, 0, 7, times, covariates)
+stopifnot(isTRUE(all.equal(0.172773087945103, p[1,3], tol=1e-06)))
 
 
 #######  MISCELLANEOUS FEATURES  ##########
@@ -219,27 +297,34 @@ pmatrix.msm(psor.msm, 5, covariates[[1]]) %*% pmatrix.msm(psor.msm, 5, covariate
 state.g <- heart$state; time.g <- heart$years; subj.g <- heart$PTNUM
 heart.msm <- msm(state.g ~ time.g, subject=subj.g, qmatrix = twoway4.q, fixedpars=TRUE)
 heart.msm <- msm(state.g ~ time.g, subject=PTNUM, data=heart, qmatrix = twoway4.q, fixedpars=TRUE)
-heart.msm
+stopifnot(isTRUE(all.equal(4833.0064065267, heart.msm$minus2loglik, tol=1e-06)))
 
 ### Factor covariates
 
 heartfaccov.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q,
                        covariates = ~ factor(pdiag), covinits=list(sex=rep(0.1,7)), fixedpars=TRUE)
+stopifnot(isTRUE(all.equal(4793.30238295565, heartfaccov.msm$minus2loglik, tol=1e-06)))
 heartfaccov.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q,
                        covariates = ~ factor(pdiag), covinits=list("factor(pdiag)Nonexistentlevel"=rep(0.1,7)), fixedpars=TRUE)
+stopifnot(isTRUE(all.equal(4793.30238295565, heartfaccov.msm$minus2loglik, tol=1e-06)))
 heartfaccov.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q,
                        covariates = ~ factor(pdiag), covinits=list("factor(pdiag)Hyper"=rep(0.1,7)), fixedpars=TRUE) # OK 
+stopifnot(isTRUE(all.equal(4793.10858368203, heartfaccov.msm$minus2loglik, tol=1e-06)))
 heartfaccov.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q,
                        covariates = ~ factor(pdiag), covinits=list(sex=rep(0.1,7)), fixedpars=TRUE)
+stopifnot(isTRUE(all.equal(4793.30238295565, heartfaccov.msm$minus2loglik, tol=1e-06)))
 heartfaccov.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q,
                        covariates = ~ pdiag, covinits=list(pdiag=rep(0.1,7)), fixedpars=TRUE)
+stopifnot(isTRUE(all.equal(4793.30238295565, heartfaccov.msm$minus2loglik, tol=1e-06)))
 heartfaccov.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q,
                        covariates = ~ pdiag, covinits=list(pdiagNonexistentlevel=rep(0.1,7)), fixedpars=TRUE)
+stopifnot(isTRUE(all.equal(4793.30238295565, heartfaccov.msm$minus2loglik, tol=1e-06)))
 heartfaccov.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q,
                        covariates = ~ pdiag, covinits=list(pdiagHyper=rep(0.1,7)), fixedpars=TRUE) # OK 
+stopifnot(isTRUE(all.equal(4793.10858368203, heartfaccov.msm$minus2loglik, tol=1e-06)))
 heartfaccov.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q, covariates = ~ pdiag,
                        covinits=list(pdiagHyper=rep(0.1,7),pdiagIDC=rep(0.1,7),pdiagIHD=rep(0.1,7),pdiagOther=rep(0.1,7),pdiagRestr=rep(0.1,7),), fixedpars=TRUE) # OK 
-heartfaccov.msm
+stopifnot(isTRUE(all.equal(4793.11816516565, heartfaccov.msm$minus2loglik, tol=1e-06)))
 
 
 ## Some data with censored states
@@ -257,25 +342,29 @@ heart.cens3$state[ns==4][1:50] <- 999
 
 twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166), c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
 ### Censored observations - final state censored
-statetable.msm(state, PTNUM, heart.cens)
+stab <- statetable.msm(state, PTNUM, heart.cens)
+stopifnot(isTRUE(all.equal(c(1367, 46, 4, 204, 134, 13, 44, 54, 107, 127, 40, 34, 21, 8, 21), as.numeric(stab))))
 heartcens.msm <- msm(state ~ years, subject=PTNUM, data=heart.cens, qmatrix=twoway4.q, censor=99, fixedpars=TRUE)
-heartcens.msm
+stopifnot(isTRUE(all.equal(4724.26606344485, heartcens.msm$minus2loglik, tol=1e-06)))
 
 ### Censored observations - two kinds of censoring 
 statetable.msm(state, PTNUM, heart.cens2)
 heartcens.msm <- msm(state ~ years, subject=PTNUM, data=heart.cens2, qmatrix=twoway4.q, censor=c(99, 999), censor.states=list(c(1,2,3), c(2,3)), fixedpars=TRUE)
-heartcens.msm
+stopifnot(isTRUE(all.equal(4678.23348518727, heartcens.msm$minus2loglik, tol=1e-06)))
 
 ### Censored observations - intermediate state censored 
 statetable.msm(state, PTNUM, heart.cens3)
 heartcens.msm <- msm(state ~ years, subject=PTNUM, data=heart.cens3, qmatrix=twoway4.q, censor=c(99, 999), censor.states=list(c(2,3), c(1,2,3)), fixedpars=TRUE)
-heartcens.msm
+stopifnot(isTRUE(all.equal(4680.66073438518, heartcens.msm$minus2loglik, tol=1e-06)))
 
 ### crudeinits with censoring
 try(crudeinits.msm(state~ years, PTNUM, twoway4.q, heart.cens))
-crudeinits.msm(state~ years, PTNUM, twoway4.q, heart.cens, censor=99)
-crudeinits.msm(state~ years, PTNUM, twoway4.q, heart.cens2, censor=c(99,999), censor.states=list(c(1,2,3),c(2,3)))
-crudeinits.msm(state~ years, PTNUM, twoway4.q, heart.cens3, censor=c(99,999), censor.states=list(c(2,3),c(1,2,3)))
+cru <- crudeinits.msm(state~ years, PTNUM, twoway4.q, heart.cens, censor=99)
+stopifnot(isTRUE(all.equal(c(-0.111798558088660, 0.122878533946307, 0, 0, 0.0689030388220138, -0.373978146793108, 0.0618112185064827, 0, 0, 0.144248713763056, -0.223471328446514, 0, 0.0428955192666458, 0.106850899083745, 0.161660109940032, 0), as.numeric(cru), tol=1e-06)))
+cru <- crudeinits.msm(state~ years, PTNUM, twoway4.q, heart.cens2, censor=c(99,999), censor.states=list(c(1,2,3),c(2,3)))
+stopifnot(isTRUE(all.equal(c(-0.107299472349819, 0.134927714425074, 0, 0, 0.0697104852209013, -0.369584609077378, 0.0789635719132074, 0, 0, 0.158393403890305, -0.170075385659216, 0, 0.0375889871289174, 0.0762634907619986, 0.0911118137460085, 0), as.numeric(cru), tol=1e-06)))
+cru <- crudeinits.msm(state~ years, PTNUM, twoway4.q, heart.cens3, censor=c(99,999), censor.states=list(c(2,3),c(1,2,3)))
+stopifnot(isTRUE(all.equal(c(-0.112107245394208, 0.124370575094641, 0, 0, 0.0686998668421821, -0.370347934726264, 0.0659650781282531, 0, 0, 0.135425737325276, -0.238489128617530, 0, 0.0434073785520255, 0.110551622306348, 0.172524050489277, 0), as.numeric(cru), tol=1e-06)))
 
 ### Death with state at previous instant known - HIV model 
 heart.dp <- heart
@@ -284,7 +373,7 @@ heart.dp$years[ns==4][1:50] <- heart.dp$years[heart.dp$state==4][1:50]
 ### Observations at identical times not allowed in <= 0.4.1. 
 heart.msm <- msm( state ~ years, subject=PTNUM, data = heart.dp, qmatrix = twoway4.q, death = 4, fixedpars=TRUE,
                  method="BFGS", control=list(trace=5, REPORT=1))  # Works, with -2L of 2 less than baseline.
-heart.msm
+stopifnot(isTRUE(all.equal(4906.74189711688, heart.msm$minus2loglik, tol=1e-06)))
 
 ### Use "exacttimes" instead of "death" observation schemes for those obs of death with state at previous instant known
 ### Should be just the same.    
@@ -296,9 +385,10 @@ obstype[heart$state==4] <- 3
 obstype[heart$state==4][1:50] <- 2
 heart.msm <- msm( state ~ years, subject=PTNUM, data = heart.dp, qmatrix = twoway4.q, obstype=obstype, fixedpars=TRUE,
                  method="BFGS", control=list(trace=5, REPORT=1))
-heart.msm
+stopifnot(isTRUE(all.equal(4906.74189711688, heart.msm$minus2loglik, tol=1e-06)))
 obstype[heart$state==4][1:50] <- 3 # just to make sure this is the same 
 heart.msm <- msm( state ~ years, subject=PTNUM, data = heart.dp, qmatrix = twoway4.q, obstype=obstype, fixedpars=TRUE,
                  method="BFGS", control=list(trace=5, REPORT=1))
-heart.msm
+stopifnot(isTRUE(all.equal(4906.74189711688, heart.msm$minus2loglik, tol=1e-06)))
 
+cat("simple.R: ALL TESTS PASSED\n")

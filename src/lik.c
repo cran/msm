@@ -11,6 +11,7 @@
 #include "msm.h"
 #include "hmm.h"
 #define NODEBUG
+#define NODERIV
 
 linkfn LINKFNS[3][2] = {
     {identity, identity},
@@ -315,10 +316,11 @@ double likcensor(int pt, /* ordinal subject ID */
 double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm, 
 		 cmodel *cm, hmodel *hm)
 {
-    int i,j,totcovs=0;
+    int i,totcovs=0;
     double lik=0, contrib=0;
     double *pmat        = Calloc((qm->nst)*(qm->nst), double);
     double *newintens = Calloc ( qm->npars , double);
+
     for (i=0; i < d->nobs; ++i)
 	{
 	    R_CheckUserInterrupt();
@@ -331,21 +333,9 @@ double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm,
 		Pmat(pmat, d->timelag[i], newintens, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), 0);
 	    }
 	    if (d->obstype[i] == OBS_DEATH)
-		{
-		    if (d->fromstate[i] == d->tostate[i]) 
-			contrib = 1; /* death-death transition has probability 1 */
-		    else { 
-			contrib = 0;						
-			for (j = 0; j < qm->nst; ++j)
-			    if (j != d->tostate[i])
-				contrib += 
-				    pmat[MI(d->fromstate[i], j, qm->nst)] * 
-				    qij(j, d->tostate[i], newintens, qm->ivector, qm->nst);	
-		    }
-		}
-	    else {
+		contrib = pijdeath(d->fromstate[i], d->tostate[i], pmat, newintens, qm->ivector, qm->nst);
+	    else
 		contrib = pmat[MI(d->fromstate[i], d->tostate[i], qm->nst)];
-	    }
 	    lik += d->nocc[i] * log(contrib);
 #ifdef DEBUG
 	    printf("obs %d, from %d, to %d, time %lf, ", i, d->fromstate[i], d->tostate[i], d->timelag[i]);
@@ -356,15 +346,6 @@ double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm,
 	}
     Free(pmat); Free(newintens);
     return (-2*lik); 
-}
-
-/* First derivative of the log-likelihood for the non-hidden
-   multi-state Markov model. TODO */
-
-double derivsimple(msmdata *d, qmodel *qm, qcmodel *qcm, 
-		   cmodel *cm, hmodel *hm)
-{
-    return 0;
 }
 
 /* Calculates the most likely path through underlying states */ 
@@ -523,13 +504,60 @@ void msmLikelihood (msmdata *d, qmodel *qm, qcmodel *qcm,
     }
 }
 
-/* Derivative of log-likelihood, currently only available for non-hidden model TODO */
+
+/* First derivatives of the log-likelihood for the non-hidden
+   multi-state Markov model.  Not completed.  This facility not
+   available yet.  TODO handle covariates, death, exact times,
+   constraints on baseline pars and covariates.
+*/
+
+void derivsimple(msmdata *d, qmodel *qm, qcmodel *qcm, 
+		 cmodel *cm, hmodel *hm, double *deriv)
+{
+    int i, p, np = qm->npars, totcovs=0; 
+    double contrib=0;
+    double *dcontrib = Calloc(np, double);
+    double *dpmat = Calloc(qm->nst * qm->nst * np, double); 
+    double *pmat = Calloc( qm->nst * qm->nst, double);
+    double *newintens = Calloc ( qm->npars , double);
+    for (i=0; i < d->nobs; ++i)
+	{
+	    R_CheckUserInterrupt();
+	    if ((i==0) || (d->whicha[i] != d->whicha[i-1])) {
+		/* we have a new timelag/covariates combination. Recalculate the 
+		   P matrix and its derivatives for this */
+		AddCovs(i, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens, 
+			qcm->coveffect, d->cov, d->whichcov, &totcovs, log, exp);
+		Pmat(pmat, d->timelag[i], newintens, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), 0);
+ 		DPmat(dpmat, d->timelag[i], newintens, qm->ivector, qm->nst, np, (d->obstype[i] == OBS_EXACT), 0);
+	    }
+	    if (d->obstype[i] == OBS_DEATH) {
+		contrib = pijdeath(d->fromstate[i], d->tostate[i], pmat, newintens, qm->ivector, qm->nst);
+		dpijdeath(d->fromstate[i], d->tostate[i], dpmat, pmat, newintens, qm->ivector, qm->nst, np, dcontrib);
+	    }
+	    else {
+		contrib = pmat[MI(d->fromstate[i], d->tostate[i], qm->nst)];
+		for (p = 0; p < np; ++p)
+		    dcontrib[p] = dpmat[MI3(d->fromstate[i], d->tostate[i], p, qm->nst, qm->nst)];
+	    }
+	    for (p = 0; p < np; ++p) {
+/* 		printf("nocc=%d, time=%lf, from=%d, to=%d, c=%lf, dc=%lf\n", d->nocc[i], d->timelag[i], d->fromstate[i], d->tostate[i], contrib, dcontrib); */
+		deriv[p] += d->nocc[i] * dcontrib[p] / contrib;
+	    }
+	}
+    for (p = 0; p < np; ++p) 
+	deriv[p] *= -2;
+    Free(dpmat); Free(dcontrib);
+}
+
+/* Derivative of log-likelihood, currently only available for
+   non-hidden model, no covariates, constraints, death or exact times */
 
 void msmDLikelihood (msmdata *d, qmodel *qm, qcmodel *qcm, 
 		     cmodel *cm, hmodel *hm, 
 		     double *returned) 
 {
-    *returned = derivsimple (d, qm, qcm, cm, hm);
+    derivsimple (d, qm, qcm, cm, hm, returned);
 }
 
 /* This function is called from R to provide an entry into C code for
