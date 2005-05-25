@@ -49,7 +49,11 @@ rmenorm,
 dmeunif,
 pmeunif,
 qmeunif,
-rmeunif
+rmeunif,
+dpexp,
+ppexp,
+qpexp,
+rpexp
 )
 
 importFrom(graphics, plot)

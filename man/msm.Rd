@@ -17,7 +17,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
       hcovariates = NULL, hcovinits = NULL, hconstraint = NULL,
       qconstraint=NULL, econstraint=NULL, initprobs = NULL,
       death = FALSE, exacttimes = FALSE, censor=NULL,
-      censor.states=NULL, cl = 0.95, fixedpars = NULL, center=TRUE, ... )
+      censor.states=NULL, cl = 0.95, fixedpars = NULL, center=TRUE,
+      hessian=TRUE, ... )
 }
 \arguments{
   \item{formula}{ A formula giving the vectors containing the observed
@@ -383,6 +384,10 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   \item{center}{If \code{TRUE} (the default) then covariates are centered at
     their means during the maximum likelihood estimation. This usually
     improves convergence. }
+
+  \item{hessian}{If \code{TRUE} (the default) then the Hessian matrix is
+    computed at the maximul likelihood estimates, to obtain standard
+    errors.}
   
   \item{...}{Optional arguments to the general-purpose \R
     optimization routine \code{\link{optim}}. Useful options include

@@ -1,7 +1,27 @@
--*- text -*-
+x1-*- text -*-
 
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
+
+Version 0.5.1  (2005-05-25)
+-------------
+
+* Bug fix in simulation functions (sim.msm, simmulti.msm).  Models
+  with time dependent covariates were not being simulated properly,
+  the covariate changes were not fully accounted for. Thanks to Mike
+  Sweeting for the report.
+
+* New functions dpexp, ppexp, qpexp, rpexp for the exponential
+  distribution with piecewise-constant rates.
+
+* Bug fix. covariates with the same names as internal msm variable
+  names, such as "subject", "time" and "state", are now allowed.
+
+* Argument "hessian" added to msm, to avoid calculating standard
+  errors, for example when bootstrapping.
+
+* Miscellaneous internal edits and fixes, see ChangeLog. 
+
 
 Version 0.5 (2005-03-06)
 -----------

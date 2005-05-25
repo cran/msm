@@ -6,7 +6,8 @@
   Markov process up to a given time.
 }
 \usage{
-sim.msm(qmatrix, maxtime, covs=NULL, beta=NULL, obstimes=NULL, start=1, mintime=0)
+sim.msm(qmatrix, maxtime, covs=NULL, beta=NULL, obstimes=0, start=1,
+mintime=0)
 }
 \arguments{
   
@@ -44,7 +45,9 @@ sim.msm(qmatrix, maxtime, covs=NULL, beta=NULL, obstimes=NULL, start=1, mintime=
 }
 \value{ A list with components,
 
-  \item{states}{Simulated states through which the process moves}
+  \item{states}{Simulated states through which the process moves.  This
+    ends with either an absorption before \code{obstime}, or a transient state
+    at \code{obstime}. }
 
   \item{times}{Exact times at which the process changes to the corresponding
     states}

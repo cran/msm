@@ -29,6 +29,9 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                 cl = 0.95, # width of confidence intervals 
                 fixedpars = NULL, # specify which parameters to fix. TRUE for all parameters
                 center = TRUE, # center covariates at their means
+                hessian = TRUE,
+#                deriv.test = FALSE,
+#                use.deriv = FALSE,
                 ... # options to optim
                 )
   {            
@@ -84,6 +87,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
           msmdata <- msm.aggregate.data(msmdata)
           msmdata$subject <- msmdata$state <- msmdata$time <- numeric(0)
           for (i in c("subject", "time", "state")) msmdata[[i]] <- msmdata.obs[[i]]
+          msmdata$cov <- msmdata.obs$covmat
       }
 
 ### MODEL FOR COVARIATES ON INTENSITIES
@@ -124,38 +128,55 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       
 ### FORM LIST OF INITIAL PARAMETERS, MATCHING PROVIDED INITS WITH SPECIFIED MODEL, FIXING SOME PARS IF REQD
       p <- msm.form.params(qmodel, qcmodel, emodel, hmodel, fixedpars)
+
+#       if (deriv.test) {
+#           likwrap <- function(x, p1, p2, p3) {
+#               pars <- list(log(c(p1, p2, p3)))
+#               do.call("lik.msm", c(pars, x))
+#           }
+#           myenv <- new.env()
+#           assign("x", list(msmdata, qmodel, qcmodel, cmodel, hmodel, p), env = myenv)
+#           for (i in 1:3) 
+#             assign(paste("p", i, sep=""), exp(p$inits[i]), env = myenv)
+#           foo <- numericDeriv(quote(likwrap(x, p1, p2, p3)), c("p1","p2","p3"), myenv)
+#           f <- function(...) {x <- lik.msm(...); attr(x, "gradient") <- deriv.msm(...); x}
+# #          foo2 <- nlm(f, p$inits, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel, cmodel=cmodel, hmodel=hmodel, paramdata=p, check.analyticals=FALSE)
+#           return (list(analytic.deriv=deriv.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p), numeric.deriv=attr(foo,"gradient")))
+#       }
       
 ### CALCULATE LIKELIHOOD AT INITIAL VALUES...
       if (p$fixed) {
           p$lik <- lik.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p)
           p$params <- p$allinits
           p$params <- p$params[!duplicated(p$constr)][p$constr]
-          p$covmat <- NULL
           p$foundse <- FALSE
+          p$covmat <- NULL
       }
 
 ### ... OR DO MAXIMUM LIKELIHOOD ESTIMATION
       else {
-          opt <- optim(p$inits, lik.msm, hessian=TRUE,  ...,# arguments to optim
+          gr <- NULL # derivatives, TODO for simple model only.
+#          if (!hmodel$hidden && cmodel$ncens==0 && qcmodel$ncovs==0 && use.deriv)
+#            gr <- deriv.msm
+          opt <- optim(p$inits, lik.msm, hessian=hessian, gr=gr, ...,# arguments to optim
                        msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel, 
                        cmodel=cmodel, hmodel=hmodel, paramdata=p)
           p$lik <- opt$value
           p$params <- p$allinits
           p$params[p$optpars] <- opt$par
           p$params <- p$params[!duplicated(p$constr)][p$constr]
-          if (all(eigen(opt$hessian)$values > 0)) {
+          if (hessian && all(eigen(opt$hessian)$values > 0)) {
               p$foundse <- TRUE
               p$covmat <- matrix(0, nrow=p$npars, ncol=p$npars)
               p$covmat[p$optpars,p$optpars] <- solve(0.5 * opt$hessian)
               p$covmat <- p$covmat[!duplicated(p$constr),!duplicated(p$constr)][p$constr,p$constr]
               p$ci <- cbind(p$params - qnorm(1 - 0.5*(1-cl))*sqrt(diag(p$covmat)),
                             p$params + qnorm(1 - 0.5*(1-cl))*sqrt(diag(p$covmat)))
-#              p$ci[p$fixedpars,] <- NA   #  DO WE WANT THIS, OR ZERO WIDTH CIS?
+              p$ci[p$fixedpars,] <- NA
           }
           else {
               p$foundse <- FALSE
-              p$covmat <- "Non-positive definite approximate variance-covariance"
-              p$ci <- NULL
+              p$covmat <- p$ci <- NULL
           }
       }
 
@@ -342,6 +363,7 @@ msm.form.emodel <- function(ematrix, econstraint=NULL, initprobs=NULL, qmodel)
 
 ### Extract data from supplied arguments, check consistency, drop missing data.
 ### Returns dataframe of cleaned data in observation time format
+### Covariates returned in covmat
 
 msm.form.data <- function(formula, subject=NULL, obstype=NULL, covariates=NULL, data=NULL,
                           hcovariates=NULL, misccovariates=NULL, qmodel, emodel, hmodel, cmodel, dmodel, exacttimes, center)
@@ -419,8 +441,8 @@ msm.form.data <- function(formula, subject=NULL, obstype=NULL, covariates=NULL, 
       if (nmiss > 0) warning(nmiss, " record", plural, " dropped due to missing values")
       dat <- list(state=state, time=time, subject=subject, obstype=obstype, nobs=nobs, npts=length(unique(subject)), 
                   ncovs=length(all.covlabels), covlabels=all.covlabels,
-                  covdata=covdata, misccovdata=misccovdata, hcovdata=hcovdata)
-      dat <- c(dat, covmat)
+                  covdata=covdata, misccovdata=misccovdata, hcovdata=hcovdata, covmat=covmat)
+#      dat <- c(dat, covmat)
       class(dat) <- "msmdata"
       dat
   }
@@ -462,7 +484,7 @@ msm.check.times <- function(time, subject)
           badsubjs <- sort(unique(subject))[ !adjacent ]
           badlist <- paste(badsubjs, collapse=", ")
           plural <- if (length(badsubjs)==1) "" else "s"
-          stop ("Observations within subject", plural, " ", badlist, " are not adjacent in the data file")
+          stop ("Observations within subject", plural, " ", badlist, " are not adjacent in the data")
       }
 ### Check if observations are ordered in time within subject
       orderedpt <- ! tapply(time, subject, is.unsorted)
@@ -496,7 +518,8 @@ msm.obs.to.fromto <- function(dat)
                    covdata=dat$covdata, hcovdata=dat$hcovdata)
       if (datf$ncovs > 0) {
           ## match time-dependent covariates with the start of the transition 
-          datf <- c(datf, subset(as.data.frame(dat[dat$covlabels], optional=TRUE), !lastsubj))
+#          datf <- c(datf, subset(as.data.frame(dat[dat$covlabels], optional=TRUE), !lastsubj))
+          datf$covmat <- subset(as.data.frame(dat$covmat, optional=TRUE), !lastsubj)
       } ## n.b. don't need to  use this function for misc models 
       class(datf) <- "msmfromtodata"
       datf
@@ -608,22 +631,20 @@ msm.form.covdata <- function(covariates, data, center=TRUE)
 
 msm.aggregate.data <- function(dat)
   {
-      dat2 <- as.data.frame(dat[c("fromstate","tostate","timelag","obstype", dat$covlabels)], optional=TRUE)
+      dat2 <- as.data.frame(dat[c("fromstate","tostate","timelag","obstype")], optional=TRUE)
+      dat2$covmat <- dat$covmat
       nobsf <- length(dat2$fromstate)
-      apaste <- as.character(do.call("paste", dat2))
-      aggdata <- as.data.frame(cbind(unique(dat2)[order(unique(apaste)),], nocc=as.numeric(table(apaste))), optional=TRUE)
-      msmdata <- aggdata[c("fromstate", "tostate", "timelag", "obstype", "nocc")]
-      if (dat$ncovs > 0) {
-          msmdata <- cbind(msmdata, aggdata[dat$covdata$covlabels])
-          apaste2 <- as.character(do.call("paste", msmdata[,c("timelag", dat$covlabels)]))
-      }
-      else apaste2 <- msmdata$timelag
+      apaste <- do.call("paste", c(dat2[,c("fromstate","tostate","timelag","obstype")], dat2$covmat))
+      msmdata <- dat2[!duplicated(apaste),]
+      msmdata <- msmdata[order(unique(apaste)),]
+      msmdata$nocc <- as.numeric(table(apaste))
+      apaste2 <- msmdata[,"timelag"]
+      if (dat$ncovs > 0) apaste2 <- paste(apaste2,  do.call("paste", msmdata$covmat))
       ## which unique timelag/cov combination each row of aggregated data corresponds to
       ## lik.c needs this to know when to recalculate the P matrix. 
       msmdata$whicha <- match(apaste2, unique(apaste2)) 
       msmdata <- as.list(msmdata[order(apaste2),])
-      msmdata <- c(msmdata, dat[c("covdata", "hcovdata", "npts")])
-      msmdata$covlabels <- dat$covlabels
+      msmdata <- c(msmdata, dat[c("covdata", "hcovdata", "npts", "covlabels")])
       msmdata$nobs <- length(msmdata[[1]])
       class(msmdata) <- "msmaggdata"
       msmdata
@@ -636,7 +657,8 @@ msm.aggregate.hmmdata <- function(dat)
   {
       dat2 <- msm.obs.to.fromto(dat)
       firstsubj <- dat2$firstsubj
-      dat2 <- as.data.frame(dat2[c("fromstate","tostate","timelag", dat$covlabels)], optional=TRUE)
+#      dat2 <- as.data.frame(dat2[c("fromstate","tostate","timelag", dat$covlabels)], optional=TRUE)
+      dat2 <- as.data.frame(c(dat2[c("fromstate","tostate","timelag")], dat2$covmat), optional=TRUE)
       apaste <- as.character(do.call("paste", dat2))
       dat$whicha <- rep(0, dat$nobs)
       dat$whicha[!firstsubj] <- match(apaste, unique(apaste))
@@ -897,7 +919,7 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
       hmodel$links <- hmodel$links - 1
       qmodel$intens <- allinits[plabs=="qbase"]
       qcmodel$qcov <- allinits[plabs=="qcov"]
-      
+
       lik <- .C("msmCEntry",
                 as.integer(do.what),
                 as.integer(as.vector(t(qmodel$imatrix))),
@@ -910,7 +932,7 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
                 as.integer(msmdata$fromstate),
                 as.integer(msmdata$tostate),
                 as.double(msmdata$timelag),
-                as.double(unlist(msmdata[msmdata$covlabels])),
+                as.double(unlist(msmdata$covmat)),
                 as.integer(msmdata$covdata$whichcov), # this is really part of the model 
                 as.integer(msmdata$nocc),
                 as.integer(msmdata$whicha),
@@ -945,12 +967,12 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
                 as.integer(cmodel$states),
                 as.integer(cmodel$index - 1),
 
-                endlik = double(1),
+                returned = double(if (deriv==1)  qmodel$npars + qcmodel$npars  else 1),
                 ## so that Inf values are allowed for parameters denoting truncation points of truncated distributions
                 NAOK = TRUE, 
-                PACKAGE = "msm"
+##                PACKAGE = "msm"
                 )      
-    lik$endlik
+    lik$returned
   }
 
 lik.msm <- function(params, ...)
@@ -988,8 +1010,7 @@ msm.form.output <- function(whichp, model, cmodel, p)
               dimnames(semat)  <- dimnames(mat)
           }
           else if (!p$fixed){
-              semat <- "Unstable Hessian at the estimates"
-              lmat <- umat <- NULL
+              semat <- lmat <- umat <- NULL
           }
           Matrices[[matrixname]] <- mat
           if (!p$fixed) {

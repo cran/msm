@@ -119,3 +119,5 @@ try(fev3.hid <- msm(fev ~ days, subject=ptnum, data=fev, qmatrix=three.q, death=
                     fixedpars=FALSE))
 
 }
+
+cat("herrors.R: ALL TESTS PASSED\n")
