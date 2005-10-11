@@ -33,7 +33,8 @@ hmmfn HMODELS[] = {
     hmmBinom,
     hmmTNorm,
     hmmMETNorm,
-    hmmMEUnif
+    hmmMEUnif,
+    hmmNBinom
 };
 
 #define OBS_SNAPSHOT 1 
@@ -320,7 +321,9 @@ double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm,
     double lik=0, contrib=0;
     double *pmat        = Calloc((qm->nst)*(qm->nst), double);
     double *newintens = Calloc ( qm->npars , double);
-
+#ifdef DEBUG
+    int j;
+#endif
     for (i=0; i < d->nobs; ++i)
 	{
 	    R_CheckUserInterrupt();
@@ -407,20 +410,25 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
 			{
 			    kmax = 0;
 			    maxk = lvold[0] + log( pmat[MI(0, tru, qm->nst)] );
-			    if (tru > 0) 
-				{
-				    for (k = 1; k < qm->nst; ++k){
-					try = lvold[k] + log( pmat[MI(k, tru, qm->nst)] );
-					if (try > maxk) {
-					    maxk = try;
-					    kmax = k;
-					}
-				    }
+#ifdef DEBUG			   
+			    printf("k=%d,pmat=%lf,try=%lf, ", 0, log(pmat[MI(0, tru, qm->nst)]), lvold[0]+log(pmat[MI(0, tru, qm->nst)]));
+#endif
+			    for (k = 1; k < qm->nst; ++k){
+				try = lvold[k] + log( pmat[MI(k, tru, qm->nst)] );
+#ifdef DEBUG			   
+				printf("k=%d,pmat=%lf,try=%lf, ", k, log(pmat[MI(k,tru,qm->nst)]), lvold[k]+log(pmat[MI(k,tru,qm->nst)]));
+#endif
+				if (try > maxk) {
+				    maxk = try;
+				    kmax = k;
 				}
+			    }
+
 			    lvnew[tru] = log ( pout[tru] )  +  maxk;
 			    ptr[MI(i, tru, d->nobs)] = kmax;
 #ifdef DEBUG			   
-			    printf("true %d, par %lf, pout[%d] = %lf, lvnew = %lf, mi = %d, ptr=%d\n", tru, newpars[hm->firstpar[tru]], tru, pout[tru], lvnew[tru], MI(i, tru, d->nobs), ptr[MI(i, tru, d->nobs)]);
+			    printf("true %d, par %lf, pout[%d] = %lf, lvnew = %lf, mi = %d, ptr=%d\n", 
+				   tru, newpars[hm->firstpar[tru]], tru, pout[tru], lvnew[tru], MI(i, tru, d->nobs), ptr[MI(i, tru, d->nobs)]);
 #endif
 			}
 		    for (k = 0; k < qm->nst; ++k)
@@ -541,7 +549,7 @@ void derivsimple(msmdata *d, qmodel *qm, qcmodel *qcm,
 		    dcontrib[p] = dpmat[MI3(d->fromstate[i], d->tostate[i], p, qm->nst, qm->nst)];
 	    }
 	    for (p = 0; p < np; ++p) {
-/* 		printf("nocc=%d, time=%lf, from=%d, to=%d, c=%lf, dc=%lf\n", d->nocc[i], d->timelag[i], d->fromstate[i], d->tostate[i], contrib, dcontrib); */
+/*      		printf("nocc=%d, time=%lf, from=%d, to=%d, c=%lf, dc=%lf\n", d->nocc[i], d->timelag[i], d->fromstate[i], d->tostate[i], contrib, dcontrib[p]);    */
 		deriv[p] += d->nocc[i] * dcontrib[p] / contrib;
 	    }
 	}

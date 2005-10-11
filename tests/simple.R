@@ -5,6 +5,7 @@ data(heart)
 ### TESTS FOR SIMPLE NON-HIDDEN MARKOV MODELS
 
 twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166), c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
+twoway4.q2 <- rbind(c(-0.51, 0.24, 0, 0.25), c(0.162, -0.498, 0.168, 0.166), c(0, 0.26, -0.5, 0.25), c(0, 0, 0, 0))
 twoway3.q <- rbind(c(-0.5, 0.25, 0), c(0.166, -0.498, 0.166), c(0, 0.25, -0.5))
 oneway4.q <- rbind(c(0, 0.148, 0, 0.0171), c(0, 0, 0.202, 0.081), c(0, 0, 0, 0.126), c(0, 0, 0, 0))
 rownames(twoway4.q) <- colnames(twoway4.q) <- c("Well","Mild","Severe","Death")
@@ -27,15 +28,40 @@ heart.msm <- msm( state ~ years, subject=PTNUM, data = heart,
                  qmatrix = cinits, death = TRUE, fixedpars=TRUE,
                  method="BFGS", control=list(trace=5, REPORT=1)) 
 stopifnot(isTRUE(all.equal(4113.16601901957, heart.msm$minus2loglik, tol=1e-06)))
+
 if (developer.local) {
     system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
                                  qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE,
-                                 method="BFGS", control=list(trace=5, REPORT=1)) ) # 9.81 on new, 55.14 on old! 
+                                 method="BFGS", control=list(trace=5, REPORT=1, fnscale=1)) )
     stopifnot(isTRUE(all.equal(3968.7978930519, heart.msm$minus2loglik, tol=1e-06)))
-#    system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
-#                                 qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE, use.deriv=TRUE,
-#                                 method="BFGS", control=list(trace=5, REPORT=1)) ) # FIXME hangs with derivs, in balanc_ eigen.f:144
+    ## With derivs 
+#     system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
+#                                  qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE, use.deriv=TRUE, 
+#                                  method="BFGS", control=list(trace=5, REPORT=1, fnscale=4000
+#                                                          )) ) # Right maximum, but no SEs, whatever method, even with parscale. Overflows and hangs with no fnscale.
+#     heart.msm
+
+#     ## FIXME for repeated evals. 
+#     (heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
+#                       qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE, deriv.test=TRUE, use.deriv=FALSE,
+#                       method="BFGS", control=list(trace=1, REPORT=1, fnscale=4000)) )
+
 }
+
+## No death state. 
+system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
+                 qmatrix = twoway4.q, death = FALSE, fixedpars=FALSE, 
+                 method="BFGS", control=list(trace=1, REPORT=1, fnscale=4000)) )
+heart.msm
+## With derivatives.
+## BFGS / CG methods  shoots off unless use fnscale.  uses derivs in optim, but NM doesn't  FIXME prevent overflow. 
+## Good news is 9.54 vs 45.03 speed improvement
+#system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart,
+#                 qmatrix = twoway4.q, death = FALSE, fixedpars=FALSE, deriv.test=FALSE, use.deriv=TRUE, 
+#                 method="BFGS", control=list(trace=1, REPORT=1, fnscale=4000)) )
+#heart.msm
+
+
 
 ## auto-generated initial values. 
 state.g <- heart$state; time.g <- heart$years; subj.g <- heart$PTNUM
@@ -93,12 +119,18 @@ if (developer.local) {
 ## Constraints with psoriatic arthritis data
 data(psor)
 psor.q <- rbind(c(0,0.1,0,0),c(0,0,0.1,0),c(0,0,0,0.1),c(0,0,0,0))
-psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
+system.time(psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
                 qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn, # covinits=list(hieffusn = c(0.5, 0.1, 0), ollwsdrt=c(0.2, 0.1, -0.1)), 
                 constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
-                fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS")
+                fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS"))
 stopifnot(isTRUE(all.equal(1114.89946121717, psor.msm$minus2loglik, tol=1e-06)))
 stopifnot(isTRUE(all.equal(0.0953882330391683, qmatrix.msm(psor.msm)$estimates[1,2], tol=1e-06)))
+
+## With derivatives.  TODO when supports derivs with covariates. 
+#system.time(psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
+#                qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn, # covinits=list(hieffusn = c(0.5, 0.1, 0), ollwsdrt=c(0.2, 0.1, -0.1)), 
+#                constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
+#                fixedpars=FALSE, use.deriv=TRUE, control = list(REPORT=1,trace=2), method="BFGS"))
 
 
 ## No death state
@@ -138,11 +170,15 @@ if (developer.local) {
       msm(eyes ~ time, subject=subject, qmatrix = rbind(c(0,0.02039,0,0), c(0.007874,0,0.01012,0), c(0,0.01393,0,0.01045), c(0,0,0,0)),
           covariates = ~ hba1, data = marsh.df, fixedpars=TRUE)
     stopifnot(isTRUE(all.equal(335.897217906310, marsh.msm$minus2loglik, tol=1e-06)))
-    marsh.msm <-
+    system.time(marsh.msm <-
       msm(eyes ~ time, subject=subject, qmatrix = rbind(c(0,0.02039,0,0), c(0.007874,0,0.01012,0), c(0,0.01393,0,0.01045), c(0,0,0,0)),
-          covariates = ~ hba1, data = marsh.df)
+          covariates = ~ hba1, data = marsh.df))
     stopifnot(isTRUE(all.equal(310.989863258621, marsh.msm$minus2loglik, tol=1e-06)))
     stopifnot(isTRUE(all.equal(-0.0496235211442196, qmatrix.msm(marsh.msm, covariates=0)$estimates[1,1], tol=1e-06)))
+    ## with derivs   TODO when supports derivs with covariates. 
+#    system.time(marsh.msm <-
+#      msm(eyes ~ time, subject=subject, qmatrix = rbind(c(0,0.02039,0,0), c(0.007874,0,0.01012,0), c(0,0.01393,0,0.01045), c(0,0,0,0)),
+#          covariates = ~ hba1, data = marsh.df, use.deriv=TRUE))
 }
 
 ## Exact times (BOS data)
@@ -165,6 +201,10 @@ fiveq.i <- fiveq; fiveq.i[fiveq.i!=0] <- 1
 stopifnot(isTRUE(all.equal(3025.47316457165, msmtest5$minus2loglik, tol=1e-06)))
 (msmtest5 <- msm(state ~ time, qmatrix = fiveq.i, gen.inits=TRUE, subject = ptnum, data = bos, exacttimes=TRUE))
 stopifnot(isTRUE(all.equal(3025.47316457165, msmtest5$minus2loglik, tol=1e-06)))
+
+## derivatives with exact times
+#system.time(msmtest5 <- msm(state ~ time, qmatrix = fiveq, subject = ptnum, data = bos, exacttimes=TRUE)); msmtest5
+#system.time(msmtest5 <- msm(state ~ time, qmatrix = fiveq, subject = ptnum, data = bos, exacttimes=TRUE, use.deriv=TRUE)); msmtest5
 
 ### Aneurysm dataset different in 0.5 (not fromto, includes imputed initial states)
 
@@ -303,6 +343,10 @@ stopifnot(isTRUE(all.equal(4833.0064065267, heart.msm$minus2loglik, tol=1e-06)))
 
 heartfaccov.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q,
                        covariates = ~ factor(pdiag), covinits=list(sex=rep(0.1,7)), fixedpars=TRUE)
+stopifnot(isTRUE(all.equal(4793.30238295565, heartfaccov.msm$minus2loglik, tol=1e-06)))
+pdiag.g <- heart$pdiag
+heartfaccov.msm <- msm(state.g ~ time.g, subject=subj.g, qmatrix = twoway4.q, # covs in glob env. 
+                       covariates = ~ factor(pdiag.g), covinits=list(sex=rep(0.1,7)), fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4793.30238295565, heartfaccov.msm$minus2loglik, tol=1e-06)))
 heartfaccov.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q,
                        covariates = ~ factor(pdiag), covinits=list("factor(pdiag)Nonexistentlevel"=rep(0.1,7)), fixedpars=TRUE)

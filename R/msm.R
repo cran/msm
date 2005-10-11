@@ -30,8 +30,6 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                 fixedpars = NULL, # specify which parameters to fix. TRUE for all parameters
                 center = TRUE, # center covariates at their means
                 hessian = TRUE,
-#                deriv.test = FALSE,
-#                use.deriv = FALSE,
                 ... # options to optim
                 )
   {            
@@ -41,7 +39,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       if (missing(data)) data <- environment(formula)
 
 ### MODEL FOR TRANSITION INTENSITIES 
-      qmodel <- msm.form.qmodel(qmatrix, qconstraint, exacttimes, gen.inits, formula, subject, data)
+      qmodel <- msm.form.qmodel(qmatrix, qconstraint, exacttimes, gen.inits, formula, subject, data, censor, censor.states)
       
 ### MISCLASSIFICATION MODEL
       if (!missing(ematrix)) {
@@ -128,25 +126,11 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       
 ### FORM LIST OF INITIAL PARAMETERS, MATCHING PROVIDED INITS WITH SPECIFIED MODEL, FIXING SOME PARS IF REQD
       p <- msm.form.params(qmodel, qcmodel, emodel, hmodel, fixedpars)
-
-#       if (deriv.test) {
-#           likwrap <- function(x, p1, p2, p3) {
-#               pars <- list(log(c(p1, p2, p3)))
-#               do.call("lik.msm", c(pars, x))
-#           }
-#           myenv <- new.env()
-#           assign("x", list(msmdata, qmodel, qcmodel, cmodel, hmodel, p), env = myenv)
-#           for (i in 1:3) 
-#             assign(paste("p", i, sep=""), exp(p$inits[i]), env = myenv)
-#           foo <- numericDeriv(quote(likwrap(x, p1, p2, p3)), c("p1","p2","p3"), myenv)
-#           f <- function(...) {x <- lik.msm(...); attr(x, "gradient") <- deriv.msm(...); x}
-# #          foo2 <- nlm(f, p$inits, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel, cmodel=cmodel, hmodel=hmodel, paramdata=p, check.analyticals=FALSE)
-#           return (list(analytic.deriv=deriv.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p), numeric.deriv=attr(foo,"gradient")))
-#       }
       
 ### CALCULATE LIKELIHOOD AT INITIAL VALUES...
       if (p$fixed) {
           p$lik <- lik.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p)
+### TODO ##          p$deriv <- deriv.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p)
           p$params <- p$allinits
           p$params <- p$params[!duplicated(p$constr)][p$constr]
           p$foundse <- FALSE
@@ -156,8 +140,8 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
 ### ... OR DO MAXIMUM LIKELIHOOD ESTIMATION
       else {
           gr <- NULL # derivatives, TODO for simple model only.
-#          if (!hmodel$hidden && cmodel$ncens==0 && qcmodel$ncovs==0 && use.deriv)
-#            gr <- deriv.msm
+### TODO ##                   if (!hmodel$hidden && cmodel$ncens==0 && qcmodel$ncovs==0 && use.deriv)
+### TODO ##                     gr <- deriv.msm
           opt <- optim(p$inits, lik.msm, hessian=hessian, gr=gr, ...,# arguments to optim
                        msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel, 
                        cmodel=cmodel, hmodel=hmodel, paramdata=p)
@@ -169,7 +153,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
               p$foundse <- TRUE
               p$covmat <- matrix(0, nrow=p$npars, ncol=p$npars)
               p$covmat[p$optpars,p$optpars] <- solve(0.5 * opt$hessian)
-              p$covmat <- p$covmat[!duplicated(p$constr),!duplicated(p$constr)][p$constr,p$constr]
+              p$covmat <- p$covmat[!duplicated(p$constr),!duplicated(p$constr), drop=FALSE][p$constr,p$constr, drop=FALSE]
               p$ci <- cbind(p$params - qnorm(1 - 0.5*(1-cl))*sqrt(diag(p$covmat)),
                             p$params + qnorm(1 - 0.5*(1-cl))*sqrt(diag(p$covmat)))
               p$ci[p$fixedpars,] <- NA
@@ -220,6 +204,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                          QmatricesL = QmatricesL,
                          QmatricesU = QmatricesU, 
                          minus2loglik = p$lik,
+## TODO ##                         deriv = p$deriv,
                          estimates = p$params,
                          estimates.t = p$estimates.t,
                          fixedpars = p$fixedpars,
@@ -283,11 +268,11 @@ msm.fixdiag.ematrix <- function(ematrix)
       ematrix
   }
 
-msm.form.qmodel <- function(qmatrix, qconstraint=NULL, exacttimes=FALSE, gen.inits=FALSE, formula, subject, data)
+msm.form.qmodel <- function(qmatrix, qconstraint=NULL, exacttimes=FALSE, gen.inits=FALSE, formula, subject, data, censor, censor.states)
   {
 ### INTENSITY MATRIX (INPUT: qmatrix, qconstraint; OUTPUT: nstates, nintens, qmatrix, qvector, baseconstr, nintenseffs)
       if (gen.inits)
-        qmatrix <- crudeinits.msm(formula, subject, qmatrix, data)
+        qmatrix <- crudeinits.msm(formula, subject, qmatrix, data, censor, censor.states)
       msm.check.qmatrix(qmatrix)
       nstates <- dim(qmatrix)[1]
       diag(qmatrix) <- 0
@@ -601,12 +586,37 @@ msm.check.model <- function(fromstate, tostate, obs, subject, obstype=NULL, qmat
 
 ## Extract covariate information from a formula.
 ## Find which columns and which rows to keep from the original data 
+## Change in R-2.2.0, model.matrix now drops NAs.  mm returns 
+ 
+# msm.form.covdata <- function(covariates, data, center=TRUE)
+# {
+#     if (!inherits(covariates, "formula")) stop(deparse(substitute(covariates)), " should be a formula")
+#     mm <- as.data.frame(model.matrix(covariates, data=data, na.action=NULL)[,-1,drop=FALSE])
+#     mf <- model.frame(covariates, data=data)
+#     covlabels <- colnames(mm)
+#     ncovs <- length(covlabels)
+#     droprows <- as.numeric(attr(mf, "na.action"))
+#     covrows.kept <- setdiff(seq(length=nrow(mm)), droprows)
+#     mm <- mm[covrows.kept,]
+#     ## centre the covariates about their means
+#     covmeans <- if (center) apply(mm, 2, mean) else rep(0, ncovs)
+#     covfactor <- sapply(mf, is.factor)
+#     if (ncovs > 0) mm <- sweep(mm, 2, covmeans)
+#     colnames(mm) <- covlabels # ( ) in names are converted into . in sweep, breaks factor covs
+#     covdata <- list(covlabels=covlabels, ncovs=ncovs, covmeans=covmeans,
+#                     covfactor=covfactor,
+#                     covmat=mm,
+#                     covrows.kept=covrows.kept)
+#     class(covdata) <- "msmcovdata"
+#     dput(covdata, "/tmp/cov-new.R")
+#     covdata
+# }
 
 msm.form.covdata <- function(covariates, data, center=TRUE)
 {
     if (!inherits(covariates, "formula")) stop(deparse(substitute(covariates)), " should be a formula")
     mm <- as.data.frame(model.matrix(covariates, data=data))
-    n <- nrow(data)
+    n <- nrow(model.frame(covariates, data=data, na.action=NULL))
     covlabels <- names(mm)[-1]
     ncovs <- length(covlabels)
     mm <- subset(mm, select=-1)
@@ -970,7 +980,7 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
                 returned = double(if (deriv==1)  qmodel$npars + qcmodel$npars  else 1),
                 ## so that Inf values are allowed for parameters denoting truncation points of truncated distributions
                 NAOK = TRUE, 
-##                PACKAGE = "msm"
+                PACKAGE = "msm"
                 )      
     lik$returned
   }

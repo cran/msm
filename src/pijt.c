@@ -252,6 +252,8 @@ MatrixExpPade(double *ExpAt, double *A, int n, double t)
   Free(workspace);
 }
 
+/* R interface to Pade method */
+
 void MatrixExpPadeR(double *ExpAt, double *A, int *n, double *t)
 {
     MatrixExpPade(ExpAt, A, *n, *t);
@@ -283,8 +285,14 @@ void Eigen(Matrix mat, int n, vector revals, vector ievals, Matrix evecs, int *e
     Matrix work = (Matrix) Calloc(nsq, double);
     iMatrix worki = Calloc(nsq, int);
     Matrix temp = (Matrix) Calloc(nsq, double);
-    for (i=0; i<nsq; ++i)
+    for (i=0; i<nsq; ++i) {
+	/* Check whether any of the elements of Q have overflowed.  If
+	   so, eigen will hang in a infinite loop, so bail out before
+	   this happens.  */
+	if (!R_FINITE(mat[i]))
+	    error("numerical overflow in calculating likelihood\n");
 	temp[i] = mat[i];
+    }
 #ifdef _USE_LINPACK_EIGEN_
     F77_CALL(rg) (&n, &n, temp, revals, ievals, &matz, evecs, worki, work, err);
 #endif
@@ -383,6 +391,12 @@ void Pmat(Matrix pmat, double t, vector intens, ivector qvector, int nstates, in
 	}
     }
     else {
+/* 	for (i=0; i<5; ++i) */
+/* 	    printf("%d, " , qvector[i]); */
+/* 	printf("\n"); */
+/* 	for (i=0; i<5; ++i) */
+/* 	    printf("%lf, " , intens[i]); */
+/* 	printf("\n"); */
 /* 	for (i=0; i<nstates; ++i) { */
 /* 	    for (j=0; j<nstates; ++j) { */
 /* 		printf("%lf, " , qmat[MI(i, j, nstates)]); */
@@ -423,6 +437,11 @@ double pijdeath(int r, int s, Matrix pmat, vector intens, ivector qvector, int n
  -(q1 + q2)   q1   q2 
    q3  -(q3 + q4)  q4
    0  0  0 
+p 0
+i 0 
+j 0
+k 1
+done 1  
 */
 
 void FormDQ(Matrix DQ, Matrix qmat, int p, int n) {
@@ -436,7 +455,7 @@ void FormDQ(Matrix DQ, Matrix qmat, int p, int n) {
 		if (k-1 == p) { /* the pth intensity parameter starting from 0 */
 		    DQ[MI(i,j,n)] = 1;
 		    DQ[MI(i,i,n)] = -1;
-		    done = i;
+		    done = 1;
 		}
 	    }
 	}
@@ -565,10 +584,12 @@ void DPmat(Array3 dpmat, double t, vector intens, ivector qvector, int n, int np
     }
 }
 
-/* Derivs for s death 
-   P(t)_rs  =  sum_ (u!=s) (P(t)_ru qus)
-   dP/dqrs = sum_(u!=s) dP(t)_ru_rs qus    for s not final 
-   dP/dqus = sum_(u!=s) P(t)_ru  +  dP(t)_ru_us qus  for s final 
+/* Derivs of P(t)_rs wrt every q,   for s death 
+   P(t)_rs  =  sum_(k!=s) (P(t)_rk qks)
+   dP/dqij  =  sum_(k!=s) d/dqij P(t)_rk qks     for j!=s   qij not included in qks's, j not the death state. 
+   dP/dqij  =  sum_(k!=s,k!=i) d/dqij P(t)_rk qks  +  P(t)_ri + qij d/dqij P(t)_ri   for j = s       qij included in qks's,   j is the death state
+
+   e.g. 2 state model r=0, s=1   P(t)_rs = p(t)rr qrs 
 */
 
 /* TEST ME */
@@ -582,15 +603,20 @@ void dpijdeath(int r, int s, Array3 dpmat, Matrix pmat, vector intens, ivector q
 	for (j=0; j<n; ++j)  {
 	    if (qmat[MI(i,j,n)] > 0) {
 		if (j != s) {
+		    dcontrib[p] = 0;
 		    for (k=0; k<n; ++k)
 			if (k != s)
 			    dcontrib[p] += dpmat[MI3(r, k, p, n, n)] * qij(k, s, intens, qvector, n);
 		}
 		else {
-		    dcontrib[p] = pmat[MI(r, s, n)];
+		    dcontrib[p] = pmat[MI(r, i, n)]  +  dpmat[MI3(r, i, p, n, n)] * qij(i, j,intens, qvector, n);
+/* 		    printf("i %d j %d r %d s %d p %d pm %lf ", i, j, r, s, p, dcontrib[p]); */
 		    for (k=0; k<n; ++k)
-			if (k != s && k != i)
+			if (k != s && k != i) {
 			    dcontrib[p] += dpmat[MI3(r, k, p, n, n)] * qij(k, s, intens, qvector, n);
+/* 			    printf("dp %lf qij %lf ", dpmat[MI3(r, k, p, n, n)], qij(k, s, intens, qvector, n)); */
+			}
+/* 		    printf("\n"); */
 		}
 		++p;
 	    }

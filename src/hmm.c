@@ -124,3 +124,10 @@ double hmmMEUnif(double x, double *pars)
     double lower = pars[0], upper = pars[1], sderr = pars[2], meanerr = pars[3];
     return ( pnorm(x, meanerr + lower, sderr, 1, 0) - pnorm(x, meanerr + upper, sderr, 1, 0) ) / (upper - lower) ;
 }
+
+
+double hmmNBinom(double x, double *pars)
+{
+    double size = pars[0], prob = pars[1];
+    return dnbinom(x, size, prob, 0);
+}
