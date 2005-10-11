@@ -124,6 +124,61 @@ plot.msm <- function(x, from=NULL, to=NULL, range=NULL, covariates="mean", legen
       invisible()
   }
 
+### Likelihood surface plots
+
+surface.msm <- function(x, params=c(1,2), np=10, type=c("contour","filled.contour","persp","image"),
+                        point=NULL, xrange=NULL, yrange=NULL,...)
+{
+    type <- match.arg(type)
+    if (is.null(point))
+      point <- x$paramdata$params.uniq
+    se <- sqrt(diag(x$paramdata$covmat.uniq))
+    i1 <- params[1]; i2 <- params[2]
+    if (is.null(xrange)) {
+        pmin <- point[i1] - 2*se[i1]
+        pmax <- point[i1] + 2*se[i1]
+        p1 <- seq(pmin, pmax, length=np)
+    }
+    else p1 <- seq(xrange[1], xrange[2], length=np)
+    if (is.null(yrange)){
+        pmin <- point[i2] - 2*se[i2]
+        pmax <- point[i2] + 2*se[i2]
+        p2 <- seq(pmin, pmax, length=np)
+    }
+    else p2 <- seq(yrange[1], yrange[2], length=np)
+    
+    z <- matrix(nrow=np, ncol=np)
+    for (i in 1:np) {
+        for (j in 1:np) {
+            point[i1] <- p1[i]; point[i2] <- p2[j]
+            z[i,j] <- -0.5*likderiv.msm(point, 0, x$data, x$qmodel, x$qcmodel, x$cmodel, x$hmodel, x$paramdata)
+        }
+    }
+
+    switch(type, 
+           contour = contour(p1, p2, z, ...),
+           filled.contour = filled.contour(p1, p2, z, ...),
+           image = image(p1, p2, z, ...),
+           persp = persp(p1, p2, z, zlab="Log-likelihood",...)
+           )
+    invisible()
+}
+
+contour.msm <- function(x, ...)
+{
+  surface.msm(x, type="contour",...)
+}
+
+persp.msm <- function(x, ...)
+{
+  surface.msm(x, type="persp",...)
+}
+
+image.msm <- function(x, ...)
+{
+  surface.msm(x, type="image",...)
+}
+
 
 ### Extract the transition intensity matrix at given covariate values
 
@@ -896,7 +951,7 @@ viterbi.msm <- function(x)
 
                       as.integer(as.vector(t(x$qmodel$imatrix))),
                       as.double(as.vector(t(x$Qmatrices$baseline)[t(x$qmodel$imatrix)==1])),
-                      as.double(unlist(lapply(x$Qmatrices[x$qcmodel$covlabels], function(x) t(x)[t(misc.msm$qmodel$imatrix)==1]))),
+                      as.double(unlist(lapply(x$Qmatrices[x$qcmodel$covlabels], function(x) t(x)[t(x$qmodel$imatrix)==1]))),
                       as.double(x$hmodel$pars),
                       as.double(x$hmodel$coveffect),   # estimates
 
@@ -930,6 +985,8 @@ viterbi.msm <- function(x)
                       ## various dimensions
                       as.integer(x$qmodel$nstates),
                       as.integer(x$qmodel$npars),
+                      as.integer(x$qmodel$ndpars),
+                      as.integer(x$qcmodel$ndpars),
                       as.integer(x$data$nobs),
                       as.integer(x$data$npts),  # HMM only
                       as.integer(rep(x$qcmodel$ncovs, x$qmodel$npars)),
@@ -939,6 +996,10 @@ viterbi.msm <- function(x)
                       as.integer(x$cmodel$states - 1),
                       as.integer(x$cmodel$index - 1),
 
+                      as.integer(x$qmodel$constraint),
+                      as.integer(x$qcmodel$constraint),
+                      as.integer(x$qcmodel$whichdcov),
+                      
                       fitted = double (x$data$nobs),
                       PACKAGE = "msm",
                       NAOK = TRUE

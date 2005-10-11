@@ -34,32 +34,14 @@ if (developer.local) {
                                  qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE,
                                  method="BFGS", control=list(trace=5, REPORT=1, fnscale=1)) )
     stopifnot(isTRUE(all.equal(3968.7978930519, heart.msm$minus2loglik, tol=1e-06)))
-    ## With derivs 
-#     system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
-#                                  qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE, use.deriv=TRUE, 
-#                                  method="BFGS", control=list(trace=5, REPORT=1, fnscale=4000
-#                                                          )) ) # Right maximum, but no SEs, whatever method, even with parscale. Overflows and hangs with no fnscale.
-#     heart.msm
-
-#     ## FIXME for repeated evals. 
-#     (heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
-#                       qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE, deriv.test=TRUE, use.deriv=FALSE,
-#                       method="BFGS", control=list(trace=1, REPORT=1, fnscale=4000)) )
-
 }
 
 ## No death state. 
 system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
                  qmatrix = twoway4.q, death = FALSE, fixedpars=FALSE, 
                  method="BFGS", control=list(trace=1, REPORT=1, fnscale=4000)) )
+stopifnot(isTRUE(all.equal(3986.08765893935, heart.msm$minus2loglik, tol=1e-06)))
 heart.msm
-## With derivatives.
-## BFGS / CG methods  shoots off unless use fnscale.  uses derivs in optim, but NM doesn't  FIXME prevent overflow. 
-## Good news is 9.54 vs 45.03 speed improvement
-#system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart,
-#                 qmatrix = twoway4.q, death = FALSE, fixedpars=FALSE, deriv.test=FALSE, use.deriv=TRUE, 
-#                 method="BFGS", control=list(trace=1, REPORT=1, fnscale=4000)) )
-#heart.msm
 
 
 
@@ -126,11 +108,6 @@ system.time(psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
 stopifnot(isTRUE(all.equal(1114.89946121717, psor.msm$minus2loglik, tol=1e-06)))
 stopifnot(isTRUE(all.equal(0.0953882330391683, qmatrix.msm(psor.msm)$estimates[1,2], tol=1e-06)))
 
-## With derivatives.  TODO when supports derivs with covariates. 
-#system.time(psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
-#                qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn, # covinits=list(hieffusn = c(0.5, 0.1, 0), ollwsdrt=c(0.2, 0.1, -0.1)), 
-#                constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
-#                fixedpars=FALSE, use.deriv=TRUE, control = list(REPORT=1,trace=2), method="BFGS"))
 
 
 ## No death state
@@ -175,15 +152,11 @@ if (developer.local) {
           covariates = ~ hba1, data = marsh.df))
     stopifnot(isTRUE(all.equal(310.989863258621, marsh.msm$minus2loglik, tol=1e-06)))
     stopifnot(isTRUE(all.equal(-0.0496235211442196, qmatrix.msm(marsh.msm, covariates=0)$estimates[1,1], tol=1e-06)))
-    ## with derivs   TODO when supports derivs with covariates. 
-#    system.time(marsh.msm <-
-#      msm(eyes ~ time, subject=subject, qmatrix = rbind(c(0,0.02039,0,0), c(0.007874,0,0.01012,0), c(0,0.01393,0,0.01045), c(0,0,0,0)),
-#          covariates = ~ hba1, data = marsh.df, use.deriv=TRUE))
 }
 
 ## Exact times (BOS data)
-fiveq <- rbind(c(0,0.01,0,0,0.002), c(0,0,0.07,0,0.01), c(0,0,0,0.07,0.02), c(0,0,0,0,0.03), c(0,0,0,0,0))
 data(bos)
+fiveq <- rbind(c(0,0.01,0,0,0.002), c(0,0,0.07,0,0.01), c(0,0,0,0.07,0.02), c(0,0,0,0,0.03), c(0,0,0,0,0))
 (msmtest5 <- msm(state ~ time, qmatrix = fiveq,  subject = ptnum, data = bos, exacttimes=TRUE, fixedpars=1:7))
 stopifnot(isTRUE(all.equal(3057.85781916437, msmtest5$minus2loglik, tol=1e-06)))
 (msmtest5 <- msm(state ~ time, qmatrix = fiveq,  subject = ptnum, data = bos, obstype=rep(2, nrow(bos)), fixedpars=1:7))
@@ -202,9 +175,6 @@ stopifnot(isTRUE(all.equal(3025.47316457165, msmtest5$minus2loglik, tol=1e-06)))
 (msmtest5 <- msm(state ~ time, qmatrix = fiveq.i, gen.inits=TRUE, subject = ptnum, data = bos, exacttimes=TRUE))
 stopifnot(isTRUE(all.equal(3025.47316457165, msmtest5$minus2loglik, tol=1e-06)))
 
-## derivatives with exact times
-#system.time(msmtest5 <- msm(state ~ time, qmatrix = fiveq, subject = ptnum, data = bos, exacttimes=TRUE)); msmtest5
-#system.time(msmtest5 <- msm(state ~ time, qmatrix = fiveq, subject = ptnum, data = bos, exacttimes=TRUE, use.deriv=TRUE)); msmtest5
 
 ### Aneurysm dataset different in 0.5 (not fromto, includes imputed initial states)
 
@@ -265,9 +235,28 @@ stopifnot(isTRUE(all.equal(2.35928404626333, summ$hazard$hieffusn[1,3], tol=1e-0
 stopifnot(isTRUE(all.equal(2.35928404626333, summ$hazard$hieffusn[3,3], tol=1e-04)))
 
 print(interactive())
-if (interactive()) plot.msm(psor.msm)
-if (interactive()) plot.msm(psor.msm, from=c(1,3), to=4, range=c(10,30))
-if (interactive()) plot.msm(psor.msm, from=c(1,2), to=4, range=c(10,80), legend.pos=c(70,0.1))
+if (interactive())
+  {
+      plot.msm(psor.msm)
+      plot.msm(psor.msm, from=c(1,3), to=4, range=c(10,30))
+      plot.msm(psor.msm, from=c(1,2), to=4, range=c(10,80), legend.pos=c(70,0.1))
+
+      surface.msm(psor.msm)
+      surface.msm(psor.msm, type="filled")
+      surface.msm(psor.msm, c(3,5), type="filled")
+      surface.msm(psor.msm, c(3,4))
+      x <- psor.msm$paramdata$params.uniq
+      x[6] <- 0      
+      surface.msm(psor.msm, c(3,4), point=x)
+      surface.msm(psor.msm, c(3,4), point=x, xrange=c(-2, -0.6))
+      surface.msm(psor.msm, c(3,4), point=x, yrange=c(-1.2, 0.1))
+      surface.msm(psor.msm, c(3,4), point=x, np = 5)
+      contour(psor.msm)
+      persp(psor.msm)
+      persp(psor.msm, np=5)
+      image(psor.msm)
+  }
+
 
 co <- coef.msm(psor.msm)
 stopifnot(isTRUE(all.equal(0.498319866154661, co$hieffusn[1,2], tol=1e-06)))

@@ -18,7 +18,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
       qconstraint=NULL, econstraint=NULL, initprobs = NULL,
       death = FALSE, exacttimes = FALSE, censor=NULL,
       censor.states=NULL, cl = 0.95, fixedpars = NULL, center=TRUE,
-      hessian=TRUE, ... )
+      opt.method=c("optim","nlm"), hessian=TRUE, use.deriv=FALSE, deriv.test=FALSE,... )
 }
 \arguments{
   \item{formula}{ A formula giving the vectors containing the observed
@@ -326,7 +326,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
     \code{death = TRUE} indicates that the final state is a death state,
     and \code{death = FALSE} (the default) indicates that there is no
-    death state. See the \code{obstype} argument.
+    death state. See the \code{obstype} argument.  
   }
 
   \item{censor}{ A state, or vector of states, which indicates
@@ -359,7 +359,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     observation times.  If \code{exacttimes} is
     set to \code{TRUE}, then all observation times are assumed to
     represent the exact and complete times of transition of the process.
-    See the \code{obstype} argument. 
+    This is equivalent to every row of the data having \code{obstype =
+    2}.  See the \code{obstype} argument.
   }
 
   \item{cl}{Width of symmetric confidence intervals for maximum
@@ -385,12 +386,28 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     their means during the maximum likelihood estimation. This usually
     improves convergence. }
 
+  \item{opt.method}{Quoted name of the R function to perform
+    minimisation of the minus twice log likelihood.  Either "optim" or
+    "nlm". \code{\link{optim}} is the default. }
+
   \item{hessian}{If \code{TRUE} (the default) then the Hessian matrix is
-    computed at the maximul likelihood estimates, to obtain standard
-    errors.}
+    computed at the maximum likelihood estimates, to obtain standard
+    errors and confidence intervals.}
+
+  \item{use.deriv}{If \code{TRUE} then analytic first derivatives are
+    used in the optimisation of the likelihood, when an appropriate
+    quasi-Newton optimisation method, such as BFGS, is being used.  Note
+    that the default for \code{\link{optim}} is a Nelder-Mead method
+    which cannot use derivatives. However, these derivatives, if
+    supplied, are always used to calculate the Hessian. }
+
+  \item{deriv.test}{If \code{TRUE}, then analytic and numeric derivatives are
+    computed and compared at the initial values, and no optimisation is
+    performed.}
   
   \item{...}{Optional arguments to the general-purpose \R
-    optimization routine \code{\link{optim}}. Useful options include
+    optimisation routines, \code{\link{optim}} or
+    \code{\link{nlm}}. Useful options for \code{\link{optim}} include
     \code{method="BFGS"} for using a quasi-Newton optimisation
     algorithm, which can often be faster than the default Nelder-Mead.
     If the optimisation fails to converge, consider normalising the
@@ -455,6 +472,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     the maximum likelihood estimation.}
   \item{covmat}{Covariance matrix corresponding to \code{estimates}.}
   \item{ci}{Matrix of confidence intervals corresponding to \code{estimates}}
+  \item{opt}{Return value from \code{\link{optim}} or \code{\link{nlm}},
+    giving information about the results of the optimisation.}
   \item{foundse}{Logical value indicating whether the Hessian was positive-definite
     at the supposed maximum of the likelihood.  If not, the covariance matrix of the
     parameters is unavailable. In these cases the optimisation has

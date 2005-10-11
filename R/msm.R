@@ -29,8 +29,11 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                 cl = 0.95, # width of confidence intervals 
                 fixedpars = NULL, # specify which parameters to fix. TRUE for all parameters
                 center = TRUE, # center covariates at their means
+                opt.method = c("optim","nlm"),
                 hessian = TRUE,
-                ... # options to optim
+                use.deriv = FALSE,
+                deriv.test=FALSE,
+                ... # options to optim or nlm
                 )
   {            
       if (missing(formula)) stop("state ~ time formula not given")
@@ -127,32 +130,67 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
 ### FORM LIST OF INITIAL PARAMETERS, MATCHING PROVIDED INITS WITH SPECIFIED MODEL, FIXING SOME PARS IF REQD
       p <- msm.form.params(qmodel, qcmodel, emodel, hmodel, fixedpars)
       
+      if (deriv.test) {
+          ## Validate the new code for analytic derivatives against numeric derivatives
+          likwrap <- function(x, ...){
+              pars <- list(unlist(list(...)))
+              do.call("lik.msm", c(pars, x))
+          }
+          myenv <- new.env()
+          assign("x", list(msmdata, qmodel, qcmodel, cmodel, hmodel, p), env = myenv)
+          for (i in 1:p$nopt)
+            assign(paste("p", i, sep=""), p$inits[i], env = myenv)
+          pvec <- paste("p",1:p$nopt,sep="")
+          foo <- numericDeriv(as.call(lapply(as.list(c("likwrap", "x", pvec)), as.name)), pvec, myenv)
+          an.d <- deriv.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p)
+          num.d <- attr(foo,"gradient")
+          error <- max(abs((an.d - num.d)/num.d))
+          return (list(analytic.deriv=an.d, numeric.deriv=num.d, error=error))
+      }
+      
 ### CALCULATE LIKELIHOOD AT INITIAL VALUES...
       if (p$fixed) {
           p$lik <- lik.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p)
-### TODO ##          p$deriv <- deriv.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p)
-          p$params <- p$allinits
-          p$params <- p$params[!duplicated(p$constr)][p$constr]
+          p$deriv <- if (use.deriv) deriv.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p) else NULL
+          p$params.uniq <- p$allinits[!duplicated(p$constr)]
+          p$params <- p$allinits[!duplicated(p$constr)][p$constr]
           p$foundse <- FALSE
           p$covmat <- NULL
       }
 
 ### ... OR DO MAXIMUM LIKELIHOOD ESTIMATION
       else {
-          gr <- NULL # derivatives, TODO for simple model only.
-### TODO ##                   if (!hmodel$hidden && cmodel$ncens==0 && qcmodel$ncovs==0 && use.deriv)
-### TODO ##                     gr <- deriv.msm
-          opt <- optim(p$inits, lik.msm, hessian=hessian, gr=gr, ...,# arguments to optim
-                       msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel, 
-                       cmodel=cmodel, hmodel=hmodel, paramdata=p)
-          p$lik <- opt$value
           p$params <- p$allinits
-          p$params[p$optpars] <- opt$par
+          gr <- if (!hmodel$hidden && cmodel$ncens==0 && use.deriv) deriv.msm else NULL
+          opt.method <- match.arg(opt.method)
+          if (opt.method == "optim") {
+              opt <- optim(p$inits, lik.msm, hessian=hessian, gr=gr, ...,# arguments to optim
+                           msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel, 
+                           cmodel=cmodel, hmodel=hmodel, paramdata=p)
+              p$lik <- opt$value
+              p$params[p$optpars] <- opt$par
+          }
+          else if (opt.method == "nlm") {
+              nlmfn <- function(par) {
+                  ret <- lik.msm(par, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel, 
+                                 cmodel=cmodel, hmodel=hmodel, paramdata=p)
+                  if (!is.null(gr))
+                    attr(ret, "gradient") <- deriv.msm(par, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel, 
+                                                       cmodel=cmodel, hmodel=hmodel, paramdata=p)
+                  ret
+              }
+              opt <- nlm(nlmfn, p$inits, hessian=hessian, ...)
+              p$lik <- opt$minimum
+              p$params[p$optpars] <- opt$estimate
+          }
+          p$opt <- opt
+          p$params.uniq <- p$params[!duplicated(p$constr)]
           p$params <- p$params[!duplicated(p$constr)][p$constr]
           if (hessian && all(eigen(opt$hessian)$values > 0)) {
               p$foundse <- TRUE
               p$covmat <- matrix(0, nrow=p$npars, ncol=p$npars)
               p$covmat[p$optpars,p$optpars] <- solve(0.5 * opt$hessian)
+              p$covmat.uniq <- p$covmat[!duplicated(p$constr),!duplicated(p$constr), drop=FALSE]
               p$covmat <- p$covmat[!duplicated(p$constr),!duplicated(p$constr), drop=FALSE][p$constr,p$constr, drop=FALSE]
               p$ci <- cbind(p$params - qnorm(1 - 0.5*(1-cl))*sqrt(diag(p$covmat)),
                             p$params + qnorm(1 - 0.5*(1-cl))*sqrt(diag(p$covmat)))
@@ -204,12 +242,13 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                          QmatricesL = QmatricesL,
                          QmatricesU = QmatricesU, 
                          minus2loglik = p$lik,
-## TODO ##                         deriv = p$deriv,
+                         deriv = p$deriv,
                          estimates = p$params,
                          estimates.t = p$estimates.t,
                          fixedpars = p$fixedpars,
                          covmat = p$covmat,
                          ci = p$ci,
+                         opt = p$opt, 
                          foundse = p$foundse,
                          data = msmdata,
                          qmodel = qmodel,
@@ -217,7 +256,8 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                          qcmodel = qcmodel,
                          ecmodel = ecmodel,
                          hmodel = hmodel, 
-                         cmodel = cmodel
+                         cmodel = cmodel,
+                         paramdata=p
                          )      
       attr(msmobject, "fixed") <- p$fixed
       class(msmobject) <- "msm"
@@ -752,10 +792,13 @@ msm.form.covmodel <- function(covdata,
       }
       npars <- ncovs*nmatrix
       ndpars <- max(unique(constr))
-      list(constr=constr,
-           npars=npars,
+      ## which covariate each distinct covariate parameter corresponds to. Used in C (FormDQCov)
+      whichdcov <- rep(1:ncovs, each=nmatrix)[!duplicated(constr)]
+      list(npars=npars,
            ndpars=ndpars,    # number of distinct covariate effect parameters
            ncovs=ncovs,
+           constr=constr,
+           whichdcov=whichdcov,        
            covlabels=covlabels,
            inits = inits,
            covmeans=covdata$covmeans
@@ -968,6 +1011,8 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
                 # various dimensions
                 as.integer(qmodel$nstates),
                 as.integer(qmodel$npars),
+                as.integer(qmodel$ndpars),
+                as.integer(qcmodel$ndpars),
                 as.integer(msmdata$nobs),
                 as.integer(msmdata$npts),  # HMM only
                 as.integer(rep(qcmodel$ncovs, qmodel$npars)),
@@ -977,12 +1022,19 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
                 as.integer(cmodel$states),
                 as.integer(cmodel$index - 1),
 
-                returned = double(if (deriv==1)  qmodel$npars + qcmodel$npars  else 1),
+                ## constraints needed in C to calculate derivatives
+                as.integer(qmodel$constr),
+                as.integer(qcmodel$constr),
+                as.integer(qcmodel$whichdcov),
+                
+                returned = double(if (deriv)  qmodel$ndpars + qcmodel$ndpars  else 1),
                 ## so that Inf values are allowed for parameters denoting truncation points of truncated distributions
                 NAOK = TRUE, 
                 PACKAGE = "msm"
-                )      
-    lik$returned
+                )
+      ## transform derivatives wrt Q to derivatives wrt log Q
+      if (deriv) lik$returned[1:qmodel$ndpars] <- lik$returned[1:qmodel$ndpars]*exp(params[1:qmodel$ndpars])
+      lik$returned
   }
 
 lik.msm <- function(params, ...)

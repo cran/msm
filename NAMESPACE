@@ -3,14 +3,17 @@ useDynLib(msm)
 export(
 absorbing.msm,
 coef.msm,
+contour.msm,
 crudeinits.msm,
 deltamethod,
 ematrix.msm,
 hazard.msm,
+image.msm,
 MatrixExp,
 msm,
 logLik.msm,
 odds.msm,
+persp.msm,
 plot.msm,
 pmatrix.msm,
 pmatrix.piecewise.msm,
@@ -22,6 +25,7 @@ simmulti.msm,
 sojourn.msm,
 statetable.msm,
 summary.msm,
+surface.msm,
 totlos.msm,
 transient.msm,
 viterbi.msm,
@@ -63,6 +67,9 @@ importFrom(stats, coef)
 S3method(print, msm)
 S3method(summary, msm)
 S3method(plot, msm)
+S3method(contour, msm)
+S3method(persp, msm)
+S3method(image, msm)
 S3method(coef, msm)
 S3method(logLik, msm)
 S3method(print, hmodel)
