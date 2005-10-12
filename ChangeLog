@@ -1,3 +1,33 @@
+2005-10-11 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	*  Negative binomial hidden Markov model output distribution added. 
+	
+	* DESCRIPTION: Version 0.5.2 released.  
+	  
+2005-10-10 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+	  
+	* lik.c(Viterbi): Bug fix, wasn't handling Markov chains with
+	progressive and regressive states properly.  Thanks to Rochelle
+	Watkins.
+
+	* msm.R(msm.form.covdata): further fix for missing data. 
+	
+2005-07-27 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+	   
+	* sim.msm: collapse.covs fixed to handle covariate matrices with
+	one observation time. 
+
+	* msm.R(msm.form.covdata): bug fix for covariates in global
+	environment, not a data frame. This bug produced the error "Error
+	in 1:n : NA/NaN argument".
+	
+2005-05-27 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* sim.msm: sample replaced by resample as in ?sample, to fix
+	simulations with small models.
+
+	* msm.R: Fix for one-parameter models. (drop=FALSE in subsetting covmat)
+	
 2005-05-25 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 
 	* utils.R: New functions (dpqr)pexp for the exponential

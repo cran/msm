@@ -107,27 +107,32 @@ if (developer.local) {
                      hconstraint = list(acute = c(1,1)), 
                      fixedpars=FALSE, center=FALSE, method="BFGS", control=list(trace=1, REPORT=1)))
     stopifnot(isTRUE(all.equal(51597.8909140275, fev1.msm$minus2loglik, tol=1e-06)))
+##    stopifnot(isTRUE(all.equal(51600.522477903, fev1.msm$minus2loglik, tol=1e-06)))  # with NM alg
 
     if (interactive()) save(fev1.msm, file="~/msm/devel/models/fev1.msm.rda")
 
     hmodel2 <- list(hmmMETNorm(mean=100, sd=16, sderr=8, lower=80, upper=Inf, meanerr=0),
                     hmmMETNorm(mean=54, sd=18, sderr=8, lower=0, upper=80, meanerr=0),
                     hmmIdent(999))
-    (fev2.msm <- msm(fev ~ months, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel2,
+    (fev2.msm <- msm(fev ~ days, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel2,
                      hcovariates=list(~acute, ~acute, NULL), hcovinits = list(-8, -8, NULL),
                      hconstraint = list(sderr = c(1,1), acute = c(1,1)), 
                      method="BFGS", control=list(trace=3, REPORT=1), 
-                     fixedpars=FALSE, center=FALSE))
-    stopifnot(isTRUE(all.equal(50950.3548197944, fev2.msm$minus2loglik, tol=1e-06)))
+                     fixedpars=FALSE))
+##    stopifnot(isTRUE(all.equal(50950.3548197944, fev2.msm$minus2loglik, tol=1e-06))) ## ??
+##    stopifnot(isTRUE(all.equal(51445.9726641155, fev2.msm$minus2loglik, tol=1e-06))) ## with center=FALSE
+    stopifnot(isTRUE(all.equal(51411.1704398278, fev2.msm$minus2loglik, tol=1e-06))) ## with center=TRUE. 
 
-    (fev2.msm <- msm(fev ~ days, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel3,
-                     hcovariates=list(~acute, ~acute, NULL), hcovinits = list(-8, -8, NULL),
-                     hconstraint = list(sderr = c(1,1), acute = c(1,1)), 
-                     control=list(trace=3, REPORT=1), 
-                     method="BFGS", fixedpars=FALSE))
-    stopifnot(isTRUE(all.equal(51411.1704398273, fev2.msm$minus2loglik, tol=1e-06)))
+    if (interactive()) save(fev2.msm, file="~/msm/devel/models/fev2.msm.rda")
 
-    if (interactive()) save(fev1.msm, file="~/msm/devel/models/fev1.msm.rda")
+#    hmodel3 <- list(hmmNorm(mean=100, sd=16), hmmNorm(mean=54, sd=18), hmmIdent(999))
+#    (fev2.msm <- msm(fev ~ days, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel3,
+#                     hcovariates=list(~acute, ~acute, NULL), hcovinits = list(-8, -8, NULL),
+#                     hconstraint = list(sderr = c(1,1), acute = c(1,1)), 
+#                     method="BFGS", control=list(trace=3, REPORT=1), 
+#                     fixedpars=FALSE))
+#    stopifnot(isTRUE(all.equal(51411.1704398273, fev2.msm$minus2loglik, tol=1e-06)))
+
 
 
 #########  OUTPUT FUNCTIONS FOR HIDDEN MARKOV MODELS  ############################

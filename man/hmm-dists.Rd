@@ -13,6 +13,7 @@
 \alias{hmmTNorm}
 \alias{hmmMETNorm}
 \alias{hmmMEUnif}
+\alias{hmmNBinom}
 \title{Hidden Markov model constructors}
 
 \description{  
@@ -36,6 +37,7 @@ hmmBinom(size, prob)
 hmmTNorm(mean, sd, lower, upper)
 hmmMETNorm(mean, sd, lower, upper, sderr, meanerr=0)
 hmmMEUnif(lower, upper, sderr, meanerr=0)
+hmmNBinom(disp, prob)
 }
 \arguments{
 
@@ -48,10 +50,12 @@ hmmMEUnif(lower, upper, sderr, meanerr=0)
   observed exactly without error.
 
   \code{hmmUnif}, \code{hmmNorm}, \code{hmmLNorm}, \code{hmmExp},
-  \code{hmmGamma}, \code{hmmWeibull}, \code{hmmPois}, \code{hmmBinom}
-  and \code{hmmTNorm} represent Uniform, Normal, log-Normal,
-  exponential, Gamma, Weibull, Poisson, Binomial and truncated Normal
-  distributions respectively. 
+  \code{hmmGamma}, \code{hmmWeibull}, \code{hmmPois}, \code{hmmBinom}, 
+   \code{hmmTNorm} and \code{hmmNBinom} represent Uniform, Normal,
+   log-Normal, exponential, Gamma, Weibull, Poisson, Binomial, truncated Normal and
+  negative binomial distributions, respectively, with parameterisations
+  the same as the default parameterisations in the corresponding base R
+  distribution functions. 
   
   The \code{hmmMETNorm} and \code{hmmMEUnif} distributions are
   truncated Normal and Uniform distributions, but with additional Normal measurement error on the
@@ -64,7 +68,9 @@ density, distribution, quantile and random generation functions for
 the truncated Normal distribution.  
 
   \item{prob}{ (\code{hmmCat}) Vector of probabilities of observing
-    category \code{1, 2, \dots, length(prob)} respectively. }
+    category \code{1, 2, \dots, length(prob)} respectively.  Or
+    the probability governing a binomial or negative binomial
+    distribution.}
 
   \item{basecat}{ (\code{hmmCat}) Category which is considered to be the "baseline",
     so that during estimation, the probabilities are parameterised as
@@ -95,8 +101,12 @@ the truncated Normal distribution.
 
   \item{scale}{ (\code{hmmGamma}) Shape parameter of a Gamma
     distribution (see \code{\link{dgamma}}). }
-
+  
   \item{size}{Order of a Binomial distribution (see \code{\link{dbinom}}).}
+  
+  \item{disp}{Dispersion parameter of a negative binomial distribution,
+    also called \code{size} or \code{order}.  (see
+    \code{\link{dnbinom}}).}
   
   \item{lower}{ (\code{hmmUnif,hmmTNorm,hmmMEUnif}) Lower limit for an Uniform or truncated Normal distribution. } 
 

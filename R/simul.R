@@ -1,5 +1,11 @@
 ### FUNCTIONS FOR SIMULATING FROM MULTI-STATE MODELS
 
+### from help(sample) in base R 
+resample <- function(x, size, ...)
+  if(length(x) <= 1) {
+      if(!missing(size) && size == 0) x[FALSE] else x
+  } else sample(x, size, ...)
+
 ### General function to simulate one individual's realisation from a continuous-time Markov model
 ### Produces the exact times of transition
 
@@ -43,7 +49,7 @@ sim.msm <- function(qmatrix,   # intensity matrix
         if (any(obstimes > cur.t))
           rem.times <- c(rem.times, obstimes[(t.ind+1): length(obstimes)])
         cur.q <- qmatrices[,, t.ind]
-        cur.st <- sample((1:nstates)[-cur.st], size=1, prob = cur.q[cur.st, -cur.st])
+        cur.st <- resample((1:nstates)[-cur.st], size=1, prob = cur.q[cur.st, -cur.st])
         if (nsim > max.nsim) { ## need more memory for simulated outcome, allocate twice as much
             simstates <- c(simstates, numeric(max.nsim))
             simtimes <- c(simtimes, numeric(max.nsim))
@@ -65,10 +71,13 @@ sim.msm <- function(qmatrix,   # intensity matrix
 
 collapse.covs <- function(covs)
   {
-      pcovs <- apply(covs, 1, function(x) paste(x, collapse="\r"))
-      lpcovs <- c("\r", pcovs[1:(length(pcovs)-1)])
-      ind <- pcovs!=lpcovs
-      list(covs=covs[ind,,drop=FALSE], ind=which(ind))
+      if (nrow(covs)==1) list(covs=covs, ind=1)
+      else {
+          pcovs <- apply(covs, 1, function(x) paste(x, collapse="\r"))
+          lpcovs <- c("\r", pcovs[1:(length(pcovs)-1)])
+          ind <- pcovs!=lpcovs
+          list(covs=covs[ind,,drop=FALSE], ind=which(ind))
+      }
   }
 
 ### Given a simulated Markov model, get the current state at various observation times
@@ -225,7 +234,7 @@ simmisc.msm <- function(state, ematrix)
           ostate <- state
           for (i in 1:nstates)
             if (any(state[state==i]))
-              ostate[state==i] <- sample(1:nstates, size=length(state[state==i]), prob=ematrix[i,], replace=TRUE)
+              ostate[state==i] <- resample(1:nstates, size=length(state[state==i]), prob=ematrix[i,], replace=TRUE)
       }
       ostate
   }

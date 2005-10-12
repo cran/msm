@@ -143,6 +143,14 @@ hmmBinom <- function(size, prob)
                match.call())
   }
 
+hmmNBinom <- function(disp, prob)
+  {
+      hmmDIST (label = "nbinom",
+               link = "qlogis",
+               r = function(n, rprob=prob) rnbinom(n, disp, rprob),
+               match.call())
+  }
+
 hmmTNorm <- function(mean, sd, lower=-Inf, upper=Inf)
   {
       hmmDIST (label = "truncnorm",

@@ -129,6 +129,20 @@ stopifnot (all (qmatrix.msm(sim.hid)$L <= three.q &  qmatrix.msm(sim.hid)$U >= t
 
 
 
+### NEGATIVE BINOMIAL
+
+hmodel3 <- list(hmmNBinom(10, 0.4), hmmNBinom(5, 0.3), hmmIdent(999))
+set.seed(22061976)
+sim2.df <- simmulti.msm(sim.df[,1:2], qmatrix=three.q, hmodel = hmodel3)
+hmodel3 <- list(hmmNBinom(12, 0.6), hmmNBinom(7, 0.6), hmmIdent(999))
+sim.hid <- msm(obs ~ time, subject=subject, data=sim2.df, qmatrix=three.q, hmodel=hmodel3,
+               method="BFGS", control=list(trace=3, REPORT=1), fixedpars=FALSE)
+stopifnot (all (sim.hid$hmodel$ci [1:2,1] <= c(10, 0.4)  &  sim.hid$hmodel$ci [1:2,2] >= c(10,0.4)  ))
+stopifnot (all (sim.hid$hmodel$ci [3:4,1] <= c(5, 0.3)  &  sim.hid$hmodel$ci [3:4,2] >= c(5, 0.3)  ))
+stopifnot (all (qmatrix.msm(sim.hid)$L <= three.q &  qmatrix.msm(sim.hid)$U >= three.q))
+
+
+
 ### TRUNCATED NORMAL
 ### Again watch out for dodgy local maxima
 
