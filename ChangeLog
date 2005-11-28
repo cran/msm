@@ -1,3 +1,35 @@
+2005-11-25 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+	
+	* DESCRIPTION: Version 0.6 released.  
+
+2005-11-17 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* R/outputs.R: New function surface.msm for surface plots of
+	likelihoods.
+
+2005-11-16 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* lik.c,pijt.c, etc.: Analytic derivatives of the likelihood
+	implemented for all models, apart from hidden Markov models or
+	models with censoring.  New argument "use.deriv" to tell msm to
+	use these where appropriate.  Thanks to Andrew Titman for the
+	debugging help.
+
+	*  The Dennis and Schnabel algorithm in the R function "nlm" can
+	now also be used to maximise the likelihood, as an alternative to
+	the algorithms in "optim".
+	
+2005-11-11 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* msm-manual.pdf: definition of initial state probability f
+	corrected in hidden likelihood, equation 13.  Thanks to Andrew
+	Titman.
+
+2005-11-08 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* man/deltamethod.Rd: Documentation of deltamethod clarified to
+	explain how to use user-defined variables within the formula.
+
 2005-10-11 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 
 	*  Negative binomial hidden Markov model output distribution added. 
@@ -11,6 +43,11 @@
 	Watkins.
 
 	* msm.R(msm.form.covdata): further fix for missing data. 
+
+2005-10-1 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+	 
+	* msm.form.qmodel: Bug fix with gen.inits==TRUE and
+	censoring. Thanks to Jacques Gautrais.
 	
 2005-07-27 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 	   

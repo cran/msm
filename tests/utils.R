@@ -126,7 +126,5 @@ estvar <- summary(toy.lm)$cov.unscaled
 
 ## Estimate of (1 / (alphahat + betahat))
 stopifnot(isTRUE(all.equal(0.206982798128202, as.numeric(1 / (estmean[1] + estmean[2])))))
-## Approximate standard error
-stopifnot(isTRUE(all.equal(0.00850451118374906, deltamethod (~ 1 / (x1 + x2), estmean, estvar))))
 
 cat("utils.R: ALL TESTS PASSED\n")

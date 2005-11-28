@@ -11,7 +11,6 @@
 #include "msm.h"
 #include "hmm.h"
 #define NODEBUG
-#define NODERIV
 
 linkfn LINKFNS[3][2] = {
     {identity, identity},
@@ -95,6 +94,13 @@ void AddCovs(int obs, int nobs, int npars, int *ncovs,
 	    }
 	    else newpars[i] = oldpars[i];
 	}
+}
+
+void GetCovData(int obs, double *allcovs, int *whichcov, double *thiscov, int ncovs, int nobs)
+{
+    int i;
+    for (i=0; i<ncovs; ++i)
+	thiscov[i] = allcovs[MI(obs, whichcov[i]-1, nobs)];
 }
 
 /* Return a vector of the possible states that a censored state could represent */ 
@@ -227,7 +233,7 @@ double likhidden(int pt, /* ordinal subject ID */
 	fp = hm->firstpar[i];
 	AddCovs(d->firstobs[pt], d->nobs, hm->npars[i], &(hm->ncovs[fp]), &(hm->pars[fp]), 
 		&(newpars[fp]), &(hm->coveffect[totcovs]), d->cov, &(d->whichcovh[totcovs]),
-		&totcovs, LINKFNS[hm->links[i]][0],LINKFNS[hm->links[i]][1]);
+		&totcovs, LINKFNS[hm->links[i]][0], LINKFNS[hm->links[i]][1]);
     }
     GetCensored((double)d->obs[d->firstobs[pt]], cm, &nc, &curr);
     GetOutcomeProb(pout, curr, nc, newpars, hm, qm);
@@ -514,52 +520,54 @@ void msmLikelihood (msmdata *d, qmodel *qm, qcmodel *qcm,
 
 
 /* First derivatives of the log-likelihood for the non-hidden
-   multi-state Markov model.  Not completed.  This facility not
-   available yet.  TODO handle covariates, death, exact times,
-   constraints on baseline pars and covariates.
-*/
+   multi-state Markov model. */
 
 void derivsimple(msmdata *d, qmodel *qm, qcmodel *qcm, 
 		 cmodel *cm, hmodel *hm, double *deriv)
 {
-    int i, p, np = qm->npars, totcovs=0; 
+    int i, p, np=qm->npars, ndp=qm->ndpars, ndc=qcm->ndpars, totcovs=0; 
     double contrib=0;
-    double *dcontrib = Calloc(np, double);
-    double *dpmat = Calloc(qm->nst * qm->nst * np, double); 
-    double *pmat = Calloc( qm->nst * qm->nst, double);
-    double *newintens = Calloc ( qm->npars , double);
+
+    double *dcontrib = Calloc(ndp+ndc, double);
+    double *dpmat = Calloc(qm->nst * qm->nst * (ndp+ndc), double); 
+    double *pmat = Calloc(qm->nst * qm->nst, double);
+    double *newintens = Calloc(np, double);
+    double *x = Calloc(qcm->ncovs[0], double);
+
     for (i=0; i < d->nobs; ++i)
 	{
 	    R_CheckUserInterrupt();
 	    if ((i==0) || (d->whicha[i] != d->whicha[i-1])) {
 		/* we have a new timelag/covariates combination. Recalculate the 
 		   P matrix and its derivatives for this */
-		AddCovs(i, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens, 
+		GetCovData(i, d->cov, d->whichcov, x, qcm->ncovs[0], d->nobs);
+		AddCovs(i, d->nobs, np, qcm->ncovs, qm->intens, newintens, 
 			qcm->coveffect, d->cov, d->whichcov, &totcovs, log, exp);
 		Pmat(pmat, d->timelag[i], newintens, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), 0);
- 		DPmat(dpmat, d->timelag[i], newintens, qm->ivector, qm->nst, np, (d->obstype[i] == OBS_EXACT), 0);
+ 		DPmat(dpmat, d->timelag[i], x, newintens, qm->intens, qm->ivector, qm->nst, np, ndp, ndc,
+		      qm->constr, qcm->constr, qcm->wcov, (d->obstype[i] == OBS_EXACT));
 	    }
 	    if (d->obstype[i] == OBS_DEATH) {
 		contrib = pijdeath(d->fromstate[i], d->tostate[i], pmat, newintens, qm->ivector, qm->nst);
-		dpijdeath(d->fromstate[i], d->tostate[i], dpmat, pmat, newintens, qm->ivector, qm->nst, np, dcontrib);
+		dpijdeath(d->fromstate[i], d->tostate[i], x, dpmat, pmat, newintens, qm->intens, qm->ivector, 
+			  qm->nst, qm->constr, qcm->constr, ndp, ndc, qcm->ncovs[0], dcontrib);
 	    }
 	    else {
 		contrib = pmat[MI(d->fromstate[i], d->tostate[i], qm->nst)];
-		for (p = 0; p < np; ++p)
+		for (p = 0; p < ndp+ndc; ++p)
 		    dcontrib[p] = dpmat[MI3(d->fromstate[i], d->tostate[i], p, qm->nst, qm->nst)];
 	    }
-	    for (p = 0; p < np; ++p) {
-/*      		printf("nocc=%d, time=%lf, from=%d, to=%d, c=%lf, dc=%lf\n", d->nocc[i], d->timelag[i], d->fromstate[i], d->tostate[i], contrib, dcontrib[p]);    */
+	    for (p = 0; p < ndp+ndc; ++p) {
 		deriv[p] += d->nocc[i] * dcontrib[p] / contrib;
 	    }
 	}
-    for (p = 0; p < np; ++p) 
+    for (p = 0; p < ndp+ndc; ++p) 
 	deriv[p] *= -2;
-    Free(dpmat); Free(dcontrib);
+    Free(dcontrib); Free(dpmat); Free(pmat); Free(newintens); Free(x);
 }
 
-/* Derivative of log-likelihood, currently only available for
-   non-hidden model, no covariates, constraints, death or exact times */
+/* Derivative of log-likelihood. Not available for hidden models or
+   models with censoring. */
 
 void msmDLikelihood (msmdata *d, qmodel *qm, qcmodel *qcm, 
 		     cmodel *cm, hmodel *hm, 
@@ -569,7 +577,7 @@ void msmDLikelihood (msmdata *d, qmodel *qm, qcmodel *qcm,
 }
 
 /* This function is called from R to provide an entry into C code for
-   evaluating likelihoods and doing Viterbi state reconstruction  */
+   evaluating likelihoods, derivatives and doing Viterbi state reconstruction  */
 
 void msmCEntry( 
 	       int *do_what,      /* 1 = eval likelihood, 2 = Viterbi */
@@ -609,6 +617,8 @@ void msmCEntry(
 
 	       int *nst,      /* number of Markov states */
 	       int *nintens,      /* number of intensity parameters */
+	       int *ndintens,      /* number of distinct intensity parameters */
+	       int *ndcovpars,      /* number of distinct covariate parameters */
 	       int *nobs,         /* number of observations in data set */
 	       int *npts,         /* number of individuals in data set */
 	       int *ncovs,        /* number of covariates on transition rates */
@@ -617,6 +627,11 @@ void msmCEntry(
 	       int *censor,    /* censoring indicators in data, of length ncens */
 	       int *censstates, /* list of possible states represented by censoring indicators */
 	       int *censstind,  /* starting index into censstates for each censoring indicator */
+	       
+	       int *qconstraint, /* constraints for baseline intensities. needed to calculate derivs */
+	       int *cconstraint, /* constraints for covariates. needed to calculate derivs */
+	       int *whichcovd,  /* which covariate each _distinct_ covariate parameter corresponds to */
+
 	       double *returned   /* returned -2 log likelihood , Viterbi fitted values, or predicted values */
 	       )
 {
@@ -628,9 +643,9 @@ void msmCEntry(
     d.subject = subjvec; d.time = timevec; d.obs = obsvec; d.firstobs = firstobs;
     d.nobs = *nobs;  d.npts = *npts;
 
-    qm.nst = *nst; qm.npars = *nintens; qm.ivector = qvector; qm.intens = intens;  
+    qm.nst = *nst; qm.npars = *nintens; qm.ndpars = *ndintens; qm.ivector = qvector; qm.intens = intens; qm.constr = qconstraint;
 
-    qcm.ncovs = ncovs; qcm.coveffect = coveffect;
+    qcm.ncovs = ncovs; qcm.coveffect = coveffect; qcm.constr = cconstraint; qcm.ndpars = *ndcovpars; qcm.wcov = whichcovd;
 
     cm.ncens = *ncens; cm.censor = censor; cm.censstates=censstates; cm.censstind=censstind;
 

@@ -43,6 +43,12 @@ deltamethod(g, mean, cov, ses=TRUE)
   \deqn{ Cov(g(X)) = g'(\mu) Cov(X) [g'(\mu)]^T }{ Cov(g(X)) = g'(mu) Cov(X) [g'(mu)]^T }
 
   where \eqn{\mu}{mu} is an estimate of the mean of \eqn{X}.
+
+  A limitation of this function is that variables created by the user
+  are not visible within the formula \code{g}.  To work around this, it
+  is necessary to build the formula as a string, using functions such as
+  \code{sprintf}, then to convert the string to a formula using
+  \code{as.formula}.  See the example below. 
 }
 \references{Oehlert, G. W. \emph{A note on the delta method}. American
   Statistician 46(1), 1992}}
@@ -60,6 +66,15 @@ estvar <- summary(toy.lm)$cov.unscaled
 1 / (estmean[1] + estmean[2])
 ## Approximate standard error
 deltamethod (~ 1 / (x1 + x2), estmean, estvar) 
+
+## We have a variable z we would like to use within the formula.
+z <- 1
+## deltamethod (~ z / (x1 + x2), estmean, estvar) will not work.
+## Instead, build up the formula as a string, and convert to a formula.
+form <- sprintf("~ \%f / (x1 + x2)", z)
+form
+deltamethod(as.formula(form), estmean, estvar)
+
 }
 \author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{math}

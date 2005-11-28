@@ -52,13 +52,18 @@ struct msmdata {
 struct qmodel {
     int nst;
     int npars;
+    int ndpars;
     int *ivector;
     double *intens;
+    int *constr;
 };
 
 struct qcmodel {
     int *ncovs;
     double *coveffect;
+    int *constr;
+    int ndpars;
+    int *wcov;
 };
 
 struct cmodel {
@@ -90,8 +95,10 @@ typedef struct hmodel hmodel;
 double qij(int i, int j, vector intens, ivector qvector, int nstates);
 double pijdeath(int r, int s, Matrix pmat, vector intens, ivector qvector, int n);
 void Pmat(Matrix pmat, double t, vector intens, int *qvector, int nstates, int exacttimes, int debug);
-void DPmat(Array3 dpmat, double t, vector intens, ivector qvector, int n, int np, int exacttimes, int debug);
-void dpijdeath(int r, int s, Array3 dpmat, Matrix pmat, vector intens, ivector qvector, int n, int np, vector dcontrib);
+void DPmat(Array3 dpmat, double t, vector x, vector intens, vector oldintens, ivector qvector, 
+	   int n, int np, int ndp, int ndc, ivector qconstr, ivector bconstr, ivector wcov, int exacttimes);
+void dpijdeath(int r, int s, vector x, Array3 dpmat, Matrix pmat, vector intens, vector oldintens, ivector qvector, 
+	       int n, ivector constr, ivector bconstr, int ndp, int ndc, int ncovs, vector dcontrib);
 int repeated_entries(vector vec, int n);
 
 double logit(double x);
