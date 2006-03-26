@@ -401,13 +401,12 @@ msm.form.data <- function(formula, subject=NULL, obstype=NULL, covariates=NULL, 
         msm.check.state(qmodel$nstates, state=state, cmodel$censor)  ## replace after splitting form.hmodel
       time <- mf[,2]
       if (is.null(subject)) subject <- rep(1, nrow(mf))
-      msm.check.times(time, subject)
       obstype <- msm.form.obstype(obstype, length(state), state, dmodel, exacttimes)
       droprows <- as.numeric(attr(mf, "na.action"))
       n <- length(c(state, droprows))
       statetimerows.kept <- (1:n)[! ((1:n) %in% droprows)]
       subjrows.kept <- (1:n) [!is.na(subject)]
-      otrows.kept <- (1:n) [!is.na(obstype)]
+      otrows.kept <- statetimerows.kept[!is.na(obstype)]
       
       ## Parse covariates formula and extract data
       covdata <- misccovdata <- list(ncovs=0, covmat=numeric(0))
@@ -442,8 +441,10 @@ msm.form.data <- function(formula, subject=NULL, obstype=NULL, covariates=NULL, 
         for (i in seq(along=hcovariates))
           if (hcovdata[[i]]$ncovs > 0)
             final.rows <- intersect(final.rows, hcovdata[[i]]$covrows.kept)
-      subject <- factor(subset(subject, subjrows.kept %in% final.rows))
+      subject <- subset(subject, subjrows.kept %in% final.rows)
+##      subject <- match(subject, unique(subject)) # convert to ordinal
       time <- subset(time, statetimerows.kept %in% final.rows)
+      msm.check.times(time, subject)
       state <- subset(state, statetimerows.kept %in% final.rows)
       obstype <- subset(obstype, otrows.kept %in% final.rows)
       covmat <- numeric()
@@ -492,7 +493,8 @@ msm.check.state <- function(nstates, state=NULL, censor)
 msm.check.times <- function(time, subject)
   {
 ### Check if any individuals have only one observation
-      nobspt <- table(subject)
+      subj.num <- as.numeric(subject) # avoid problems with factor subjects with empty levels
+      nobspt <- table(subj.num)
       if (any (nobspt == 1)) {
           badsubjs <- sort(unique(subject))[ nobspt == 1 ]
           badlist <- paste(badsubjs, collapse=", ")
@@ -501,9 +503,9 @@ msm.check.times <- function(time, subject)
           warning ("Subject", plural, " ", badlist, " only ", has, " one observation")
       }
 ### Check if observations within a subject are adjacent
-      ind <- tapply(1:length(subject), subject, length)
-      imin <- tapply(1:length(subject), subject, min)
-      imax <- tapply(1:length(subject), subject, max)
+      ind <- tapply(1:length(subj.num), subj.num, length)
+      imin <- tapply(1:length(subj.num), subj.num, min)
+      imax <- tapply(1:length(subj.num), subj.num, max)
       adjacent <- (ind == imax-imin+1)
       if (any (!adjacent)) {  
           badsubjs <- sort(unique(subject))[ !adjacent ]
@@ -512,7 +514,7 @@ msm.check.times <- function(time, subject)
           stop ("Observations within subject", plural, " ", badlist, " are not adjacent in the data")
       }
 ### Check if observations are ordered in time within subject
-      orderedpt <- ! tapply(time, subject, is.unsorted)
+      orderedpt <- ! tapply(time, subj.num, is.unsorted)
       if (any (!orderedpt)) {
           badsubjs <- sort(unique(subject))[ !orderedpt ]
           badlist <- paste(badsubjs, collapse=", ")
@@ -707,7 +709,6 @@ msm.aggregate.hmmdata <- function(dat)
   {
       dat2 <- msm.obs.to.fromto(dat)
       firstsubj <- dat2$firstsubj
-#      dat2 <- as.data.frame(dat2[c("fromstate","tostate","timelag", dat$covlabels)], optional=TRUE)
       dat2 <- as.data.frame(c(dat2[c("fromstate","tostate","timelag")], dat2$covmat), optional=TRUE)
       apaste <- as.character(do.call("paste", dat2))
       dat$whicha <- rep(0, dat$nobs)

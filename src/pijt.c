@@ -21,7 +21,7 @@
 /* Crude benchmarks have shown that using the eigensystem routines
    from LINPACK, and the matrix inversion routines from LAPACK, is the
    faster combination */
-#define _USE_LINPACK_EIGEN_
+#define _USE_LAPACK_EIGEN_
 #define _USE_LAPACK_INVERSE_
 #define _MEXP_METHOD_ 1 /* 1 for Pade approximation, 2 for series. Pade is more robust. */
 #include "R_ext/Lapack.h"
@@ -294,12 +294,12 @@ void Eigen(Matrix mat, int n, vector revals, vector ievals, Matrix evecs, int *e
     double *left=0, tmp;
 #endif
     Matrix work = (Matrix) Calloc(nsq, double);
-    iMatrix worki = Calloc(nsq, int);
+    iMatrix worki = (iMatrix) Calloc(nsq, int);
     Matrix temp = (Matrix) Calloc(nsq, double);
     for (i=0; i<nsq; ++i) {
 	/* Check whether any of the elements of Q have overflowed.  If
-	   so, eigen will hang in a infinite loop, so bail out before
-	   this happens.  */
+	   so, Fortran eigen function will hang in a infinite loop, so
+	   bail out before this happens.  */
 	if (!R_FINITE(mat[i]))
 	    error("numerical overflow in calculating likelihood\n");
 	temp[i] = mat[i];
@@ -312,7 +312,7 @@ void Eigen(Matrix mat, int n, vector revals, vector ievals, Matrix evecs, int *e
     /* calculate optimal size of workspace */
     F77_CALL(dgeev)(jobVL, jobVR, &n, temp, &n, revals, ievals, left, &n, evecs, &n, &tmp, &lwork, err);
     lwork = (int) tmp;
-    work = (Matrix) Calloc(lwork, double);
+    work = (Matrix) Realloc(work, lwork, double);
     /* calculate eigensystem */
     F77_CALL(dgeev)(jobVL, jobVR, &n, temp, &n, revals, ievals, left, &n, evecs, &n, work, &lwork, err);
 #endif

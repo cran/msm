@@ -11,6 +11,7 @@
 #include "msm.h"
 #include "hmm.h"
 #define NODEBUG
+#define NOVITDEBUG
 
 linkfn LINKFNS[3][2] = {
     {identity, identity},
@@ -357,6 +358,19 @@ double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm,
     return (-2*lik); 
 }
 
+/* Find index of maximum element of a vector x */
+
+void pmax(double *x, int n, int *maxi)
+{
+    int i=0;
+    *maxi = i;
+    for (i=1; i<n; ++i) {
+	if (x[i] > x[*maxi]) {
+	    *maxi = i;
+	}
+    }    
+}
+
 /* Calculates the most likely path through underlying states */ 
 
 void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm, 
@@ -370,24 +384,25 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
     int *ptr = (int *) S_alloc((d->nobs)*(qm->nst), sizeof(int));
     double *lvold = (double *) S_alloc(qm->nst, sizeof(double));
     double *lvnew = (double *) S_alloc(qm->nst, sizeof(double));
+    double *lvp = (double *) S_alloc(qm->nst, sizeof(double));
     double *curr = (double *) S_alloc (qm->nst, sizeof(double));
-    int *fitted_int = (int *) S_alloc (d->nobs, sizeof(int));
     double *pout = (double *) S_alloc(qm->nst, sizeof(double)); 
-    double maxk, try, dt;
+    double dt;
 
     for (k = 0; k < qm->nst; ++k) 
-	lvold[k] = 0;
+	lvold[k] = log(hm->initp[k]);
+
     newpars = (double *) S_alloc(hm->totpars, sizeof(double));    
 
     for (i = 1; i <= d->nobs; ++i)
 	{
 	    R_CheckUserInterrupt();
-#ifdef DEBUG
+#ifdef VITDEBUG
 	    printf("obs %d\n", i);
 #endif
 	    if ((i < d->nobs) && (d->subject[i] == d->subject[i-1]))
 		{
-#ifdef DEBUG
+#ifdef VITDEBUG
 		    printf("subject %d\n ", d->subject[i]);
 #endif
 		    dt = d->time[i] - d->time[i-1];
@@ -397,44 +412,24 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
 		    totcovs = 0;
 		    for (j = 0; j < qm->nst; ++j) {
 			fp = hm->firstpar[j];
-			AddCovs(i - 1, d->nobs, hm->npars[j], 
-				&(hm->ncovs[fp]), 
-				&(hm->pars[fp]), 
-				&(newpars[fp]), 
-				&(hm->coveffect[totcovs]), 
-				d->cov, 
-				&(d->whichcovh[totcovs]),
-				&totcovs, 
-				LINKFNS[hm->links[j]][0], LINKFNS[hm->links[j]][1]);
+			AddCovs(i - 1, d->nobs, hm->npars[j], &(hm->ncovs[fp]), &(hm->pars[fp]), 
+				&(newpars[fp]), &(hm->coveffect[totcovs]), d->cov, &(d->whichcovh[totcovs]),
+				&totcovs, LINKFNS[hm->links[j]][0], LINKFNS[hm->links[j]][1]);
 		    }
 		    GetCensored(d->obs[i], cm, &nc, &curr);
 		    GetOutcomeProb(pout, curr, nc, newpars, hm, qm);
-		    
 		    Pmat(pmat, dt, newintens, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), 0);
-		    /* TODO: some sort of utility function for maxima and positional maxima ? */
+
 		    for (tru = 0; tru < qm->nst; ++tru)
 			{
-			    kmax = 0;
-			    maxk = lvold[0] + log( pmat[MI(0, tru, qm->nst)] );
-#ifdef DEBUG			   
-			    printf("k=%d,pmat=%lf,try=%lf, ", 0, log(pmat[MI(0, tru, qm->nst)]), lvold[0]+log(pmat[MI(0, tru, qm->nst)]));
-#endif
-			    for (k = 1; k < qm->nst; ++k){
-				try = lvold[k] + log( pmat[MI(k, tru, qm->nst)] );
-#ifdef DEBUG			   
-				printf("k=%d,pmat=%lf,try=%lf, ", k, log(pmat[MI(k,tru,qm->nst)]), lvold[k]+log(pmat[MI(k,tru,qm->nst)]));
-#endif
-				if (try > maxk) {
-				    maxk = try;
-				    kmax = k;
-				}
-			    }
-
-			    lvnew[tru] = log ( pout[tru] )  +  maxk;
+			    for (k = 0; k < qm->nst; ++k)
+				lvp[k] = lvold[k] + log(pmat[MI(k, tru, qm->nst)]);
+			    pmax(lvp, qm->nst, &kmax);
+			    lvnew[tru] = log ( pout[tru] )  +  lvp[kmax];
 			    ptr[MI(i, tru, d->nobs)] = kmax;
-#ifdef DEBUG			   
-			    printf("true %d, par %lf, pout[%d] = %lf, lvnew = %lf, mi = %d, ptr=%d\n", 
-				   tru, newpars[hm->firstpar[tru]], tru, pout[tru], lvnew[tru], MI(i, tru, d->nobs), ptr[MI(i, tru, d->nobs)]);
+#ifdef VITDEBUG			   
+			    printf("true %d, pout[%d] = %lf, lvold = %lf, pmat = %lf, lvnew = %lf, mi = %d, ptr=%d\n", 
+				   tru, tru, pout[tru], lvold[tru], pmat[MI(kmax, tru, qm->nst)], lvnew[tru], MI(i, tru, d->nobs), ptr[MI(i, tru, d->nobs)]);
 #endif
 			}
 		    for (k = 0; k < qm->nst; ++k)
@@ -442,43 +437,28 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
 		}
 	    else 
 		{
-#ifdef DEBUG
+#ifdef VITDEBUG
 		    printf("traceback for subject %d\n ", d->subject[i-1]);
 #endif
-		    /* Traceback for current patient */
-		    maxk = lvold[0];
-		    kmax = 0;
-		    for (k=1; k < qm->nst; ++k)
-			{
-#ifdef DEBUG
-			    printf("lvold[%d] = %lf, ", k, lvold[k]);
-#endif
-			    try = lvold[k];
-			    if (try > maxk) {
-				maxk = try;
-				kmax = k;
-			    }
-			}
-#ifdef DEBUG
+		    /* Traceback for current individual */
+
+		    pmax(lvold, qm->nst, &kmax);
+#ifdef VITDEBUG
 		    printf("kmax = %d\n", kmax);
 #endif	  
 		    obs = i-1;
 		    fitted[obs] = kmax;
-		    fitted_int[obs] = kmax;
 		    while   ( (obs > 0) && (d->subject[obs] == d->subject[obs-1]) ) 
 			{
 			    fitted[obs-1] = ptr[MI(obs, fitted[obs], d->nobs)];
-			    fitted_int[obs-1] = ptr[MI(obs, fitted_int[obs], d->nobs)];
-#ifdef DEBUG
-			    printf("mi = %d, ptr %d = %d, ", MI(obs, fitted_int[obs], d->nobs), obs-1, fitted_int[obs-1]);
+#ifdef VITDEBUG
+			    printf("mi = %d, ptr %d = %1.0lf, ", MI(obs, (int) fitted[obs], d->nobs), obs-1, fitted[obs-1]);
 #endif
 			    --obs;
 			}
-		    fitted_int[obs] = 0;
-		    fitted[obs] = 0;
 
 		    for (k = 0; k < qm->nst; ++k) 
-			lvold[k] = 0;
+			lvold[k] = log(hm->initp[k]);
 		}
 	}
 }
@@ -602,7 +582,7 @@ void msmCEntry(
 	       int *subjvec,      /* vector of subject IDs */
 	       double *timevec,   /* vector of observation times */
 	       double *obsvec,     /* vector of observations (observed states in the case of misclassification models) */
-	       int *firstobs,   /* 0-based index into data of the first observation for each patient */
+	       int *firstobs,   /* 0-based index into data of the first observation for each individual */
 	       
 	       /* HMM specification */
 	       int *hidden,       /* well, is it or isn't it? */

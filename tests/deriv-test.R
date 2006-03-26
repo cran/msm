@@ -32,13 +32,13 @@ data(psor)
 psor.q <- rbind(c(0,0.1,0,0),c(0,0,0.2,0),c(0,0,0,0.3),c(0,0,0,0))
 psor.msm <- msm(state ~ months, subject=ptnum, data=psor, qmatrix = psor.q, deriv.test=TRUE, use.deriv=FALSE)
 psor.msm
-stopifnot(psor.msm$error < 1e-03)
+stopifnot(psor.msm$error < 1e-02)
 
 ## Psor with no covs, repeated eigenvalues
 psor.1.q <- rbind(c(0,0.1,0,0),c(0,0,0.1,0),c(0,0,0,0.1),c(0,0,0,0))
 psor.msm <- msm(state ~ months, subject=ptnum, data=psor, qmatrix = psor.q, deriv.test=TRUE, use.deriv=FALSE)
 psor.msm
-stopifnot(psor.msm$error < 1e-03)
+stopifnot(psor.msm$error < 1e-02)
 
 ## Repeated eigenvalues and qconstraint. 
 psor.msm <- msm(state ~ months, subject=ptnum, data=psor, qmatrix = psor.q, qconstraint=c(1,1,2), deriv.test=TRUE, use.deriv=FALSE)
@@ -61,8 +61,8 @@ stopifnot(msmtest5$error < 1e-04)
 ## psor, covariates and constraint
 psor.msm <- msm(state ~ months, subject=ptnum, data=psor, qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn,
                 constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)), deriv.test=TRUE)
-stopifnot(psor.msm$error < 1e-02)
 psor.msm
+stopifnot(psor.msm$error < 1e-01)
 
 ## psor, covariates, repeated eigenvalues
 psor.1.q <- rbind(c(0,0.1,0,0),c(0,0,0.1,0),c(0,0,0,0.1),c(0,0,0,0))
@@ -81,7 +81,7 @@ stopifnot(psor.msm$error < 1e-04)
 psor.msm <- msm(state ~ months, subject=ptnum, data=psor, qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn,
                 death=TRUE, deriv.test=TRUE)
 psor.msm
-stopifnot(psor.msm$error < 1e-03)
+stopifnot(psor.msm$error < 1e-02)
 
 ## BOS, exact times, covariates
 bos.msm <- msm(state ~ time, qmatrix = fiveq, covariates = ~time, subject = ptnum, data = bos, exacttimes=TRUE, deriv.test=TRUE)
