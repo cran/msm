@@ -1,3 +1,23 @@
+2006-03-26 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+	
+	* lik.c(Viterbi): Bug fix - don't ignore initprobs.  Thanks to
+	Melanie Wall for reporting this.
+
+	* DESCRIPTION: Version 0.6.1 released.  
+
+2006-03-15 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* NAMESPACE: Import persp, plot and contour in from graphics.
+
+	* msm.R (msm.check.times): Bug fix for factor subjects with empty
+	levels. Thanks to Jacques Gautrais.
+	
+2006-01-04 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+	
+	* msm.R (msm.form.data): use match(, unique()) to convert subject
+	to ordinal, not factor.  Also do msm.check.times after dropping
+	missing data. Plus fix for missing obstime. 
+
 2005-11-25 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 	
 	* DESCRIPTION: Version 0.6 released.  

@@ -3,6 +3,14 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.6.1  (2006-03-26)
+-------------
+
+* Bug fix release. In Viterbi algorithm, don't ignore initial state
+ occupancy probabilities. Thanks to Melanie Wall for reporting this.
+ For other bug fixes see the ChangeLog.
+
+
 Version 0.6  (2005-11-25)
 -------------
 

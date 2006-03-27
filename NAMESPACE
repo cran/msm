@@ -62,6 +62,9 @@ rpexp
 )
 
 importFrom(graphics, plot)
+importFrom(graphics, persp)
+importFrom(graphics, contour)
+importFrom(graphics, image)
 importFrom(stats, coef)
 
 S3method(print, msm)

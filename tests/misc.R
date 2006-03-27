@@ -1,9 +1,9 @@
 ### TESTS OF MISCLASSIFICATION MODELS
 ### SPECIFIED USING THE OLD ematrix SYNTAX
 source("local.R")
+
 library(msm)
 data(heart)
-
 oneway4.q <- rbind(c(0, 0.148, 0, 0.0171), c(0, 0, 0.202, 0.081), c(0, 0, 0, 0.126), c(0, 0, 0, 0))
 rownames(oneway4.q) <- colnames(oneway4.q) <- c("Well","Mild","Severe","Death")
 ematrix <- rbind(c(0, 0.1, 0, 0),c(0.1, 0, 0.1, 0),c(0, 0.1, 0, 0),c(0, 0, 0, 0))
@@ -100,7 +100,7 @@ if (developer.local) {
 
     e <- ematrix.msm(misccov.msm)
     stopifnot(isTRUE(all.equal(0.00247470652798741, e$estimates[1,2], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.0416486783550336, e$SE[1,2], tol=1e-02)))
+    stopifnot(isTRUE(all.equal(0.0408650781063514, e$SE[1,2], tol=1e-02)))
 
     e <- ematrix.msm(misccov.msm, covariates=0)
     stopifnot(isTRUE(all.equal(0.00511767837634562, e$estimates[1,2], tol=1e-04)))
@@ -281,6 +281,17 @@ misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
                 qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=TRUE, initprobs=c(0.7, 0.1, 0.1, 0.1),
                 control = list(trace=1, REPORT=1), method="BFGS")
 stopifnot(isTRUE(all.equal(4725.9078185031, misc.msm$minus2loglik, tol=1e-06)))
+
+## initprobs in Viterbi : bug fix for 0.6.1
+if (developer.local) { 
+    miscinitp.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+                    qmatrix = oneway4.q, ematrix=ematrix, death = 4, initprobs=c(0.6, 0.4, 0, 0), 
+                    control = list(trace=1, REPORT=1), method="BFGS")
+    if(interactive()) save(miscinitp.msm, file="~/msm/devel/models/miscinitp.msm.rda")
+    if(interactive()) load(file="~/msm/devel/models/miscinitp.msm.rda")
+    vitinitp <- viterbi.msm(miscinitp.msm)
+    table(vitinitp$fitted[vitinitp$time==0]) / nrow(vitinitp[vitinitp$time==0,])
+}
 
 ## Censored states
 ## Different in 0.4 or less, censored states are not subject to misclassification in >= 0.4.1
