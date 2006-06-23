@@ -984,6 +984,10 @@ viterbi.msm <- function(x)
 
                       ## various dimensions
                       as.integer(x$qmodel$nstates),
+                      as.integer(x$qmodel$analyticp),
+                      as.integer(x$qmodel$iso),
+                      as.integer(x$qmodel$perm),
+                      as.integer(x$qmodel$qperm),
                       as.integer(x$qmodel$npars),
                       as.integer(x$qmodel$ndpars),
                       as.integer(x$qcmodel$ndpars),

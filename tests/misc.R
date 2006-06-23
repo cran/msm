@@ -47,9 +47,9 @@ stopifnot(isTRUE(all.equal(4306.82007050922, misccov.msm$minus2loglik, tol=1e-06
 if (developer.local) { 
     system.time(misccov.msm <- msm(state ~ years, subject = PTNUM, data = heart,
                                    qmatrix = oneway4.q, ematrix=ematrix, death = 4, 
-                                   misccovariates = ~dage + sex, misccovinits = list(dage=c(0.01,0.02,0.03,0.04), sex=c(-0.013,-0.014,-0.015,-0.016)),
+                                   misccovariates = ~dage + sex,
                                    control = list(trace=1, REPORT=1), method="BFGS"))
-    stopifnot(isTRUE(all.equal(3929.39011261041, misccov.msm$minus2loglik, tol=1e-06)))
+    stopifnot(isTRUE(all.equal(3929.39438312539, misccov.msm$minus2loglik, tol=1e-06)))
     if(interactive()) save(misccov.msm, file="~/msm/devel/models/misccov.msm.rda")
 }
 
@@ -93,92 +93,74 @@ if (developer.local) {
     stopifnot(isTRUE(all.equal(c(1, 1, 1, 1, 2, 2, 2, 2, 2, 2), vit$fitted, tol=1e-06)))
 
     odds <- odds.msm(misccov.msm)
-    stopifnot(isTRUE(all.equal(0.924820939674534, odds$dage[1,2], tol=1e-06)))
-    stopifnot(isTRUE(all.equal(0.935518332375755, odds$dage[2,2], tol=1e-06)))
-    stopifnot(isTRUE(all.equal(24.7720390074067, odds$sex[1,3], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(30.7143149107023, odds$sex[3,3], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.924920277547759, odds$dage[1,2], tol=1e-06)))
+    stopifnot(isTRUE(all.equal(0.9350691888108385, odds$dage[2,2], tol=1e-06)))
+    stopifnot(isTRUE(all.equal(24.76686951404301, odds$sex[1,3], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(30.90173037227264, odds$sex[3,3], tol=1e-04)))
 
     e <- ematrix.msm(misccov.msm)
-    stopifnot(isTRUE(all.equal(0.00247470652798741, e$estimates[1,2], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.0408650781063514, e$SE[1,2], tol=1e-02)))
+    stopifnot(isTRUE(all.equal(0.003848160553285282, e$estimates[1,2], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.01036733815389283, e$SE[1,2], tol=1e-03)))
 
     e <- ematrix.msm(misccov.msm, covariates=0)
-    stopifnot(isTRUE(all.equal(0.00511767837634562, e$estimates[1,2], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.00729095011044296, e$SE[1,2], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.000310638888169994, e$L[1,2], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.0784729343400172, e$U[1,2], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.005168493472109885, e$estimates[1,2], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.007347868833274329, e$SE[1,2], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.0003155487782038569, e$L[1,2], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.07877543777698336, e$U[1,2], tol=1e-04)))
 
     e <- ematrix.msm(misccov.msm, covariates=list(dage=50, sex=0))  
-    stopifnot(isTRUE(all.equal(0.0120855163719579, e$estimates[1,2], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.0123758964562078, e$SE[1,2], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.00160152253999754, e$L[1,2], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.0853345398580851, e$U[1,2], tol=1e-04)))
-
-    q <- qmatrix.msm(misccovboth.msm)  # Slightly different model fit in version 0.5
-    stopifnot(isTRUE(all.equal(0.223526053063659, q$estimates[2,3], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.0350454427809024, q$SE[2,3], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.164389038857401, q$L[2,3], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.303936909331035, q$U[2,3], tol=1e-04)))
-
-    q <- qmatrix.msm(misccovboth.msm, covariates=0)  
-    stopifnot(isTRUE(all.equal(0.223187128812989, q$estimates[2,3], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.0385622461469299, q$SE[2,3], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.159073794840225, q$L[2,3], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.313140794294984, q$U[2,3], tol=1e-04)))
-
-    q <- qmatrix.msm(misccovboth.msm, covariates=list(sex=1))  
-    stopifnot(isTRUE(all.equal(0.226023262989321, q$estimates[2,3], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.073267596172989, q$SE[2,3], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.119736908980252, q$L[2,3], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.426656373940347, q$U[2,3], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.0119933869179702, e$estimates[1,2], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.01233677079484181, e$SE[1,2], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.001575057755385304, e$L[1,2], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.08542810558239693, e$U[1,2], tol=1e-04)))
 
 ### Non misclassification-specific output functions 
 
     q <- qmatrix.msm(misccov.msm)
-    stopifnot(isTRUE(all.equal(0.236475570556834, q$estimates[2,3], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.0392605320058544, q$SE[2,3], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.170791681438317, q$L[2,3], tol=1e-04)))
-    stopifnot(isTRUE(all.equal(0.327420486754657, q$U[2,3], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.2359981283678808, q$estimates[2,3], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.03911018205606053, q$SE[2,3], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.1705475068597598, q$L[2,3], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(0.3265665832273966, q$U[2,3], tol=1e-04)))
 
     soj <- sojourn.msm(misccov.msm)
-    stopifnot(isTRUE(all.equal(c(6.79436767207894, 3.82305540623775, 3.30077331175191, 0.50759591962792, 0.418884581326898, 0.395108001070863, 5.86890651436313, 3.08422555362941, 2.61051067034391, 7.86576374157851, 4.73887281750985, 4.17355292944975), as.numeric(unlist(soj)), tol=1e-06)))
+    stopifnot(isTRUE(all.equal(c(6.7952181814242, 3.82452445494119, 3.30260275866043, 0.507093246772922, 
+0.418641351699219, 0.395262006422924, 5.87059985108007, 3.08604986663779, 
+2.61205827140167, 7.86546371827108, 4.73971190957426, 4.17570507554508
+), as.numeric(unlist(soj)), tol=1e-06)))
     
     p <- pmatrix.msm(misccov.msm, 10)
-    stopifnot(isTRUE(all.equal(0.123996372051534, p[1,3], tol=1e-06)))
+    stopifnot(isTRUE(all.equal(0.1238626028171057, p[1,3], tol=1e-06)))
     
     q <- qratio.msm(misccov.msm, c(1,2), c(2,3), cl=0.99)
-    stopifnot(isTRUE(all.equal(c(0.449488422408394, 0.0949647975141298, 0.260839882053868, 0.774574195818192), as.numeric(q), tol=1e-04)))
+    stopifnot(isTRUE(all.equal(c(0.450437513842305, 0.0950161215095277, 0.261613747651346, 0.775547751973777), as.numeric(q), tol=1e-04)))
 
     p <- prevalence.msm(misccov.msm)
     stopifnot(isTRUE(all.equal(158, p$Observed[5,4], tol=1e-06)))
-    stopifnot(isTRUE(all.equal(134.611720558686, p$Expected[5,4], tol=1e-06)))
-    stopifnot(isTRUE(all.equal(31.4356435643564, p$"Observed percentages"[4,4], tol=1e-06)))
-    stopifnot(isTRUE(all.equal(27.5542351733172, p$"Expected percentages"[4,4], tol=1e-06)))
+    stopifnot(isTRUE(all.equal(134.6193887170075, p$Expected[5,4], tol=1e-06)))
+    stopifnot(isTRUE(all.equal(31.43564356435644, p$"Observed percentages"[4,4], tol=1e-06)))
+    stopifnot(isTRUE(all.equal(27.55723041956071, p$"Expected percentages"[4,4], tol=1e-06)))
 
     summ <- summary.msm(misccov.msm)
     p <- summ$prevalences
     stopifnot(isTRUE(all.equal(158, p$Observed[5,4], tol=1e-06)))
-    stopifnot(isTRUE(all.equal(134.611720558686, p$Expected[5,4], tol=1e-06)))
-    stopifnot(isTRUE(all.equal(31.4356435643564, p$"Observed percentages"[4,4], tol=1e-06)))
-    stopifnot(isTRUE(all.equal(27.5542351733172, p$"Expected percentages"[4,4], tol=1e-06)))
+    stopifnot(isTRUE(all.equal(134.6193887170075, p$Expected[5,4], tol=1e-06)))
+    stopifnot(isTRUE(all.equal(31.43564356435644, p$"Observed percentages"[4,4], tol=1e-06)))
+    stopifnot(isTRUE(all.equal(27.55723041956071, p$"Expected percentages"[4,4], tol=1e-06)))
 
     if (interactive()) plot.msm(misccov.msm)
 
     cf <- coef.msm(misccovboth.msm)
-    stopifnot(isTRUE(all.equal(-0.531938307861184, cf$Qmatrices$sex[1,2], tol=1e-06)))
-    stopifnot(isTRUE(all.equal(-7.6573606063652, cf$Ematrices$sex[1,2], tol=1e-06)))
-
-    haz <- hazard.msm(misccovboth.msm)
-    stopifnot(isTRUE(all.equal(1.01354063408198, haz$sex[1,3], tol=1e-06)))
+    stopifnot(isTRUE(all.equal(-0.531938307861184, cf$Qmatrices$sex[1,2], tol=1e-04)))
+    stopifnot(isTRUE(all.equal(-7.6573606063652, cf$Ematrices$sex[1,2], tol=1e-04)))
 
     stopifnot(isTRUE(all.equal(c(1,2,3), transient.msm(misccov.msm), tol=1e-06)))
     
     stopifnot(isTRUE(all.equal(4, absorbing.msm(misccov.msm), tol=1e-06)))
 
     tot <- totlos.msm(misccov.msm)
-    stopifnot(isTRUE(all.equal(c(6.79436767260684, 2.76098742650544, 2.15509495435115), as.numeric(tot), tol=1e-06)))
+    stopifnot(isTRUE(all.equal(c(6.79521818195318, 2.76263786152668, 2.15322224353698), as.numeric(tot), tol=1e-06)))
 
-    stopifnot(isTRUE(all.equal(1964.69505630520, as.numeric(logLik.msm(misccov.msm)), tol=1e-06)))
+    stopifnot(isTRUE(all.equal(1964.697191562695, as.numeric(logLik.msm(misccov.msm)), tol=1e-06)))
 
 }
 

@@ -18,7 +18,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
       qconstraint=NULL, econstraint=NULL, initprobs = NULL,
       death = FALSE, exacttimes = FALSE, censor=NULL,
       censor.states=NULL, cl = 0.95, fixedpars = NULL, center=TRUE,
-      opt.method=c("optim","nlm"), hessian=TRUE, use.deriv=FALSE, deriv.test=FALSE,... )
+      opt.method=c("optim","nlm"), hessian=TRUE, use.deriv=FALSE,
+      deriv.test=FALSE, analyticp=TRUE, ... )
 }
 \arguments{
   \item{formula}{ A formula giving the vectors containing the observed
@@ -400,10 +401,17 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     that the default for \code{\link{optim}} is a Nelder-Mead method
     which cannot use derivatives. However, these derivatives, if
     supplied, are always used to calculate the Hessian. }
-
+  
   \item{deriv.test}{If \code{TRUE}, then analytic and numeric derivatives are
     computed and compared at the initial values, and no optimisation is
     performed.}
+
+  \item{analyticp}{By default, the likelihood for certain simpler 3, 4
+    and 5 state models is calculated using an analytic expression for
+    the transition probability (P) matrix.  To revert to the original method
+    of using the matrix exponential, specify \code{analyticp=FALSE}. See
+    the PDF manual for a list of the models for which analytic P
+    matrices are implemented. }
   
   \item{...}{Optional arguments to the general-purpose \R
     optimisation routines, \code{\link{optim}} or

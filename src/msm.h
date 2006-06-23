@@ -55,6 +55,10 @@ struct qmodel {
     int ndpars;
     int *ivector;
     double *intens;
+    int analyticp;
+    int iso;
+    int *perm;
+    int *qperm;
     int *constr;
 };
 
@@ -94,7 +98,7 @@ typedef struct hmodel hmodel;
 
 double qij(int i, int j, vector intens, ivector qvector, int nstates);
 double pijdeath(int r, int s, Matrix pmat, vector intens, ivector qvector, int n);
-void Pmat(Matrix pmat, double t, vector intens, int *qvector, int nstates, int exacttimes, int debug);
+void Pmat(Matrix pmat, double t, vector intens, int nintens, int *qvector, int nstates, int exacttimes, int analyticp, int iso, int *perm, int *qperm, int debug);
 void DPmat(Array3 dpmat, double t, vector x, vector intens, vector oldintens, ivector qvector, 
 	   int n, int np, int ndp, int ndc, ivector qconstr, ivector bconstr, ivector wcov, int exacttimes);
 void dpijdeath(int r, int s, vector x, Array3 dpmat, Matrix pmat, vector intens, vector oldintens, ivector qvector, 
@@ -107,3 +111,6 @@ double identity(double x);
 int all_equal(double x, double y);
 
 void MatrixExpPadeR(double *ExpAt, double *A, int *n, double *t);
+
+void AnalyticP(Matrix pmat, double t, int nstates, int iso, int *perm, int *qperm, vector intens, int nintens, int *degen);
+

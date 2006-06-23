@@ -60,3 +60,62 @@
                  }
                  ) )
 
+### Distinct labelled (1 and) 2 and 3 state directed graphs.
+### graphs with common "iso" are isomorphic (i.e. identical when states are unlabelled) 
+### "perm" is permutation of states needed to transform graph into the first in the list of isomorphisms
+### This data is used to determine the appropriate method for calculating the analytic P matrix. 
+
+.msm.graphs <-
+  list(
+       "1" = list(),
+       "2" = list(
+         "1" = list(iso=1, perm=c(1,2)),
+         "2" = list(iso=1, perm=c(2,1)),
+         "1-2" = list(iso=2, perm=c(1,2))
+         ),
+       "3" = list(
+         "1-2" = list(iso=1, perm=c(1,2,3)),
+         "3-4" = list(iso=1, perm=c(3,1,2)),
+         "5-6" = list(iso=1, perm=c(2,3,1)),
+
+         "1-4" = list(iso=2, perm=c(1,2,3)),
+         "1-5" = list(iso=2, perm=c(2,3,1)),
+         "2-3" = list(iso=2, perm=c(2,1,3)),         
+         "2-6" = list(iso=2, perm=c(1,3,2)),
+         "3-6" = list(iso=2, perm=c(3,2,1)),
+         "4-5" = list(iso=2, perm=c(3,1,2)),        
+
+         "1-6" = list(iso=3, perm=c(1,2,3)),
+         "2-4" = list(iso=3, perm=c(3,1,2)),
+         "3-5" = list(iso=3, perm=c(2,3,1)),
+
+         "1-2-4" = list(iso=4,perm=c(1,2,3)),
+         "1-2-6" = list(iso=4,perm=c(1,3,2)),
+         "1-5-6" = list(iso=4,perm=c(2,3,1)),
+         "2-3-4" = list(iso=4,perm=c(2,1,3)),
+         "3-4-5" = list(iso=4,perm=c(3,1,2)),
+         "3-5-6" = list(iso=4,perm=c(3,2,1)),
+
+         "1-3-5" = list(iso=5,perm=c(1,2,3)),
+         "1-3-6" = list(iso=5,perm=c(2,1,3)),
+         "1-4-6" = list(iso=5,perm=c(3,1,2)),
+         "2-3-5" = list(iso=5,perm=c(1,3,2)),
+         "2-4-5" = list(iso=5,perm=c(2,3,1)),
+         "2-4-6" = list(iso=5,perm=c(3,2,1)),
+
+         "1-2-4-6" = list(iso=6,perm=c(1,2,3)),
+         "1-3-5-6" = list(iso=6,perm=c(2,3,1)),
+         "2-3-4-5" = list(iso=6,perm=c(3,1,2))
+         ),
+       "4" = list(
+         "1-5-9" = list(iso=1,perm=c(1,2,3,4)),
+         "1-3-5-6-9" = list(iso=2,perm=c(1,2,3,4))
+         ),
+
+       "5" = list(
+         "1-6-11-16" = list(iso=1,perm=c(1,2,3,4,5)),
+         "1-4-6-8-11-12-16" = list(iso=2,perm=c(1,2,3,4,5)),
+         "1-6-7-11-12" = list(iso=3,perm=c(1,2,3,4,5))
+         )
+       
+       )

@@ -1,3 +1,33 @@
+2006-06-23 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* DESCRIPTION: Version 0.6.2 released.  
+
+2006-06-21 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* msm.obs.to.fromto,msm.check.times: Support character subject
+	variables.  Thanks to Danstan Bagenda for the report.
+
+2006-06-21 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	*  Analytically-calculated transition probability matrices
+	implemented for selected 3, 4 and 5 state models. These are
+	calculated in new file src/analyticp.c.  New option "analyticp" in
+	msm() to revert to the old matrix exponential method. 
+	Update to msm-manual.pdf describing this method.
+	
+2006-06-20 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+	
+	* R/simul.R(getobs.msm): Bug fix - Keep only one observation in
+	the absorbing state when absorbing state is not the highest state.
+	
+2006-05-29 Chris Jackson   <chris.jackson@imperial.ac.uk>	
+
+	* man/logLik.Rd: help page fixed to explain that this returns the
+	minus log likelihood. Thanks to Ole Rummel. 
+
+	* msm.R (likderiv.msm): bug fix - transformation of the
+	derivatives when all parameters are fixed was returning all NAs.
+	
 2006-03-26 Chris Jackson   <chris.jackson@imperial.ac.uk>	
 	
 	* lik.c(Viterbi): Bug fix - don't ignore initprobs.  Thanks to
