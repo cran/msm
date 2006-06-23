@@ -3,6 +3,17 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.6.2  (2006-06-23) 
+-------------
+
+* The likelihood for certain transient 2, 3, 4 and 5 state models is
+ now calculated using analytic expressions for the transition
+ probability matrix, instead of by numerically calculating the matrix
+ exponential.  This can give big speed improvents.
+
+* Various bug fixes, including support for character subject IDs.
+
+
 Version 0.6.1  (2006-03-26)
 -------------
 

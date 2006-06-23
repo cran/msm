@@ -328,7 +328,7 @@ void Eigen(Matrix mat, int n, vector revals, vector ievals, Matrix evecs, int *e
    invertibility by calculating determinant, thus reducing number of
    cases where it is necessary to use power series or Pade? */
 
-void MatrixExp(Matrix mat, int n, Matrix expmat, double t, int debug)
+void MatrixExp(Matrix mat, int n, Matrix expmat, double t, int debug, int degen)
 {  
     int i, err=0, nsq=n*n;
     Matrix work = (Matrix) Calloc(nsq, double);
@@ -337,8 +337,9 @@ void MatrixExp(Matrix mat, int n, Matrix expmat, double t, int debug)
     Matrix evecs = (Matrix) Calloc(nsq, double);
     Matrix evecsinv = (Matrix) Calloc(nsq, double);
     /* calculate eigensystem */
-    Eigen(mat, n, revals, ievals, evecs, &err);
-    if (repeated_entries (revals, n) || (err != 0)){
+    if (!degen) 
+	Eigen(mat, n, revals, ievals, evecs, &err);
+    if (repeated_entries (revals, n) || (err != 0) || degen){
 #if _MEXP_METHOD_==1 
 	MatrixExpPade(expmat, mat, n, t);
 #elif _MEXP_METHOD_==2 
@@ -392,9 +393,10 @@ double qij(int i, int j, vector intens, ivector qvector, int nstates)
 
 /* Calculates the whole transition matrix in time t given an intensity matrix */
 
-void Pmat(Matrix pmat, double t, vector intens, ivector qvector, int nstates, int exacttimes, int debug)
+void Pmat(Matrix pmat, double t, vector intens, int nintens, ivector qvector, int nstates, int exacttimes, 
+	  int analyticp, int iso, ivector perm, ivector qperm, int debug)
 {
-    int i,j;
+    int i,j,degen=0;
     double pii;
     Matrix qmat = (Matrix) Calloc( (nstates)*(nstates), double);
     FillQmatrix(qvector, intens, qmat, nstates);
@@ -407,7 +409,10 @@ void Pmat(Matrix pmat, double t, vector intens, ivector qvector, int nstates, in
 	}
     }
     else {
-	MatrixExp(qmat, nstates, pmat, t, debug);
+	if ((iso > 0) && (analyticp))
+	    AnalyticP(pmat, t, nstates, iso, perm, qperm, intens, nintens, &degen);
+	else 
+	    MatrixExp(qmat, nstates, pmat, t, debug, degen);
     }
     /* Floating point fuzz sometimes causes trouble */
     for (i=0; i<nstates; ++i) 

@@ -32,10 +32,12 @@ MatrixExp(mat, t = 1, n = 20, k = 3, method="pade")
   of \eqn{M} on the diagonal, and \eqn{U} is a matrix whose columns are the
   eigenvectors of \eqn{M}.
 
-  However, if \eqn{M} has repeated eigenvalues, then its eigenvector
-  matrix is non-invertible. In this case, the matrix exponential is
-  calculated using the Pade approximation defined by Moler and
-    van Loan (2003), or the less robust power series approximation,
+  This method of calculation is used if \eqn{M} has distinct
+  eigenvalues.  I If \eqn{M} has repeated eigenvalues, then its
+  eigenvector matrix may be non-invertible. In this case, the matrix
+  exponential is calculated using the Pade approximation defined by
+  Moler and van Loan (2003), or the less robust power series
+  approximation,
 
   \deqn{\exp(M) = I + M + M^2/2 + M^3 / 3! + M^4 / 4! + ...}{exp(M) = I + M + M^2/2 + M^3 / 3! + M^4 / 4! + ...}
 

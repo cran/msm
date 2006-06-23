@@ -33,6 +33,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                 hessian = TRUE,
                 use.deriv = FALSE,
                 deriv.test=FALSE,
+                analyticp = TRUE,
                 ... # options to optim or nlm
                 )
   {            
@@ -42,7 +43,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       if (missing(data)) data <- environment(formula)
 
 ### MODEL FOR TRANSITION INTENSITIES 
-      qmodel <- msm.form.qmodel(qmatrix, qconstraint, exacttimes, gen.inits, formula, subject, data, censor, censor.states)
+      qmodel <- msm.form.qmodel(qmatrix, qconstraint, exacttimes, gen.inits, formula, subject, data, censor, censor.states, analyticp)
       
 ### MISCLASSIFICATION MODEL
       if (!missing(ematrix)) {
@@ -308,7 +309,7 @@ msm.fixdiag.ematrix <- function(ematrix)
       ematrix
   }
 
-msm.form.qmodel <- function(qmatrix, qconstraint=NULL, exacttimes=FALSE, gen.inits=FALSE, formula, subject, data, censor, censor.states)
+msm.form.qmodel <- function(qmatrix, qconstraint=NULL, exacttimes=FALSE, gen.inits=FALSE, formula, subject, data, censor, censor.states, analyticp)
   {
 ### INTENSITY MATRIX (INPUT: qmatrix, qconstraint; OUTPUT: nstates, nintens, qmatrix, qvector, baseconstr, nintenseffs)
       if (gen.inits)
@@ -332,7 +333,25 @@ msm.form.qmodel <- function(qmatrix, qconstraint=NULL, exacttimes=FALSE, gen.ini
       else 
         constr <- 1:npars
       ndpars <- max(constr)
-      qmodel <- list(nstates=nstates, npars=npars, imatrix=imatrix, qmatrix=qmatrix, inits=inits,
+      ipars <- t(imatrix)[t(lower.tri(imatrix) | upper.tri(imatrix))]
+      graphid <- paste(which(ipars==1), collapse="-")
+      if (graphid %in% names(.msm.graphs[[paste(nstates)]])) {
+          ## analytic P matrix is implemented for this particular intensity matrix
+          iso <- .msm.graphs[[paste(nstates)]][[graphid]]$iso
+          perm <- .msm.graphs[[paste(nstates)]][[graphid]]$perm
+          iperm <- match(1:nstates, perm)
+          imatrix.ind <- t(imatrix)
+          imatrix.ind[t(imatrix)>0] <- 1:npars
+          imatrix.ind <- t(imatrix.ind)
+          qperm <- imatrix.ind[iperm,iperm]
+          qperm <- t(qperm)[t(qperm)>0]
+      }
+      else {
+        iso <- 0
+        perm <- qperm <- NA
+      }
+      qmodel <- list(nstates=nstates, analyticp=analyticp, iso=iso, perm=perm, qperm=qperm,
+                     npars=npars, imatrix=imatrix, qmatrix=qmatrix, inits=inits,
                         constr=constr, ndpars=ndpars, exacttimes=exacttimes)
       class(qmodel) <- "msmqmodel"
       qmodel
@@ -493,7 +512,7 @@ msm.check.state <- function(nstates, state=NULL, censor)
 msm.check.times <- function(time, subject)
   {
 ### Check if any individuals have only one observation
-      subj.num <- as.numeric(subject) # avoid problems with factor subjects with empty levels
+      subj.num <- match(subject,unique(subject)) # avoid problems with factor subjects with empty levels
       nobspt <- table(subj.num)
       if (any (nobspt == 1)) {
           badsubjs <- sort(unique(subject))[ nobspt == 1 ]
@@ -529,7 +548,7 @@ msm.check.times <- function(time, subject)
 msm.obs.to.fromto <- function(dat)
   {
       n <- length(dat$state)
-      subj.num <- as.numeric(dat$subject)
+      subj.num <- match(dat$subject, unique(dat$subject))
       prevsubj <- c(-Inf, subj.num[1:(n-1)])
       firstsubj <- subj.num != prevsubj
       nextsubj <- c(subj.num[2:n], Inf)
@@ -1008,9 +1027,13 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
                 as.integer(hmodel$whichcovh),
                 as.integer(hmodel$links),                
                 as.double(hmodel$initprobs),
-
-                # various dimensions
+                
+                # various constants
                 as.integer(qmodel$nstates),
+                as.integer(qmodel$analyticp),
+                as.integer(qmodel$iso),
+                as.integer(qmodel$perm),
+                as.integer(qmodel$qperm),
                 as.integer(qmodel$npars),
                 as.integer(qmodel$ndpars),
                 as.integer(qcmodel$ndpars),
@@ -1034,7 +1057,11 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
                 PACKAGE = "msm"
                 )
       ## transform derivatives wrt Q to derivatives wrt log Q
-      if (deriv) lik$returned[1:qmodel$ndpars] <- lik$returned[1:qmodel$ndpars]*exp(params[1:qmodel$ndpars])
+      if (deriv) {
+        lik$returned[1:qmodel$ndpars] <-
+          if (length(params)==0) lik$returned[1:qmodel$ndpars]*exp(p$allinits[!duplicated(p$constr)][1:qmodel$ndpars])
+          else lik$returned[1:qmodel$ndpars]*exp(params[1:qmodel$ndpars])
+      }
       lik$returned
   }
 

@@ -87,8 +87,8 @@ getobs.msm <- function(sim, obstimes, death=FALSE, tunit=1.0)
   {
       absorb <- absorbing.msm(qmatrix=sim$qmatrix)
       # Only keep one observation in the absorbing state 
-      if (max(sim$states) %in% absorb) {
-          if (max(sim$states) %in% death)
+      if (any(sim$states %in% absorb)) {
+          if (any(sim$states %in% death))
             keep <- which(obstimes < max(sim$times))
           else {
               lo <- c(-Inf, obstimes[1:(length(obstimes)-1)])

@@ -188,7 +188,7 @@ void update_likhidden(double *curr, int nc, int obsno, msmdata *d, qmodel *qm, q
     }
     GetOutcomeProb(pout, curr, nc, newpars, hm, qm);
     /* calculate the transition probability (P) matrix for the time interval dt */
-    Pmat(pmat, d->time[obsno] - d->time[obsno-1], newintens, qm->ivector, qm->nst,  (d->obstype[obsno] == OBS_EXACT), 0);
+    Pmat(pmat, d->time[obsno] - d->time[obsno-1], newintens, qm->npars, qm->ivector, qm->nst,  (d->obstype[obsno] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm, qm->qperm, 0);
     for(j = 0; j < qm->nst; ++j)
 	{
 	    newp[j] = 0.0;
@@ -266,7 +266,7 @@ void update_likcensor(int obsno, double *prev, double *curr, int np, int nc,
     int i, j, k, totcovs = 0;
     AddCovs(obsno-1, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens, 
 	    qcm->coveffect, d->cov, d->whichcov, &totcovs, log, exp); 	
-    Pmat(pmat, d->time[obsno] - d->time[obsno-1], newintens, qm->ivector, qm->nst,  (d->obstype[obsno] == OBS_EXACT), 0);
+    Pmat(pmat, d->time[obsno] - d->time[obsno-1], newintens, qm->npars, qm->ivector, qm->nst,  (d->obstype[obsno] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
     for(i = 0; i < nc; ++i)
 	{
 	    newp[i] = 0.0;
@@ -340,7 +340,7 @@ double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm,
 		AddCovs(i, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens, 
 			qcm->coveffect, d->cov, d->whichcov, &totcovs,
 			log, exp);
-		Pmat(pmat, d->timelag[i], newintens, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), 0);
+		Pmat(pmat, d->timelag[i], newintens, qm->npars, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
 	    }
 	    if (d->obstype[i] == OBS_DEATH)
 		contrib = pijdeath(d->fromstate[i], d->tostate[i], pmat, newintens, qm->ivector, qm->nst);
@@ -418,7 +418,7 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
 		    }
 		    GetCensored(d->obs[i], cm, &nc, &curr);
 		    GetOutcomeProb(pout, curr, nc, newpars, hm, qm);
-		    Pmat(pmat, dt, newintens, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), 0);
+		    Pmat(pmat, dt, newintens, qm->npars, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
 
 		    for (tru = 0; tru < qm->nst; ++tru)
 			{
@@ -482,6 +482,7 @@ void msmLikelihood (msmdata *d, qmodel *qm, qcmodel *qcm,
 		*returned += likone;
 	    }
 	}
+    /* Likelihood for Markov model with censored outcomes */
     else if (cm->ncens > 0)
 	{
 	    for (pt = 0;  pt < d->npts; ++pt){
@@ -523,7 +524,7 @@ void derivsimple(msmdata *d, qmodel *qm, qcmodel *qcm,
 		GetCovData(i, d->cov, d->whichcov, x, qcm->ncovs[0], d->nobs);
 		AddCovs(i, d->nobs, np, qcm->ncovs, qm->intens, newintens, 
 			qcm->coveffect, d->cov, d->whichcov, &totcovs, log, exp);
-		Pmat(pmat, d->timelag[i], newintens, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), 0);
+		Pmat(pmat, d->timelag[i], newintens, qm->npars, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
  		DPmat(dpmat, d->timelag[i], x, newintens, qm->intens, qm->ivector, qm->nst, np, ndp, ndc,
 		      qm->constr, qcm->constr, qcm->wcov, (d->obstype[i] == OBS_EXACT));
 	    }
@@ -596,6 +597,10 @@ void msmCEntry(
 	       double *initprobs, /* initial state occupancy probabilities */
 
 	       int *nst,      /* number of Markov states */
+	       int *analyticp, /* should P matrix be calculated analytically */
+	       int *iso, /* graph isomorphism ID */
+	       int *perm, /* permutation to the base isomorphism */
+	       int *qperm, /* permutation of intensity parameters from the base isomorphism */
 	       int *nintens,      /* number of intensity parameters */
 	       int *ndintens,      /* number of distinct intensity parameters */
 	       int *ndcovpars,      /* number of distinct covariate parameters */
@@ -623,7 +628,8 @@ void msmCEntry(
     d.subject = subjvec; d.time = timevec; d.obs = obsvec; d.firstobs = firstobs;
     d.nobs = *nobs;  d.npts = *npts;
 
-    qm.nst = *nst; qm.npars = *nintens; qm.ndpars = *ndintens; qm.ivector = qvector; qm.intens = intens; qm.constr = qconstraint;
+    qm.nst = *nst; qm.npars = *nintens; qm.ndpars = *ndintens; qm.ivector = qvector; qm.intens = intens; 
+    qm.analyticp = *analyticp; qm.iso = *iso; qm.perm = perm; qm.qperm = qperm; qm.constr = qconstraint;    
 
     qcm.ncovs = ncovs; qcm.coveffect = coveffect; qcm.constr = cconstraint; qcm.ndpars = *ndcovpars; qcm.wcov = whichcovd;
 
