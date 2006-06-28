@@ -3,6 +3,12 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.6.3  (2006-06-28) 
+-------------
+
+* Correction to version 0.6.2 with the references reinstated in the
+ manual
+
 Version 0.6.2  (2006-06-23) 
 -------------
 
