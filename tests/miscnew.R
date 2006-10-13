@@ -35,13 +35,13 @@ if (developer.local) {
 ## Covs on misc probs, new way, with hmodel 
 
 misccovnew.msm <- msm(state ~ years, subject = PTNUM, data = heart,
-                qmatrix = oneway4.q, death = 4, fixedpars=TRUE,
-                hmodel=list(
-                  hmmCat(prob=c(0.9, 0.1, 0, 0)),
-                  hmmCat(prob=c(0.1, 0.8, 0.1, 0)),
-                  hmmCat(prob=c(0, 0.1, 0.9, 0)), hmmIdent()),
-                hcovariates=list(~dage + sex, ~dage + sex, ~dage + sex, ~1),
-                hcovinits = list(c(0.01,-0.013), c(0.02,-0.014,0.03,-0.015), c(0.04,-0.016), NULL),
+                      qmatrix = oneway4.q, death = 4, fixedpars=TRUE,
+                      hmodel=list(
+                        hmmCat(prob=c(0.9, 0.1, 0, 0)),
+                        hmmCat(prob=c(0.1, 0.8, 0.1, 0)),
+                        hmmCat(prob=c(0, 0.1, 0.9, 0)), hmmIdent()),
+                      hcovariates=list(~dage + sex, ~dage + sex, ~dage + sex, ~1),
+                      hcovinits = list(c(0.01,-0.013), c(0.02,-0.014,0.03,-0.015), c(0.04,-0.016), NULL)
                 )
 stopifnot(isTRUE(all.equal(4306.82007050922, misccovnew.msm$minus2loglik, tol=1e-06)))
 
@@ -132,7 +132,7 @@ misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
                   hmmCat(prob=c(0.9, 0.1, 0, 0)),
                   hmmCat(prob=c(0.1, 0.8, 0.1, 0)),
                   hmmCat(prob=c(0, 0.1, 0.9, 0)), hmmIdent()),
-                hcovariates=list(~dage + sex, ~dage + sex, ~dage + sex, ~1),
+                hcovariates=list(~dage + sex, ~dage + sex, ~dage + sex, ~1)
                 )
 stopifnot(isTRUE(all.equal(4296.9155995778, misc.msm$minus2loglik, tol=1e-06)))
 

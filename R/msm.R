@@ -1193,6 +1193,8 @@ crudeinits.msm <- function(formula, subject, qmatrix, data=NULL, censor=NULL, ce
             estmat[paste(i), paste(j)] <- tab[paste(i),paste(j)]
       estmat[qmatrix == 0] <- 0 # 
       estmat <- msm.fixdiag.qmatrix(estmat)
+      rownames(estmat) <- rownames(qmatrix)
+      colnames(estmat) <- colnames(qmatrix)
       estmat
   }
 

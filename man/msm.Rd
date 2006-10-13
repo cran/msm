@@ -58,7 +58,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     represents a 'health - disease - death' model, with transition intensities
     0.1 from health to disease, 0.01 from health to death, 0.1 from disease to health, 
     and 0.2 from disease to death.  The initial intensities given here
-    are with any covariates set to zero. 
+    are with any covariates set to their means in the data (or set to
+    zero, if \code{center} = FALSE). 
   }
 
   \item{gen.inits}{If \code{TRUE}, then initial values for the

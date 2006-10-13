@@ -25,11 +25,12 @@ sim.msm <- function(qmatrix,   # intensity matrix
         obstimes <- obstimes[covs2$ind]
     }
     else {obstimes <- mintime; covs <- beta <- 0}
+    if (is.vector(beta)) beta <- matrix(beta, ncol=length(beta))
     nct <- length(obstimes)
     nstates <- nrow(qmatrix)
     ## Form an array of qmatrices, one for each covariate change-time
-    qmatrices <- array(rep(qmatrix, nct), dim=c(dim(qmatrix), nct))
-      qmatrices[rep(qmatrix>0, nct)] <- qmatrices[rep(qmatrix>0, nct)]*exp(t(beta)%*%t(covs))
+    qmatrices <- array(rep(t(qmatrix), nct), dim=c(dim(qmatrix), nct))
+    qmatrices[rep(qmatrix>0, nct)] <- qmatrices[rep(qmatrix>0, nct)]*exp(t(beta)%*%t(covs))
     for (i in 1:nct)
       qmatrices[,,i] <- msm.fixdiag.qmatrix(qmatrices[,,i])
     cur.t <- mintime; cur.st <- start; rem.times <- obstimes; t.ind <- 1

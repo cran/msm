@@ -1,4 +1,43 @@
-2006-06-23 Chris Jackson   <chris.jackson@imperial.ac.uk>
+2006-09-29 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* man/deltamethod.Rd: Example fixed to use correct covariance
+	matrix. Thanks to Andreas Beyerlein.
+
+2006-09-21 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* src/Makevars: PKG_LIBS fix to pass R CMD CHECK in R 2.4.0
+
+	* DESCRIPTION: Version 0.6.4 released. 
+	
+2006-09-12 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/simul.R(sim.msm) Bug fix: multiply covariates by baseline
+	intensities in the correct order.  Also convert vector beta to
+	matrix. Thanks to Stephan Lenz for the report.
+
+2006-09-08 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/utils.R(rtnorm) Bug fix: use the correct components of
+	parameters which are vectors.  Thanks to Jean-Baptiste Denis 
+	for the report. 
+
+2006-07-16 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* Rd/msm.Rd, inst/doc/msm-manual.pdf: Documentation correction -
+	the initial values of the qmatrix are with covariates at their
+	means in the data, not with the covariates at zero.  This bug
+	has existed since version 0.5.
+	
+2006-07-16 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/msm.R: Row and column names of crudeinits output retained from
+	qmatrix input.
+	
+2006-06-29 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	*  Definition of initprobs corrected on manual p31. 
+	
+2006-06-28 Chris Jackson   <chris.jackson@imperial.ac.uk>
 
 	*  References reinstated in the PDF manual.
 	

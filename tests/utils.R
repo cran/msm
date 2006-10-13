@@ -32,12 +32,13 @@ stopifnot(isTRUE(all.equal(rl, qtnorm(ptnorm(rl)), tol=1e-03)))
 
 try(qtnorm(c(-1, 0, 1, 2)))
 set.seed(220676)
-rtnorm(10, lower=0, upper=2)
+rtnorm(10, mean=1:10, sd=1:10, lower=0, upper=2)
 set.seed(220676)
-rt <- rtnorm(10)
+rt <- rtnorm(10, mean=1:10, sd=1:10)
 set.seed(220676)
-r <- rnorm(10)
+r <- rnorm(10, mean=1:10, sd=1:10)
 stopifnot(isTRUE(all.equal(rt, r, tol=1e-06)))
+
 
 ## Measurement error distributions 
 
@@ -122,7 +123,7 @@ set.seed(220676)
 y <- rnorm(100, 4*x, 5)
 toy.lm <- lm(y ~ x)
 (estmean <- coef(toy.lm))
-estvar <- summary(toy.lm)$cov.unscaled
+estvar <- summary(toy.lm)$cov.unscaled * summary(toy.lm)$sigma^2
 
 ## Estimate of (1 / (alphahat + betahat))
 stopifnot(isTRUE(all.equal(0.206982798128202, as.numeric(1 / (estmean[1] + estmean[2])))))
