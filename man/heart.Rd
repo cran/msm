@@ -3,7 +3,7 @@
 \title{Heart transplant monitoring data}
 \description{
   A series of approximately yearly angiographic examinations of heart transplant
-  recipients.  The state at each time is a grade of coronary artery
+  recipients.  The state at each time is a grade of cardiac allograft 
   vasculopathy (CAV),  a deterioration of the arterial walls.  
 }
 \usage{data(heart)}

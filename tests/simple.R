@@ -356,7 +356,7 @@ heartfaccov.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = two
                        covariates = ~ pdiag, covinits=list(pdiagHyper=rep(0.1,7)), fixedpars=TRUE) # OK 
 stopifnot(isTRUE(all.equal(4793.10858368203, heartfaccov.msm$minus2loglik, tol=1e-06)))
 heartfaccov.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q, covariates = ~ pdiag,
-                       covinits=list(pdiagHyper=rep(0.1,7),pdiagIDC=rep(0.1,7),pdiagIHD=rep(0.1,7),pdiagOther=rep(0.1,7),pdiagRestr=rep(0.1,7),), fixedpars=TRUE) # OK 
+                       covinits=list(pdiagHyper=rep(0.1,7),pdiagIDC=rep(0.1,7),pdiagIHD=rep(0.1,7),pdiagOther=rep(0.1,7),pdiagRestr=rep(0.1,7)), fixedpars=TRUE) # OK 
 stopifnot(isTRUE(all.equal(4793.11816516565, heartfaccov.msm$minus2loglik, tol=1e-06)))
 
 

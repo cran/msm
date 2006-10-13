@@ -133,18 +133,25 @@ qtnorm <- function(p, mean=0, sd=1, lower=-Inf, upper=Inf, lower.tail=TRUE, log.
       ret
   }
 
-rtnorm <- function(n, mean=0, sd=1, lower=-Inf, upper=Inf)
-  {
-      ret <- numeric()
-      if (length(n) > 1) n <- length(n)
-      while (length(ret) < n) {
-          y <- rnorm(n - length(ret), mean, sd)
-          y <- y[y>=lower & y<=upper]
-          ret <- c(ret, y)
-      }
-      stopifnot(length(ret)==n)
-      ret
-  }
+rtnorm <- function (n, mean = 0, sd = 1, lower = -Inf, upper = Inf) {
+    ret <- numeric()
+    if (length(n) > 1)
+        n <- length(n)
+    mean <- rep(mean, length=n)
+    sd <- rep(sd, length=n)
+    lower <- rep(lower, length=n)
+    upper <- rep(upper, length=n)
+    ind <- seq(length=n)
+    while (length(ind) > 0) {
+        y <- rnorm(length(ind), mean[ind], sd[ind])
+        done <- which(y >= lower[ind] & y <= upper[ind])
+        ret[ind[done]] <- y[done]
+        ind <- setdiff(ind, ind[done])
+    }
+    stopifnot(length(ind) == 0)
+    ret
+}
+
 
 ### Normal distribution with measurement error and optional truncation 
 

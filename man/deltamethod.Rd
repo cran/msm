@@ -60,7 +60,7 @@ x <- 1:100
 y <- rnorm(100, 4*x, 5)
 toy.lm <- lm(y ~ x)
 estmean <- coef(toy.lm)
-estvar <- summary(toy.lm)$cov.unscaled
+estvar <- summary(toy.lm)$cov.unscaled * summary(toy.lm)$sigma^2
 
 ## Estimate of (1 / (alphahat + betahat))
 1 / (estmean[1] + estmean[2])
