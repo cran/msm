@@ -25,6 +25,11 @@ print.msm <- function(x, ...)
                   print.ci(x$Ematrices[[i]], x$EmatricesL[[i]], x$EmatricesU[[i]])
                   cat("\n")
               }
+              if (x$hmodel$nipars > 0) {
+                cat("Initial state occupancy probabilities\n\n")
+                print(x$hmodel$initprobs)
+                cat("\n")
+              }
           }
           else if (x$hmodel$hidden) {print(x$hmodel); cat("\n")}
       }
@@ -179,6 +184,36 @@ image.msm <- function(x, ...)
   surface.msm(x, type="image",...)
 }
 
+### Given a "covariates" argument of an extractor function containing
+### factor covariates, convert the factor covariates to numeric
+### contrasts.  For example, for a categorical covariate "smoke" with
+### three levels "NON","CURRENT","EX", with baseline level "NON",
+### convert list(smoke="CURRENT") to list(smokeCURRENT=1, smokeEX=0)
+
+factorcov2numeric.msm <- function(covariates, x, intmisc="intens") {
+    covdata <- if (intmisc=="intens") x$data$covdata else x$data$misccovdata
+    covnames <- names(covdata$covfactor)
+    if (length(covariates) != length(covnames))
+      stop(paste("Supplied", length(covariates), "covariate values, expected", length(covnames)))
+    if (any(! names(covariates)  %in% covnames))
+      stop("Covariates \"", paste(names(covariates)[which(!names(covariates)  %in% covnames)], collapse=", "), "\" unknown")
+    if (is.null(names(covariates)))
+      names(covariates) <- covnames
+    covariates <- covariates[covnames]
+    cfac <- covariates[names(covariates) %in% covnames[which(covdata$covfactor)]]
+    cnum <- covariates[! names(covariates) %in% covnames[which(covdata$covfactor)]]
+    cfac.new <- list()
+    for (i in seq(along=cfac)) {
+        levs.i <- covdata$covfactorlevels[[names(cfac)[[i]]]]
+        cfac.i <- rep(0, length(levs.i))
+        if (! cfac[[i]] %in% levs.i) stop("Level \"", cfac[[i]], "\" of covariate ", names(cfac)[[i]], " unknown")
+        cfac.i[match(cfac[[i]], levs.i)] <- 1
+        names(cfac.i) <- paste(names(cfac)[[i]], levs.i, sep="")
+        cfac.i <- as.list(cfac.i[-1])
+        cfac.new <- c(cfac.new, cfac.i)
+    }
+    c(cnum, cfac.new)[covdata$covlabels]
+}
 
 ### Extract the transition intensity matrix at given covariate values
 
@@ -239,15 +274,12 @@ qematrix.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALSE, 
       warning(paste("Ignoring covariates - no covariates in model for",
                     if (intmisc=="intens") "transition intensities" else "misclassification probabilities"))
     if (nc > 0) {
-        if (!is.list(covariates) && covariates == 0)
-          {covariates <- list();  for (i in 1 : nc) covariates[[covlabels[i]]] <- 0}
-        if (!is.list(covariates))
-          stop("covariates argument must be 0, \"mean\", or a list of values for each named covariate")
-        if (length(covariates) != nc)
-          stop(paste("Supplied", length(covariates), "covariate values, expected", nc))
-        for (n in names(covariates))
-          if ((n != "") && (! n %in% covlabels) )
-            stop(paste("Covariate \"", n, "\" not in model. For factor covariates, use, for example, covnameCOVVALUE = 1", sep=""))
+        if (!is.list(covariates)) {
+            if (covariates == 0)
+              {covariates <- list();  for (i in 1 : nc) covariates[[covlabels[i]]] <- 0}
+            else stop("covariates argument must be 0, \"mean\", or a list of values for each named covariate")
+        }
+        else covariates <- factorcov2numeric.msm(covariates, x, intmisc)
         if (intmisc=="intens"){
             logest <- x$Qmatrices$logbaseline
             for (i in 1 : nc)
@@ -556,15 +588,18 @@ qratio.se.msm <- function(x, ind1, ind2, covariates="mean", cl=0.95)
 ### Extract the transition probability matrix at given covariate values
 
 pmatrix.msm <- function(x, # fitted msm model
-                        t, # time interval
-                        covariates = "mean"  # covariate values to calculate transition matrix for
+                        t = 1, # time interval
+                        covariates = "mean",  # covariate values to calculate transition matrix for
+                        ci.boot = FALSE, # calculate a bootstrap confidence interval
+                        cl = 0.95, # width of symmetric confidence interval
+                        B = 500 # number of bootstrap replicates
                         )
   {
-      if (!is.numeric(t) || (t < 0)) stop("t must be a positive number")
-      q <- qmatrix.msm(x, covariates)
-      p <- MatrixExp(q$estimates, t)
-      colnames(p) <- rownames(p) <- rownames(q$estimates)
-      p
+    if (!is.numeric(t) || (t < 0)) stop("t must be a positive number")
+    q <- qmatrix.msm(x, covariates)
+    p <- MatrixExp(q$estimates, t)
+    colnames(p) <- rownames(p) <- rownames(q$estimates)
+    if (ci.boot) list(estimates = p,  ci=pmatrix.ci.msm(x, t, covariates, cl, B)) else p
   }
 
 ### Extract the transition probability matrix at given covariate values - where the Q matrix is piecewise-constant
@@ -670,7 +705,11 @@ logLik.msm <- function(object, ...)
 ## Estimate total length of stay in a given state. 
 ## TODO: non-homogeneous models. 
 
-totlos.msm <- function(x, start=1, fromt=0, tot=Inf, covariates="mean", ...)
+totlos.msm <- function(x, start=1, fromt=0, tot=Inf, covariates="mean",
+                        ci.boot = FALSE, # calculate a bootstrap confidence interval
+                        cl = 0.95, # width of symmetric confidence interval
+                        B = 500, # number of bootstrap replicates
+                       ...)
 {
     if (!inherits(x, "msm")) stop("expected x to be a msm model")
     if (! start %in% 1 : x$qmodel$nstates) stop("start should be a state in 1, ..., ", x$qmodel$nstates)
@@ -691,7 +730,7 @@ totlos.msm <- function(x, start=1, fromt=0, tot=Inf, covariates="mean", ...)
         totlos[j] <- integrate(f, fromt, tot, ...)$value
     }
     names(totlos) <- rownames(x$qmodel$qmatrix)[tr]
-    totlos
+    if (ci.boot) rbind(totlos, totlos.ci.msm(x, start, fromt, tot, covariates, cl, B)) else totlos
 }
 
 ## Return indices of transient states (can either call for a fitted model or a qmatrix)
@@ -727,15 +766,65 @@ absorbing.msm <- function(x=NULL, qmatrix=NULL)
 }
 
 
+### Estimate observed state occupancies in the data at a series of times
+### Assume previous observed state is retained until next observation time
+### Assumes times are sorted within patient (they are in data in msm objects)
+
+observed.msm <- function(x, times=NULL)
+  {
+    if (!inherits(x, "msm")) stop("expected x to be a msm model")
+    state <- if (x$hmodel$hidden && !x$emodel$misc) viterbi.msm(x)$fitted else x$data$state
+    subject <- x$data$subject ## fixme subj char/factor? 
+    time <- x$data$time
+    if (is.null(times))
+      times <- seq(min(time), max(time), (max(time) - min(time))/10)
+    states.expand <- matrix(nrow=length(unique(subject)), ncol=length(times))
+    pts <- unique(subject)
+    absorb <- absorbing.msm(x)
+    risk <- rep(0, length(times))
+    for (i in seq(along=pts)){
+      state.i <- state[subject==pts[i]]
+      time.i <- time[subject==pts[i]]
+      j <- 1
+      while(j <= length(times)) {
+        if (times[j] < time.i[1]) {
+            mtime <- max(which(times-time.i[1] < 0))
+            states.expand[i, j:mtime] <- NA
+            risk[j:mtime] <- risk[j:mtime] + 1 
+            j <- mtime + 1 
+            next;
+        }
+        else if (times[j] > time.i[length(time.i)]) {
+            if (state.i[length(time.i)] %in% absorb) {
+                states.expand[i, j:(length(times))] <-  state.i[length(time.i)]
+                risk[j:length(times)] <- risk[j:length(times)] + 1 
+            }
+            else states.expand[i, j:(length(times))] <-  NA
+            break;
+        }
+        else {
+            states.expand[i,j] <- state.i[max(which(time.i <= times[j]))]
+            risk[j] <- risk[j] + 1
+        }
+        j <- j+1
+      }
+    }
+    obstab <- t(apply(states.expand, 2, function(y) table(factor(y, levels=seq(length=x$qmodel$nstates)))))
+    obsperc <- 100*obstab / rep(rowSums(obstab), ncol(obstab))
+    dimnames(obstab) <- dimnames(obsperc) <- list(times, paste("State", 1:x$qmodel$nstates))
+    obstab <- cbind(obstab, Total=rowSums(obstab))
+    list(obstab=obstab, obsperc=obsperc, risk=risk)
+  }
+
 ### Table of observed and expected prevalences (works for misclassification and non-misclassification models)
 
 prevalence.msm <- function(x,
-                           times=NULL,
-                           timezero=NULL,
-                           initstates=NULL,
-                           covariates="mean",
-                           misccovariates="mean"
-                           )
+                            times=NULL,
+                            timezero=NULL,
+                            initstates=NULL,
+                            covariates="mean",
+                            misccovariates="mean"
+                            )
   {
       if (!inherits(x, "msm")) stop("expected x to be a msm model")
 ### For general HMMs use the Viterbi estimate of the observed state.       
@@ -744,106 +833,45 @@ prevalence.msm <- function(x,
       time <- x$data$time
       if (is.null(times))
         times <- seq(min(time), max(time), (max(time) - min(time))/10)
-
 ### Estimate observed state occupancies in the data at a series of times
-      cat("Calculating approximate observed state prevalences...\n")
       obs <- observed.msm(x, times)
-      obstab <- obs$obstab; obsperc <- obs$obsperc; risk <- obs$risk
-      
+      obstab <- obs$obstab; obsperc <- obs$obsperc; risk <- obstab[,ncol(obstab)]
 ### Work out expected state occupancies by forecasting from transition probabilities
       if (is.null(timezero))  timezero <- min(time)
-      cat("Forecasting expected state prevalences...\n")
       if (x$emodel$misc){
           exptab <- x$emodel$initprobs * risk[1]
-          for (j in 2 : length(times) ) {
-              pmat <- pmatrix.msm(x, times[j] - timezero, covariates=covariates)
-              emat <- ematrix.msm(x, covariates=misccovariates)$estimates
-              exptruej <- risk[j] * x$emodel$initprobs %*% pmat
-              expobsj <- exptruej %*% emat
-              exptab <- rbind(exptab, expobsj)
+          start <- min(which(times - timezero > 0))
+          if (length(times) >= start) {
+              for (j in start:length(times)) {
+                  pmat <- pmatrix.msm(x, times[j] - timezero, covariates=covariates)
+                  emat <- ematrix.msm(x, covariates=misccovariates)$estimates
+                  exptruej <- risk[j] * x$emodel$initprobs %*% pmat
+                  expobsj <- exptruej %*% emat
+                  exptab <- rbind(exptab, expobsj)
+              }
           }
       }
       else {
-          if (is.null(initstates)){
-              initstates <- table(state[time==timezero])
-              z <- setdiff(paste(1:nst), names(initstates))
-              zero <- rep(0, length(z)); names(zero) <- z; 
-              initstates <- c(initstates, zero)
-              initstates <- initstates[order(names(initstates))]
-          }
+          initstates <- observed.msm(x, times=timezero)$obstab[1:x$qmodel$nstates]
           initprobs <- initstates / sum(initstates)
-          exptab <- initstates
-          for (j in 2 : length(times) ) {
-              pmat <- pmatrix.msm(x, times[j] - timezero, covariates=covariates)
-              expj <- risk[j] * initprobs %*% pmat
-              exptab <- rbind(exptab, expj)
+          exptab <- matrix(initstates, nrow=1)
+          start <- min(which(times - timezero > 0))
+          if (length(times) >= start) {
+              for (j in start:length(times)) {
+                  pmat <- pmatrix.msm(x, times[j] - timezero, covariates=covariates)
+                  expj <- risk[j] * initprobs %*% pmat
+                  exptab <- rbind(exptab, expj)
+              }
           }
       }
       exptab <- cbind(exptab, apply(exptab, 1, sum))
-      dimnames(exptab) <- list(times, c(rownames(x$qmodel$qmatrix),"Total"))
+      dimnames(exptab) <- list(c(timezero, times[start:length(times)]), c(rownames(x$qmodel$qmatrix),"Total"))
       expperc <- 100*exptab[,1:nst] / exptab[, nst+1]
 
       res <- list(observed=obstab, expected=exptab, obsperc=obsperc, expperc=expperc)
       names(res) <- c("Observed", "Expected", "Observed percentages", "Expected percentages")
       res      
-
   }
-
-
-### Estimate observed state occupancies in the data at a series of times
-### Assume previous observed state is retained until next observation time
-### This is rather slow, especially for lots of patients, and should probably be
-### rewritten in C. 
-
-observed.msm <- function(x, times=NULL)
-{
-    if (!inherits(x, "msm")) stop("expected x to be a msm model")
-    state <- if (x$hmodel$hidden && !x$emodel$misc) viterbi.msm(x)$fitted else x$data$state
-    time <- x$data$time
-    subject <- x$data$subject
-    nst <- x$qmodel$nstates
-    if (is.null(times))
-      times <- seq(min(time), max(time), (max(time) - min(time))/10)
-    getcontrib <- function(pt, subject, time, state, times, nst, absorb){
-        rows <- subject==pt
-        contrib <- matrix(0, nrow=length(times), ncol=nst)
-        risk <- rep(0, length(times))
-        for (i in seq(along=times)){
-            t <- times[i]
-            endtime <- max(time[rows])
-            endstate <- state[rows][length(state[rows])]
-            if ( t <= endtime ) {
-                risk[i] <-  1
-                for (j in seq(length(time[rows])-1)){
-                    if ( ( (time[rows][j+1] > t) & (time[rows][j] <= t)) |
-                        ( (time[rows][j+1] == t) & (t == endtime) ) )
-                      {
-                          currstate <- state[rows][j]
-                          contrib[i, currstate] <- 1
-                      }
-                }
-            }
-            else if (t >  endtime  &  endstate %in% absorb) {
-                risk[i] <- 1
-                contrib[i, endstate] <- 1
-            }
-        }
-        list(risk, contrib)
-    }
-    obstab <- matrix(0, nrow=length(times), ncol=nst)
-    risk <- rep(0, length(times))
-    for (pt in unique(as.numeric(subject))){
-        cont <- getcontrib(pt, as.numeric(subject), time, state, times, nst, absorbing.msm(x))
-        risk <- risk + cont[[1]]
-        obstab <- obstab + cont[[2]]
-    }
-    obstab <- cbind(obstab, apply(obstab, 1, sum))
-    dimnames(obstab) <- list(times, c(rownames(x$qmodel$qmatrix), "Total"))
-    obsperc <- 100*obstab[,1:nst] / obstab[, nst+1]
-    list(obstab=obstab, obsperc=obsperc, risk=risk)
-}
-
-
 
 ### Obtain hazard ratios from estimated effects of covariates on log-transition rates
 

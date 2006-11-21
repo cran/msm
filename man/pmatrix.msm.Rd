@@ -6,13 +6,14 @@
   model for a given time interval, at a given set of covariate values. 
 }
 \usage{
-pmatrix.msm(x, t, covariates="mean")
+pmatrix.msm(x, t=1, covariates="mean", ci.boot=FALSE, cl=0.95, B=500)
 }
 \arguments{
 
   \item{x}{A fitted multi-state model, as returned by \code{\link{msm}}.}
 
-  \item{t}{The time interval to estimate the transition probabilities for.}
+  \item{t}{The time interval to estimate the transition probabilities
+  for, by default one unit. }
 
   \item{covariates}{
     The covariate values at which to estimate the transition
@@ -33,6 +34,9 @@ pmatrix.msm(x, t, covariates="mean")
 
     \code{list (age = 60, sex = 1)}
   }
+  \item{ci.boot}{Calculate a bootstrap confidence interval. This is usually time-consuming, and disabled by default. See \code{\link{boot.msm}} for more details of bootstrapping in \pkg{msm}.}
+  \item{cl}{Width of the symmetric confidence interval}
+  \item{B}{Number of bootstrap replicates}
 }
 \value{
   The matrix of estimated transition probabilities \eqn{P(t)} in the given time. 
@@ -52,7 +56,7 @@ pmatrix.msm(x, t, covariates="mean")
   
 }
 \seealso{
-  \code{\link{qmatrix.msm}},  \code{\link{pmatrix.piecewise.msm}}
+  \code{\link{qmatrix.msm}},  \code{\link{pmatrix.piecewise.msm}}, \code{\link{boot.msm}}
 }
 \author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{}

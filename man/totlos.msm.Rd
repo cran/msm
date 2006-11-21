@@ -7,7 +7,7 @@
   transition rates do not change with time. 
 }
 \usage{
-totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean", ...)
+totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean", ci.boot=FALSE, cl=0.95, B=500, ...)
 }
 \arguments{
   \item{x}{A fitted multi-state model, as returned by
@@ -42,6 +42,9 @@ totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean", ...)
     \code{list (age = 60, sex = 1)}
       
   }
+  \item{ci.boot}{Calculate a bootstrap confidence interval. This is usually time-consuming, and disabled by default. See \code{\link{boot.msm}} for more details of bootstrapping in \pkg{msm}.}
+  \item{cl}{Width of the symmetric confidence interval}
+  \item{B}{Number of bootstrap replicates}
 
   \item{...}{Further arguments to be passed to the
     \code{\link{integrate}} function to control the numerical
@@ -78,7 +81,7 @@ totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean", ...)
 
 }
 \seealso{
-  \code{\link{sojourn.msm}}, \code{\link{integrate}}.
+  \code{\link{sojourn.msm}}, \code{\link{pmatrix.msm}}, \code{\link{integrate}}, \code{\link{boot.msm}}.
 }
 \author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
 \keyword{}

@@ -47,7 +47,9 @@
 .msm.PARRANGES <- list(qbase=c(0, Inf), p=c(0, 1), lower=c(-Inf,Inf), upper=c(-Inf, Inf),
                        mean=c(-Inf, Inf), sd=c(0, Inf), 
                        meanlog=c(-Inf,Inf), sdlog=c(0, Inf), rate=c(0, Inf), shape=c(0, Inf),
-                       prob=c(0, 1), meanerr=c(0, Inf), sderr=c(0, Inf), disp=c(0, Inf))
+                       prob=c(0, 1), meanerr=c(0, Inf), sderr=c(0, Inf), disp=c(0, Inf),
+                       initp=c(0, 1)
+                       )
 
 ### Transforms to optimise some parameters on a different scale
 .msm.TRANSFORMS <-
@@ -63,7 +65,7 @@
 ### Distinct labelled (1 and) 2 and 3 state directed graphs.
 ### graphs with common "iso" are isomorphic (i.e. identical when states are unlabelled) 
 ### "perm" is permutation of states needed to transform graph into the first in the list of isomorphisms
-### This data is used to determine the appropriate method for calculating the analytic P matrix. 
+### This database is used to determine the appropriate method for calculating the analytic P matrix. 
 
 .msm.graphs <-
   list(

@@ -168,4 +168,19 @@ stopifnot(isTRUE(all.equal(4908.81676837903, miscnew.msm$minus2loglik, tol=1e-06
 miscnew.msm <- msm(state ~ years, subject = PTNUM, data = heart, qmatrix = twoway4.q, death = 4, fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4908.81676837903, miscnew.msm$minus2loglik, tol=1e-06)))
 
+### Estimating initprobs
+if (developer.local) 
+  miscnew.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+                     qmatrix = oneway4.q, death = 4,  
+                     hmodel=list(
+                       hmmCat(prob=c(0.9, 0.1, 0, 0)),
+                       hmmCat(prob=c(0.1, 0.8, 0.1, 0)),
+                       hmmCat(prob=c(0, 0.1, 0.9, 0)), hmmIdent()),
+                     est.initprobs=TRUE, 
+                     control = list(trace=1, REPORT=1), method="BFGS"
+                     )
+
+
+
 cat("miscnew.R: ALL TESTS PASSED\n")
+

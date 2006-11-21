@@ -4,7 +4,7 @@ library(msm)
 ### Simulation of a multi-state model, and recovering the true model
 ### Just run these tests locally. 
 
-### Simple three-state progression and death model
+### Simple three-state progression and death model
 
 if (developer.local)  { 
 

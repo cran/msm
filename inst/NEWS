@@ -3,6 +3,36 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.7  (2006-11-21)
+-----------
+
+* Initial state occupancy probabilities in hidden Markov models can
+  now be estimated.  See new argument "est.initprobs" to msm. 
+
+* Bootstrap resampling is implemented.  This may be used to calculate
+  confidence intervals or standard errors for quantities such as the
+  transition probability matrix where this was previously not possible
+  with msm, or as an alternative to Hessian-based standard errors or the
+  delta method for other quantities.  See new function boot.msm.
+
+* Bootstrap confidence intervals can be calculated directly from
+  pmatrix.msm and totlos.msm.
+
+* Bug fix in estimation of observed prevalences at maximum observed
+  time. Thanks to Jeremy Penn for the report.  The function has also
+  been rewritten so that the calculation of these prevalences is now
+  much faster.
+
+* prevalence.msm is adapted sensibly to handle data where not all
+  individuals start at a common time.
+
+* The values of categorical (factor) covariates in output functions,
+ such as qmatrix.msm, are now specified in an intuitive way. For
+ example, to calculate a statistic with the categorical covariate
+ "smoke" at the level "CURRENT", just supply list(smoke="CURRENT") as
+ the "covariates" argument to the output function.
+
+
 Version 0.6.4  (2006-09-21)
 -------------
 
@@ -26,7 +56,7 @@ Version 0.6.2  (2006-06-23)
 * The likelihood for certain transient 2, 3, 4 and 5 state models is
  now calculated using analytic expressions for the transition
  probability matrix, instead of by numerically calculating the matrix
- exponential.  This can give big speed improvents.
+ exponential.  This can give big speed improvements.
 
 * Various bug fixes, including support for character subject IDs.
 

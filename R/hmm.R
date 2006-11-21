@@ -31,11 +31,17 @@ msm.check.hcovariates <- function(hcovariates, qmodel)
       }
   }
 
-msm.form.hmodel <- function(hmodel, hconstraint=NULL, initprobs=NULL, qmodel)
+msm.form.hmodel <- function(hmodel, hconstraint=NULL, initprobs=NULL, est.initprobs, qmodel)
   {
       nst <- length(hmodel)
       if (is.null(initprobs))
-        initprobs <- c(1, rep(0, nst-1))
+          initprobs <- if (est.initprobs) rep(1/nst, nst) else c(1, rep(0, nst-1))
+      else {
+          if (!is.numeric(initprobs)) stop("initprobs should be numeric")
+          if (length(initprobs) != nst) stop("initprobs of length ", length(initprobs), ", should be ", nst)
+          initprobs <- initprobs / sum(initprobs)
+      }
+      nipars <- if (est.initprobs) nst-1 else 0
       labels <- sapply(hmodel, function(x) x$label)
       models <- match(labels, .msm.HMODELS)
       pars <- lapply(hmodel, function(x) x$pars)
@@ -55,7 +61,7 @@ msm.form.hmodel <- function(hmodel, hconstraint=NULL, initprobs=NULL, qmodel)
       locpars <- which(plabs == rep(.msm.LOCPARS[labels], npars))
       names(pars) <- plabs
       hmod <- list(hidden=TRUE, nstates=qmodel$nstates, fitted=FALSE, models=models, labels=labels,
-                   npars=npars, totpars=sum(npars), pars=pars, plabs=plabs, parstate=parstate,
+                   npars=npars, nipars=nipars, totpars=sum(npars), pars=pars, plabs=plabs, parstate=parstate,
                    firstpar=firstpar, links=links, locpars=locpars, initprobs=initprobs)
       class(hmod) <- "hmodel"
       hmod
@@ -134,7 +140,7 @@ msm.emodel2hmodel <- function(emodel, qmodel)
           
           hmod <- list(hidden=TRUE, fitted=FALSE, nstates=nst, models=models, labels=labels,
                        npars=npars, totpars=sum(npars), links=links, locpars=locpars,  
-                       pars=pars, plabs=plabs, parstate=parstate, firstpar=firstpar, initprobs=emodel$initprobs)
+                       pars=pars, plabs=plabs, parstate=parstate, firstpar=firstpar, nipars=emodel$nipars, initprobs=emodel$initprobs)
           hmod$constr <- msm.econstr2hconstr(emodel$constr, hmod)
       }
       else {
@@ -189,7 +195,13 @@ print.hmodel <- function(x, ...)
           cat("Hidden Markov model, ")
           nst <- length(x$models)
           cat(nst, "states\n")
-          cat("Initial state occupancy probabilities:", paste(x$initprobs, collapse=","), "\n\n")
+          cat("Initial state occupancy probabilities:")
+          if (x$nipars > 0) {
+            cat("\n")
+            print(x$initprobs)
+            cat("\n")
+          }
+          else cat(paste(x$initprobs, collapse=","), "\n\n")
           for (i in 1:nst) {
               cat("State", i, "-", x$labels[i], "distribution\n")
               cat("Parameters: \n")
@@ -197,7 +209,7 @@ print.hmodel <- function(x, ...)
                 pars <- print.hmmcat(x, i)
               else { 
                   pars <- as.matrix(x$pars[x$parstate==i])
-                  if (ci) pars <- cbind(pars, matrix(x$ci[x$parstate==i,], ncol=2))
+                  if (ci) pars <- cbind(pars, matrix(x$ci[rownames(x$ci)!="initp",][x$parstate==i ,], ncol=2))
                   dimnames(pars) <- list(x$plabs[x$parstate==i], cols)
               }
               if (any(x$ncovs[x$parstate==i]) > 0){

@@ -11,8 +11,8 @@ resample <- function(x, size, ...)
 
 sim.msm <- function(qmatrix,   # intensity matrix
                     maxtime,   # maximum time for realisations
-                    covs=NULL,     # covariate matrix
-                    beta=NULL,     # matrix of cov effects on qmatrix
+                    covs=NULL,     # covariate matrix, nobs rows, ncovs cols 
+                    beta=NULL,     # matrix of cov effects on qmatrix. ncovs rows, nintens cols. 
                     obstimes=0, # times at which time-dependent covariates change
                     start = 1,     # starting state
                     mintime = 0    # time to start from 
@@ -30,9 +30,9 @@ sim.msm <- function(qmatrix,   # intensity matrix
     nstates <- nrow(qmatrix)
     ## Form an array of qmatrices, one for each covariate change-time
     qmatrices <- array(rep(t(qmatrix), nct), dim=c(dim(qmatrix), nct))
-    qmatrices[rep(qmatrix>0, nct)] <- qmatrices[rep(qmatrix>0, nct)]*exp(t(beta)%*%t(covs))
+    qmatrices[rep(t(qmatrix)>0, nct)] <- qmatrices[rep(t(qmatrix)>0, nct)]*exp(t(beta)%*%t(covs)) # nintens*nobs
     for (i in 1:nct)
-      qmatrices[,,i] <- msm.fixdiag.qmatrix(qmatrices[,,i])
+      qmatrices[,,i] <- msm.fixdiag.qmatrix(t(qmatrices[,,i]))
     cur.t <- mintime; cur.st <- start; rem.times <- obstimes; t.ind <- 1
     nsim <- 0; max.nsim <- 10
     simstates <- simtimes <- numeric(max.nsim) ## allocate memory up-front for simulated outcome 
