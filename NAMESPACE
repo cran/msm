@@ -2,6 +2,7 @@ useDynLib(msm)
 
 export(
 absorbing.msm,
+boot.msm,
 coef.msm,
 contour.msm,
 crudeinits.msm,

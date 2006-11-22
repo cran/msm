@@ -22,6 +22,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                 qconstraint = NULL, # constraints on equality of baseline intensities
                 econstraint = NULL, # constraints on equality of baseline misc probs
                 initprobs = NULL,  # initial state occupancy probabilities
+                est.initprobs = FALSE, # should these be estimated, starting from the given values? 
                 death = FALSE,  # 'death' states, ie, entry time known exactly, but unknown transient state at previous instant
                 exacttimes = FALSE, # TRUE is shortcut for all obstype 2. 
                 censor = NULL,
@@ -47,7 +48,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       
 ### MISCLASSIFICATION MODEL
       if (!missing(ematrix)) {
-          emodel <- msm.form.emodel(ematrix, econstraint, initprobs, qmodel)
+          emodel <- msm.form.emodel(ematrix, econstraint, initprobs, est.initprobs, qmodel)
       }
       else emodel <- list(misc=FALSE, npars=0, ndpars=0)
 
@@ -55,17 +56,17 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
       if (!missing(hmodel)) {
           msm.check.hmodel(hmodel, qmodel$nstates)
           if (!missing(hcovariates)) msm.check.hcovariates(hcovariates, qmodel)
-          hmodel <- msm.form.hmodel(hmodel, hconstraint, initprobs, qmodel)
+          hmodel <- msm.form.hmodel(hmodel, hconstraint, initprobs, est.initprobs, qmodel)
       }
       else {
           if (!missing(hcovariates)) stop("hcovariates have been specified, but no hmodel")
-          hmodel <- list(hidden=FALSE, models=rep(0, qmodel$nstates), totpars=0, ncoveffs=0) # might change later if misc
+          hmodel <- list(hidden=FALSE, models=rep(0, qmodel$nstates), nipars=0, totpars=0, ncoveffs=0) # might change later if misc
       }
 ### CONVERT OLD STYLE MISCLASSIFICATION MODEL TO NEW GENERAL HIDDEN MARKOV MODEL
       if (emodel$misc) {
           hmodel <- msm.emodel2hmodel(emodel, qmodel)
       }
-      else emodel <- list(misc=FALSE, npars=0, ndpars=0)
+      else emodel <- list(misc=FALSE, npars=0, ndpars=0, nipars=0)
 
 ### DEATH STATES. Logical values allowed for backwards compatibility (TRUE means final state is death, FALSE means no death state)
       dmodel <- msm.form.dmodel(death, qmodel, hmodel)  # returns death, ndeath, 
@@ -370,7 +371,7 @@ msm.check.ematrix <- function(ematrix, nstates)
       invisible()
   }
 
-msm.form.emodel <- function(ematrix, econstraint=NULL, initprobs=NULL, qmodel)
+msm.form.emodel <- function(ematrix, econstraint=NULL, initprobs=NULL, est.initprobs, qmodel)
   {
       msm.check.ematrix(ematrix, qmodel$nstates)
       diag(ematrix) <- 0
@@ -383,13 +384,15 @@ msm.form.emodel <- function(ematrix, econstraint=NULL, initprobs=NULL, qmodel)
       npars <- sum(imatrix)
       nstates <- nrow(ematrix)
       inits <- t(ematrix)[t(imatrix)==1]
-      if (is.null(initprobs))
-        initprobs <- c(1, rep(0, qmodel$nstates-1))
+      if (is.null(initprobs)) {
+        initprobs <- if (est.initprobs) rep(1/qmodel$nstates, qmodel$nstates) else c(1, rep(0, qmodel$nstates-1))
+      }
       else {
           if (!is.numeric(initprobs)) stop("initprobs should be numeric")
           if (length(initprobs) != qmodel$nstates) stop("initprobs of length ", length(initprobs), ", should be ", qmodel$nstates)
           initprobs <- initprobs / sum(initprobs)
       }
+      nipars <- if (est.initprobs) qmodel$nstates - 1 else 0 
       if (!is.null(econstraint)) {
           if (!is.numeric(econstraint)) stop("econstraint should be numeric")
           if (length(econstraint) != npars)
@@ -400,7 +403,7 @@ msm.form.emodel <- function(ematrix, econstraint=NULL, initprobs=NULL, qmodel)
         constr <- 1:npars
       ndpars <- max(constr)
       emodel <- list(misc=TRUE, npars=npars, nstates=nstates, imatrix=imatrix, ematrix=ematrix, inits = inits,
-                     constr=constr, ndpars=ndpars, initprobs=initprobs)
+                     constr=constr, ndpars=ndpars, nipars=nipars, initprobs=initprobs)
       class(emodel) <- "msmemodel"
       emodel
   }
@@ -687,10 +690,12 @@ msm.form.covdata <- function(covariates, data, center=TRUE)
     ## centre the covariates about their means
     covmeans <- if (center) apply(mm, 2, mean) else rep(0, ncovs)
     covfactor <- sapply(mf, is.factor)
+    covfactorlevels <- lapply(mf, levels)
     if (ncovs > 0) mm <- sweep(mm, 2, covmeans)
     colnames(mm) <- covlabels # ( ) in names are converted into . in sweep, breaks factor covs
     covdata <- list(covlabels=covlabels, ncovs=ncovs, covmeans=covmeans,
                     covfactor=covfactor,
+                    covfactorlevels=covfactorlevels,
                     covmat=mm,
                     covrows.kept=covrows.kept)
     class(covdata) <- "msmcovdata"
@@ -933,14 +938,20 @@ msm.form.params <- function(qmodel, qcmodel, emodel, hmodel, fixedpars)
       ni <- qmodel$npars; nc <- qcmodel$npars; 
       plabs <- c(rep("qbase",ni), rep("qcov", nc))
       nh <- sum(hmodel$npars);  nhc <- sum(hmodel$ncoveffs)
-      npars <- ni + nc + nh + nhc
+      nip <- hmodel$nipars
+      npars <- ni + nc + nh + nhc + nip 
       inits <- c(inits, hmodel$pars, unlist(hmodel$coveffect))
       plabs <- c(plabs, hmodel$plabs, rep("hcov", nhc))
+      if (nip > 0) {
+        inits <- c(inits, hmodel$initprobs[-1])
+        plabs <- c(plabs, rep("initp",nip))
+      }
       for (lab in rownames(.msm.TRANSFORMS))        
         inits[plabs==lab] <- get(.msm.TRANSFORMS[lab,"fn"])(inits[plabs==lab])
       names(inits) <- plabs
-      ## Form constraint vector for complete set of parameters 
-      constr <- c(qmodel$constr, ni + qcmodel$constr, ni + nc + hmodel$constr, ni + nc + nh + hmodel$covconstr)
+      ## Form constraint vector for complete set of parameters 
+      constr <- c(qmodel$constr, ni + qcmodel$constr, ni + nc + hmodel$constr,
+                  ni + nc + nh + hmodel$covconstr, ni + nc + nh + nhc + seq(length=nip))
       constr <- match(constr, unique(constr))
       ## parameters which are always fixed and not included in user-supplied fixedpars
       auxpars <- which(plabs %in% .msm.AUXPARS)
@@ -992,6 +1003,7 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
       hmodel$links <- hmodel$links - 1
       qmodel$intens <- allinits[plabs=="qbase"]
       qcmodel$qcov <- allinits[plabs=="qcov"]
+      initprobs <- if (hmodel$nip == 0) hmodel$initprobs else c(1 - sum(allinits[plabs=="initp"]), allinits[plabs=="initp"])
 
       lik <- .C("msmCEntry",
                 as.integer(do.what),
@@ -1026,7 +1038,7 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
                 as.integer(hmodel$ncovs),
                 as.integer(hmodel$whichcovh),
                 as.integer(hmodel$links),                
-                as.double(hmodel$initprobs),
+                as.double(initprobs),
                 
                 # various constants
                 as.integer(qmodel$nstates),
@@ -1119,10 +1131,22 @@ msm.form.output <- function(whichp, model, cmodel, p)
 
 msm.form.houtput <- function(hmodel, p)
   {      
-      hmodel$pars <- p$estimates.t[!(p$plabs %in% c("qbase","qcov","hcov"))]
-      hmodel$coveffect <- p$estimates.t[p$plabs %in% c("hcov")]
+      hmodel$pars <- p$estimates.t[!(p$plabs %in% c("qbase","qcov","hcov","initp"))]
+      hmodel$coveffect <- p$estimates.t[p$plabs == "hcov"]
       hmodel$fitted <- !p$fixed
       hmodel$foundse <- p$foundse
+      if (hmodel$nip > 0) {
+        if (hmodel$foundse) { 
+          hmodel$initprobs <- rbind(c(1 - sum(p$estimates.t[p$plabs == "initp"]), NA, NA),
+                                    cbind(p$estimates.t[p$plabs == "initp"], p$ci[p$plabs == "initp",]))
+          rownames(hmodel$initprobs) <- paste("State",1:hmodel$nstates)
+          colnames(hmodel$initprobs) <- c("Estimate", "L95", "U95")
+        }
+        else {
+            hmodel$initprobs <- c(1 - sum(p$estimates.t[p$plabs == "initp"]), p$estimates.t[p$plabs == "initp"])
+            names(hmodel$initprobs) <- paste("State", 1:hmodel$nstates)
+        }
+      }
       if (hmodel$foundse) {
           hmodel$ci <- p$ci[!(p$plabs %in% c("qbase","qcov","hcov")), , drop=FALSE]
           hmodel$covci <- p$ci[p$plabs %in% c("hcov"), ]
@@ -1132,7 +1156,6 @@ msm.form.houtput <- function(hmodel, p)
       anypb <- tapply(hmodel$plabs, hmodel$parstate, function(x) any(x == "pbase"))
       psum <- tapply(hmodel$pars, hmodel$parstate, function(x) sum(x[names(x) == "p"]))
       hmodel$pars[hmodel$plabs=="pbase"] <- 1 - psum[anypb]
-      ## TODO - calculate SEs or CIs for these using delta method?
       if (hmodel$foundse)
         hmodel$ci[hmodel$plabs=="pbase",] <- NA 
       ## Would it be better to adjust baseline means of location parameters by taking off covariate means?

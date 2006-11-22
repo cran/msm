@@ -320,4 +320,30 @@ heart.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q
 vit <- viterbi.msm(heart.msm)[1:50,] # no error, returns observed states. 
 stopifnot(all.equal(vit$observed, vit$fitted))
 
+
+#### Estimating initprobs
+
+if (developer.local)
+  misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+                  qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=FALSE, initprobs=rep(0.25, 4), est.initprobs=TRUE, 
+                  control = list(trace=1, REPORT=1), method="BFGS")
+### just converges to 1,0,0,0
+
+#### Simulate data with known initprobs. 
+nsubj <- 50; nobspt <- 6
+sim.df <- data.frame(subject = rep(1:nsubj, each=nobspt), time = seq(0, 20, length=nobspt), 
+                     x = rnorm(nsubj*nobspt), y = rnorm(nsubj*nobspt)* 5 + 2 )
+(three.q <- msm:::msm.fixdiag.qmatrix(rbind(c(0, exp(-3), exp(-6)), c(0, 0, exp(-3)), c(0, 0, 0))))
+ematrix3 <- rbind(c(0, 0.1, 0), c(0.1, 0, 0), c(0,0,0))
+initprobs <- c(0.5, 0.5, 0)
+set.seed(22061976)
+sim2.df <- simmulti.msm(sim.df[,1:2], qmatrix=three.q, ematrix=ematrix3, start=sample(1:3, 50, prob=initprobs, replace=TRUE))
+misc.msm <- msm(obs ~ time, subject = subject, data = sim2.df,
+                qmatrix = three.q, ematrix=ematrix3, initprobs=c(0.1, 0.9, 0), fixedpars=7, est.initprobs=TRUE, 
+                control = list(trace=1, REPORT=1), method="BFGS")
+stopifnot(misc.msm$hmodel$initprobs["State 2","L95"] < 0.5 && 0.5 < misc.msm$hmodel$initprobs["State 2","U95"])
+
 cat("misc.R: ALL TESTS PASSED\n")
+
+
+

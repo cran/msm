@@ -48,16 +48,18 @@ prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
 \details{
   To compute `observed'  prevalences at a time \eqn{t}, individuals are
   assumed to be in the same state as at their last observation time preceding
-  \eqn{t}.  This calculation is rather slow when there are a large
-  number of individuals in the data.  
+  \eqn{t}.  
 
   The fitted transition probability matrix is used to forecast expected prevalences from the
   state occupancy at the initial time.  To
   produce the expected number in state \eqn{j} at time \eqn{t} after the
   start, the number of individuals under observation at time \eqn{t}
   (including those who have died, but not those lost to follow-up) is
-  multiplied by the probability of transition between the initial state
-  and state \eqn{j} in a time interval \eqn{t}.
+  multiplied by the product of the proportion of individuals in each
+  state at the initial time and the transition probability matrix in the
+  time interval \eqn{t}.   The proportion of individuals in each state
+  at the "initial" time is estimated, if necessary, in the same way as
+  the observed prevalences. 
 
   For misclassification models (fitted using an \code{ematrix}), this
   aims to assess the fit of the full model for the \emph{observed}
@@ -70,12 +72,9 @@ prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
   to obtain the expected prevalences of \emph{observed} states. 
 
   For general hidden Markov models, the observed state is taken to be the
-  predicted underlying state from Viterbi algorithm
+  predicted underlying state from the Viterbi algorithm
   (\code{\link{viterbi.msm}}).  The goodness of fit of
   these states to the underlying Markov model is tested. 
-  
-  This approach only makes sense for processes where all individuals
-  start at a common time.  
   
   For an example of this approach, see Gentleman \emph{et
     al.} (1994).

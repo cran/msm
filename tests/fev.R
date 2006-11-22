@@ -189,4 +189,18 @@ if (developer.local) {
     }
 }
 
+### Estimating initprobs.
+if (developer.local) { 
+    months <- fev$days/365.25*12
+    (fev3.hid <- msm(fev ~ months, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel3, est.initprobs=TRUE)) # no SEs
+    (fev3.hid <- msm(fev ~ months, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel3,
+                     hcovariates=list(~acute, ~acute, NULL), hcovinits = list(-8, -8, NULL),
+                     hconstraint = list(acute = c(1,1)), 
+                     est.initprobs=TRUE, center=FALSE)) # no SEs 
+    hmodel3 <- list(hmmMETNorm(mean=100, sd=16, sderr=8, lower=80, upper=Inf, meanerr=0),
+                    hmmMETNorm(mean=54, sd=18, sderr=8, lower=0, upper=80, meanerr=0),
+                    hmmIdent(999))
+    (fev3.hid <- msm(fev ~ months, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel3, est.initprobs=TRUE, method="BFGS",control=list(trace=1,REPORT=1))) # OK
+}
+
 cat("fev.R: ALL TESTS PASSED\n")

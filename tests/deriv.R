@@ -154,3 +154,4 @@ system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart,
 stopifnot(isTRUE(all.equal(3954.77699876128, heart.msm$minus2loglik, tol=1e-06)))
 
 }
+cat("deriv.R: ALL TESTS PASSED\n")

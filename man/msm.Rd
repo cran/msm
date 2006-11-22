@@ -15,7 +15,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
       covariates = NULL, covinits = NULL, constraint = NULL,
       misccovariates = NULL, misccovinits = NULL, miscconstraint = NULL,
       hcovariates = NULL, hcovinits = NULL, hconstraint = NULL,
-      qconstraint=NULL, econstraint=NULL, initprobs = NULL,
+      qconstraint=NULL, econstraint=NULL, initprobs = NULL, est.initprobs=FALSE, 
       death = FALSE, exacttimes = FALSE, censor=NULL,
       censor.states=NULL, cl = 0.95, fixedpars = NULL, center=TRUE,
       opt.method=c("optim","nlm"), hessian=TRUE, use.deriv=FALSE,
@@ -312,11 +312,24 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     than \code{hmodel}.  }
   
   \item{initprobs}{Currently only used in hidden Markov models.
-    Vector of assumed underlying state occupancy
-    probabilities at each individual's first observation. Defaults to
+    Vector of assumed underlying state occupancy probabilities at each
+    individual's first observation. If these are estimated (see
+    \code{est.initprobs}), then this defaults to equal probability for
+    each state.  Otherwise this defaults to
     \code{c(1, rep(0, nstates-1))}, that is, in state 1 with a
     probability of 1.  Scaled to sum to 1 if necessary. 
   }
+
+  \item{est.initprobs}{If \code{TRUE}, then the underlying state
+  occupancy probabilities at the first observation will be estimated,
+  starting from initial values taken from the \code{initprobs} argument.
+  Be warned that if any of these initial values are 0 or 1, then
+  \code{\link{optim}} will give an "non-finite value" error.  To fix any
+  of these probabilities during the estimation, e.g. at values of 0 or
+  1, then use an appropriate \code{fixedpars} argument. Note that the
+  free parameters during this estimation excludes the state 1 occupancy
+  probability, which is fixed at 1 minus the sum of the other
+  probabilities. }
 
   \item{death}{Vector of indices of the death states.  A death state is
     an absorbing state whose time of entry is known exactly, but the
@@ -369,12 +382,14 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     likelihood estimates, by default 0.95.}
   
   \item{fixedpars}{Vector of indices of parameters whose values will be
-    fixed at their initial values during the optimisation. These
-    are given in the order: transition intensities (reading across
-    rows of the transition matrix), covariates on intensities (ordered
-    by intensities within covariates), hidden Markov model parameters
+    fixed at their initial values during the optimisation. These are
+    given in the order: transition intensities (reading across rows of
+    the transition matrix), covariates on intensities (ordered by
+    intensities within covariates), hidden Markov model parameters
     (ordered by parameters within states), hidden Markov model covariate
-    parameters (ordered by covariates within parameters within states). 
+    parameters (ordered by covariates within parameters within states),
+    initial state occupancy probabilities (excluding the first
+    probability, which is fixed at one minus the sum of the others).
 
     For covariates on misclassification probabilities, this is a change
     from version 0.4 in the parameter ordering. Previously these were

@@ -1,3 +1,37 @@
+2006-11-21 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/msm.R: Initial state occupancy probabilities can now be
+	estimated. See new argument "est.initprobs" to msm. 
+	
+	* DESCRIPTION: Version 0.7 released. 
+
+2006-11-20 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/simul.R(sim.msm): Transpose error in bug fix from 0.6.4
+	corrected.
+	
+	* R/outputs.R: Values of factor covariates are now supplied to
+	extractor functions in a sensible way, at last.	 Reordering bug
+	fixed with named covariate lists. 
+
+2006-11-19 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/boot.R: New file. Implements bootstrap resampling for fitted
+	msm models.
+
+	* R/outputs.R: Bootstrap confidence intervals available for
+	pmatrix.msm and totlos.msm.
+
+	* R/outputs.R: pmatrix.msm now defaults to one time unit, instead
+	of forcing time unit to be explicitly given.
+	
+	* R/outputs.R: observed.msm function rewritten. Fixes bug in
+	calculating observed prevalence for state at maximum observed
+	time, reported by Jeremy Penn.  It is also now much faster.
+
+	* R/outputs.R: prevalence.msm is also adapted sensibly to handle
+	data where not all individuals start at a common time.
+
 2006-09-29 Chris Jackson   <chris.jackson@imperial.ac.uk>
 
 	* man/deltamethod.Rd: Example fixed to use correct covariance
