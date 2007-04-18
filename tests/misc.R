@@ -60,7 +60,8 @@ misccovboth.msm <- msm(state ~ years, subject = PTNUM, data = heart,
                        covariates = ~ sex, covinits=list(sex=rep(0.1, 5)),
                        misccovariates = ~dage + sex, misccovinits = list(dage=c(0.01,0.02,0.03,0.04), sex=c(-0.013,-0.014,-0.015,-0.016))
                        )
-stopifnot(isTRUE(all.equal(4309.26368021750, misccovboth.msm$minus2loglik, tol=1e-06)))
+stopifnot(isTRUE(all.equal(4309.26368021750, misccovboth.msm$minus2loglik, tol=1e-06))) ## warnings here: 15: is.na() applied to non-(list or vector) in: is.na(i) 16: no non-missing arguments to max; returning -Inf. between first two msm.form.covdata's? 
+#library(msm, lib.loc="d:/work/msm/lib/windows/0.7")
 
 
 if (developer.local) { 

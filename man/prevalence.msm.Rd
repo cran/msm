@@ -10,7 +10,7 @@
 }
 \usage{
 prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
-               misccovariates="mean")
+               misccovariates="mean", piecewise.times, piecewise.covariates)
 }
 \arguments{
   \item{x}{A fitted multi-state model produced by \code{\link{msm}}.}
@@ -28,6 +28,12 @@ prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
   \item{misccovariates}{(Misclassification models only) Values of covariates on the misclassification
     probability matrix for which to forecast expected state occupancy.
     Defaults to the mean values of the covariates in the data set.}
+  \item{piecewise.times}{Times at which piecewise-constant intensities
+    change. See \code{\link{pmatrix.piecewise.msm}} for how
+    to specify this.}
+  \item{piecewise.covariates}{Covariates on which the piecewise-constant
+    intensities depend. See \code{\link{pmatrix.piecewise.msm}} for how
+    to specify this.}
 }
 \value{
   A list with components:
@@ -75,10 +81,13 @@ prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
   predicted underlying state from the Viterbi algorithm
   (\code{\link{viterbi.msm}}).  The goodness of fit of
   these states to the underlying Markov model is tested. 
-  
-  For an example of this approach, see Gentleman \emph{et
-    al.} (1994).
 
+  Note that this function currently assumes intensities are the same
+  for all individuals.  Piecewise-constant intensities may be assumed,
+  through the arguments \code{piecewise.times} and
+  \code{piecewise.covariates}. 
+  
+  For an example of this approach, see Gentleman \emph{et al.} (1994).
 }
 
 \references{

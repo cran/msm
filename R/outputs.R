@@ -246,7 +246,11 @@ qematrix.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALSE, 
     nst <- x$qmodel$nstates
     if (intmisc=="intens"){
         ni <- x$qmodel$npars
-        nc <- if (!is.list(covariates) && (covariates == "mean")) 0 else x$qcmodel$ncovs
+        if (is.list(covariates))
+          nc <- x$qcmodel$ncovs
+        else if (((covariates == "mean") && x$center) || ((covariates == 0 ) && !x$center))
+          nc <- 0
+        else nc <- x$qcmodel$ncovs
         if (nc==0){
             logest <- x$Qmatrices$logbaseline
             mat <- exp(logest)
@@ -257,8 +261,11 @@ qematrix.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALSE, 
         covmeans <- x$qcmodel$covmeans
     }
     else if (intmisc=="misc"){
-        ni <- x$emodel$npars
-        nc <- if (!is.list(covariates) && (covariates == "mean")) 0 else x$ecmodel$ncovs
+      ni <- x$emodel$npars
+      nc <- if (!is.list(covariates) &&
+                ((covariates == "mean") && x$center) ||
+                ((covariates == 0) && !x$center))
+        0 else x$ecmodel$ncovs
         if (nc==0){
             logest <- x$Ematrices$logitbaseline
             mat <- plogis(logest)
@@ -274,24 +281,30 @@ qematrix.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALSE, 
       warning(paste("Ignoring covariates - no covariates in model for",
                     if (intmisc=="intens") "transition intensities" else "misclassification probabilities"))
     if (nc > 0) {
-        if (!is.list(covariates)) {
-            if (covariates == 0)
-              {covariates <- list();  for (i in 1 : nc) covariates[[covlabels[i]]] <- 0}
-            else stop("covariates argument must be 0, \"mean\", or a list of values for each named covariate")
-        }
-        else covariates <- factorcov2numeric.msm(covariates, x, intmisc)
+      if (!is.list(covariates)) {
+        if (covariates == 0 && x$center)
+          {covariates <- list();  for (i in 1 : nc) covariates[[covlabels[i]]] <- 0}
+        else if (covariates == "mean" && !x$center)
+          {covariates <- list();  for (i in 1 : nc) covariates[[covlabels[i]]] <- covmeans[i]}
+        else stop("covariates argument must be 0, \"mean\", or a list of values for each named covariate")
+      }
+      else covariates <- factorcov2numeric.msm(covariates, x, intmisc)
         if (intmisc=="intens"){
             logest <- x$Qmatrices$logbaseline
-            for (i in 1 : nc)
-              logest <- logest + x$Qmatrices[[i+1]] * (covariates[[i]] - covmeans[i])
+            for (i in 1 : nc) {
+              covi <- if (x$center) covariates[[i]] - covmeans[i] else covariates[[i]]
+              logest <- logest + x$Qmatrices[[i+1]] * covi
+            }
             mat <- exp(logest)
             mat[x$qmodel$imatrix == 0] <- 0
             mat <- msm.fixdiag.qmatrix(mat)
         }
         else if (intmisc=="misc"){
             logest <- x$Ematrices$logitbaseline
-            for (i in 1 : nc)
-              logest <- logest + x$Ematrices[[i+1]] * (covariates[[i]] - covmeans[i])
+            for (i in 1 : nc) {
+              covi <- if (x$center) covariates[[i]] - covmeans[i] else covariates[[i]]
+              logest <- logest + x$Ematrices[[i+1]] * covi
+            }
             mat <- plogis(logest)
             mat[x$emodel$imatrix == 0] <- 0
             mat <- msm.fixdiag.ematrix(mat)
@@ -823,7 +836,9 @@ prevalence.msm <- function(x,
                             timezero=NULL,
                             initstates=NULL,
                             covariates="mean",
-                            misccovariates="mean"
+                            misccovariates="mean",
+                            piecewise.times=NULL,
+                            piecewise.covariates=NULL
                             )
   {
       if (!inherits(x, "msm")) stop("expected x to be a msm model")
@@ -842,8 +857,12 @@ prevalence.msm <- function(x,
           exptab <- x$emodel$initprobs * risk[1]
           start <- min(which(times - timezero > 0))
           if (length(times) >= start) {
-              for (j in start:length(times)) {
-                  pmat <- pmatrix.msm(x, times[j] - timezero, covariates=covariates)
+              for (j in start:length(times)) {               
+                  pmat <-
+                    if (is.null(piecewise.times))
+                      pmatrix.msm(x, times[j] - timezero, covariates=covariates)
+                    else
+                      pmatrix.piecewise.msm(x, timezero, times[j], piecewise.times, piecewise.covariates)
                   emat <- ematrix.msm(x, covariates=misccovariates)$estimates
                   exptruej <- risk[j] * x$emodel$initprobs %*% pmat
                   expobsj <- exptruej %*% emat
@@ -851,14 +870,18 @@ prevalence.msm <- function(x,
               }
           }
       }
-      else {
-          initstates <- observed.msm(x, times=timezero)$obstab[1:x$qmodel$nstates]
+      else {        
+          if (is.null(initstates)) initstates <- observed.msm(x, times=timezero)$obstab[1:x$qmodel$nstates]
           initprobs <- initstates / sum(initstates)
           exptab <- matrix(initstates, nrow=1)
           start <- min(which(times - timezero > 0))
           if (length(times) >= start) {
               for (j in start:length(times)) {
-                  pmat <- pmatrix.msm(x, times[j] - timezero, covariates=covariates)
+                  pmat <-
+                    if (is.null(piecewise.times))
+                      pmatrix.msm(x, times[j] - timezero, covariates=covariates)
+                    else
+                      pmatrix.piecewise.msm(x, timezero, times[j], piecewise.times, piecewise.covariates)
                   expj <- risk[j] * initprobs %*% pmat
                   exptab <- rbind(exptab, expj)
               }
@@ -872,7 +895,7 @@ prevalence.msm <- function(x,
       names(res) <- c("Observed", "Expected", "Observed percentages", "Expected percentages")
       res      
   }
-
+  
 ### Obtain hazard ratios from estimated effects of covariates on log-transition rates
 
 hazard.msm <- function(x, hazard.scale = 1, cl = 0.95)
@@ -979,7 +1002,7 @@ viterbi.msm <- function(x)
 
                       as.integer(as.vector(t(x$qmodel$imatrix))),
                       as.double(as.vector(t(x$Qmatrices$baseline)[t(x$qmodel$imatrix)==1])),
-                      as.double(unlist(lapply(x$Qmatrices[x$qcmodel$covlabels], function(x) t(x)[t(x$qmodel$imatrix)==1]))),
+                      as.double(unlist(lapply(x$Qmatrices[x$qcmodel$covlabels], function(y) t(y)[t(x$qmodel$imatrix)==1]))),
                       as.double(x$hmodel$pars),
                       as.double(x$hmodel$coveffect),   # estimates
 

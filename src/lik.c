@@ -229,6 +229,8 @@ double likhidden(int pt, /* ordinal subject ID */
     double *newpars = Calloc(hm->totpars, double);
     double lweight, lik;
     int i, fp, totcovs=0, obsno, nc=1;
+    if (d->firstobs[pt] + 1 == d->firstobs[pt+1]) 
+      return 0; /* individual has only one observation */ 
     /* Likelihood for individual's first observation */
     for (i = 0; i < qm->nst; ++i) {
 	fp = hm->firstpar[i];
@@ -299,6 +301,8 @@ double likcensor(int pt, /* ordinal subject ID */
     double *curr     = Calloc(qm->nst, double);  
     double lweight = 0, lik;
     int i, obs, np=0, nc=0;
+    if (d->firstobs[pt] + 1 == d->firstobs[pt+1]) 
+      return 0; /* individual has only one observation */ 
     for (i = 0; i < qm->nst; ++i)
 	cump[i] = 1; 
     GetCensored((double)d->obs[d->firstobs[pt]], cm, &np, &prev);
