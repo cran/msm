@@ -152,7 +152,6 @@ rtnorm <- function (n, mean = 0, sd = 1, lower = -Inf, upper = Inf) {
     ret
 }
 
-
 ### Normal distribution with measurement error and optional truncation 
 
 dmenorm <- function(x, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0, log = FALSE)

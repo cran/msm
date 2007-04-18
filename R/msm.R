@@ -201,6 +201,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
           else {
               p$foundse <- FALSE
               p$covmat <- p$ci <- NULL
+              warning("Could not calculate asymptotic standard errors - Hessian is not positive definite. Optimisation has probably not converged to the maximum likelihood")
           }
       }
 
@@ -248,6 +249,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                          estimates = p$params,
                          estimates.t = p$estimates.t,
                          fixedpars = p$fixedpars,
+                         center = center,
                          covmat = p$covmat,
                          ci = p$ci,
                          opt = p$opt, 
@@ -430,20 +432,22 @@ msm.form.data <- function(formula, subject=NULL, obstype=NULL, covariates=NULL, 
       subjrows.kept <- (1:n) [!is.na(subject)]
       otrows.kept <- statetimerows.kept[!is.na(obstype)]
       
+      ## Don't drop NA covariates on the transition process at the subject's final observation, since they are not used       
+      lastobs <- c(which(subject[1:(n-1)] != subject[2:n]), n)
       ## Parse covariates formula and extract data
       covdata <- misccovdata <- list(ncovs=0, covmat=numeric(0))
       if (!is.null(covariates)) {
-          covdata <- msm.form.covdata(covariates, data, center)
+          covdata <- msm.form.covdata(covariates, data, lastobs, center)
       }
       if (!is.null(misccovariates) && emodel$misc) {
-          misccovdata <- msm.form.covdata(misccovariates, data, center)
+          misccovdata <- msm.form.covdata(misccovariates, data, NULL, center)
           hcovariates <- lapply(ifelse(rowSums(emodel$imatrix)>0, deparse(misccovariates), deparse(~1)), as.formula)
       }
       hcovdata <- vector(qmodel$nstates, mode="list")
       if (!is.null(hcovariates)) {
           for (i in seq(qmodel$nstates)) {
               if (!is.null(hcovariates) && !is.null(hcovariates[[i]]))
-                hcovdata[[i]] <- msm.form.covdata(hcovariates[[i]], data, center)
+                hcovdata[[i]] <- msm.form.covdata(hcovariates[[i]], data, NULL, center)
               else hcovdata[[i]] <- list(ncovs=0)
           }
       }
@@ -514,7 +518,7 @@ msm.check.state <- function(nstates, state=NULL, censor)
 
 msm.check.times <- function(time, subject)
   {
-### Check if any individuals have only one observation
+### Check if any individuals have only one observation (after excluding missing data)
       subj.num <- match(subject,unique(subject)) # avoid problems with factor subjects with empty levels
       nobspt <- table(subj.num)
       if (any (nobspt == 1)) {
@@ -522,7 +526,7 @@ msm.check.times <- function(time, subject)
           badlist <- paste(badsubjs, collapse=", ")
           plural <- if (length(badsubjs)==1) "" else "s"
           has <-  if (length(badsubjs)==1) "has" else "have"
-          warning ("Subject", plural, " ", badlist, " only ", has, " one observation")
+          warning ("Subject", plural, " ", badlist, " only ", has, " one complete observation")
       }
 ### Check if observations within a subject are adjacent
       ind <- tapply(1:length(subj.num), subj.num, length)
@@ -649,49 +653,32 @@ msm.check.model <- function(fromstate, tostate, obs, subject, obstype=NULL, qmat
 
 
 ## Extract covariate information from a formula.
-## Find which columns and which rows to keep from the original data 
-## Change in R-2.2.0, model.matrix now drops NAs.  mm returns 
- 
-# msm.form.covdata <- function(covariates, data, center=TRUE)
-# {
-#     if (!inherits(covariates, "formula")) stop(deparse(substitute(covariates)), " should be a formula")
-#     mm <- as.data.frame(model.matrix(covariates, data=data, na.action=NULL)[,-1,drop=FALSE])
-#     mf <- model.frame(covariates, data=data)
-#     covlabels <- colnames(mm)
-#     ncovs <- length(covlabels)
-#     droprows <- as.numeric(attr(mf, "na.action"))
-#     covrows.kept <- setdiff(seq(length=nrow(mm)), droprows)
-#     mm <- mm[covrows.kept,]
-#     ## centre the covariates about their means
-#     covmeans <- if (center) apply(mm, 2, mean) else rep(0, ncovs)
-#     covfactor <- sapply(mf, is.factor)
-#     if (ncovs > 0) mm <- sweep(mm, 2, covmeans)
-#     colnames(mm) <- covlabels # ( ) in names are converted into . in sweep, breaks factor covs
-#     covdata <- list(covlabels=covlabels, ncovs=ncovs, covmeans=covmeans,
-#                     covfactor=covfactor,
-#                     covmat=mm,
-#                     covrows.kept=covrows.kept)
-#     class(covdata) <- "msmcovdata"
-#     dput(covdata, "/tmp/cov-new.R")
-#     covdata
-# }
+## Find which columns and which rows to keep from the original data 
 
-msm.form.covdata <- function(covariates, data, center=TRUE)
+msm.form.covdata <- function(covariates, data, lastobs, center=TRUE)
 {
     if (!inherits(covariates, "formula")) stop(deparse(substitute(covariates)), " should be a formula")
-    mm <- as.data.frame(model.matrix(covariates, data=data))
-    n <- nrow(model.frame(covariates, data=data, na.action=NULL))
+    mf1 <- model.frame(covariates, data=data, na.action=NULL)
+    ## We shouldn't drop NA covariates at the subject's final
+    ## observation, since they are not used in the analysis, therefore
+    ## we impute observed zeros when final observations are NA.
+    mf.imp <- mf1
+    for (i in names(mf.imp))
+      mf.imp[lastobs,i][is.na(mf.imp[lastobs,i])] <- if (is.factor(mf.imp[,i])) levels(mf.imp[,i])[1] else 0
+    mm <- na.omit(as.data.frame(model.matrix(covariates, data=mf.imp)))
+    n <- nrow(mf.imp)
     covlabels <- names(mm)[-1]
     ncovs <- length(covlabels)
     mm <- subset(mm, select=-1)
-    mf <- model.frame(covariates, data=data)
-    droprows <- as.numeric(attr(mf, "na.action"))
+    mf2 <- na.omit(mf.imp) 
+    droprows <- as.numeric(attr(mf2, "na.action"))
     covrows.kept <- (1:n)[! ((1:n) %in% droprows)]
-    ## centre the covariates about their means
-    covmeans <- if (center) apply(mm, 2, mean) else rep(0, ncovs)
-    covfactor <- sapply(mf, is.factor)
-    covfactorlevels <- lapply(mf, levels)
-    if (ncovs > 0) mm <- sweep(mm, 2, covmeans)
+    covfactor <- sapply(mf2, is.factor)
+    covfactorlevels <- lapply(mf2, levels)
+    # for consistency with version 0.7 and earlier, don't include imputed last obs when calculating covariate means
+    covmeans <- apply(na.omit(model.matrix(covariates, data=data)), 2, mean, na.rm=TRUE)[-1]
+    ## centre the covariates about their means if requested
+    if (center && ncovs > 0) mm <- sweep(mm, 2, covmeans)
     colnames(mm) <- covlabels # ( ) in names are converted into . in sweep, breaks factor covs
     covdata <- list(covlabels=covlabels, ncovs=ncovs, covmeans=covmeans,
                     covfactor=covfactor,
@@ -737,7 +724,8 @@ msm.aggregate.hmmdata <- function(dat)
       apaste <- as.character(do.call("paste", dat2))
       dat$whicha <- rep(0, dat$nobs)
       dat$whicha[!firstsubj] <- match(apaste, unique(apaste))
-      ## index of patient's first observation 
+      ## index of patient's first observation, plus extra element for
+      ## last person's last observation plus one. This is used. 
       dat$firstobs <- c(which(firstsubj), dat$nobs+1)
       dat
   }
@@ -1138,7 +1126,7 @@ msm.form.houtput <- function(hmodel, p)
       if (hmodel$nip > 0) {
         if (hmodel$foundse) { 
           hmodel$initprobs <- rbind(c(1 - sum(p$estimates.t[p$plabs == "initp"]), NA, NA),
-                                    cbind(p$estimates.t[p$plabs == "initp"], p$ci[p$plabs == "initp",]))
+                                    cbind(p$estimates.t[p$plabs == "initp"], p$ci[p$plabs == "initp",,drop=FALSE]))
           rownames(hmodel$initprobs) <- paste("State",1:hmodel$nstates)
           colnames(hmodel$initprobs) <- c("Estimate", "L95", "U95")
         }

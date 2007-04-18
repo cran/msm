@@ -3,6 +3,37 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.7.1  (2007-04-18)
+-------------
+
+* Maintainer's email address is now chris.jackson@mrc-bsu.cam.ac.uk
+
+* msm now gives a warning when the standard errors cannot be
+  calculated due to the Hessian at the converged "solution" being
+  non-positive-definite.  This issue had been causing a lot of user
+  confusion.
+
+* prevalence.msm can now calculate expected prevalences for models
+  with piecewise-constant intensities, in the same manner as
+  pmatrix.piecewise.msm.  Intensities must still be common to all
+  individuals.
+
+* Bug fix for presentation of intensity matrices in print.msm and
+  qmatrix.msm when center = FALSE.  These had been returning matrices
+  with covariates set to zero, when they should have been set to their
+  means. Thanks to Ross Boylan.
+
+* Covariates on transition process which are missing at an
+  individual's last observation are not dropped, because they are not
+  used in the analysis.  Thanks to Jonathan Williams. This has the
+  consequence that output from prevalence.msm may be different from
+  earlier versions (0.7 or earlier) if there are missing values in the
+  data.  Users are advised to deal with missing values in their data
+  appropriately before using msm.
+
+* Miscellaneous other bug fixes, see ChangeLog. 
+
+
 Version 0.7  (2006-11-21)
 -----------
 
@@ -27,10 +58,10 @@ Version 0.7  (2006-11-21)
   individuals start at a common time.
 
 * The values of categorical (factor) covariates in output functions,
- such as qmatrix.msm, are now specified in an intuitive way. For
- example, to calculate a statistic with the categorical covariate
- "smoke" at the level "CURRENT", just supply list(smoke="CURRENT") as
- the "covariates" argument to the output function.
+  such as qmatrix.msm, are now specified in an intuitive way. For
+  example, to calculate a statistic with the categorical covariate
+  "smoke" at the level "CURRENT", just supply list(smoke="CURRENT") as
+  the "covariates" argument to the output function.
 
 
 Version 0.6.4  (2006-09-21)
@@ -47,7 +78,7 @@ Version 0.6.3  (2006-06-28)
 -------------
 
 * Correction to version 0.6.2 with the references reinstated in the
- manual
+ manual.
 
 
 Version 0.6.2  (2006-06-23) 
@@ -100,6 +131,7 @@ Version 0.5.2  (2005-10-11)
 * Negative binomial hidden Markov output distribution added. 
 
 * Miscellaneous other bug fixes, see ChangeLog. 
+
 
 Version 0.5.1  (2005-05-25)
 -------------

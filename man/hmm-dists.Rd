@@ -60,7 +60,7 @@ hmmNBinom(disp, prob)
   The \code{hmmMETNorm} and \code{hmmMEUnif} distributions are
   truncated Normal and Uniform distributions, but with additional Normal measurement error on the
   response. These are generalisations of the distributions proposed by
-Satten and Longini (1994) for modelling the progression of CD4 cell
+Satten and Longini (1996) for modelling the progression of CD4 cell
 counts in monitoring HIV disease.  See \code{\link{medists}} for
 density, distribution, quantile and random generation functions for
 these distributions.   See also \code{\link{tnorm}} for

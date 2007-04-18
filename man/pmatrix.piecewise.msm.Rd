@@ -29,7 +29,7 @@ pmatrix.piecewise.msm(x, t1, t2, times, covariates)
     The components correspond to the covariate values in the intervals
     
     \code{(t1, times[1]],  (times[1], times[2]], ...,
-      (\times[length(times)], t2]}
+      (times[length(times)], t2]}
 
     (assuming that all elements of \code{times} are in the interval
     \code{(t1, t2)}).

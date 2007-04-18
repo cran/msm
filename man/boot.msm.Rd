@@ -29,8 +29,9 @@ boot.msm(x, stat=pmatrix.msm, B=500, file=NULL)
   Confidence intervals or standard errors for the corresponding
   statistic can be calculated by summarising the returned list of
   \code{B} replicated outputs.  This is currently implemented for the
-  transition probability matrix, see \code{\link{pmatrix.msm}}.  At the
-  moment, for other outputs, users will have to write their own code to
+  transition probability matrix and total length of stay, see
+  \code{\link{pmatrix.msm}}, \code{\link{totlos.msm}}.  At the moment,
+  for other outputs, users will have to write their own code to
   summarise the output of \code{\link{boot.msm}}.
 
   Most of \pkg{msm}'s output functions present confidence intervals

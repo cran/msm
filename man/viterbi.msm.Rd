@@ -1,11 +1,11 @@
 \name{viterbi.msm}
-\title{Calculate the most likely path through underlying stages}
+\title{Calculate the most likely path through underlying states}
 \alias{viterbi.msm}
 
 \description{
   For a fitted hidden Markov model, the Viterbi
   algorithm recursively constructs the path with the
-  highest probability through the underlying stages.
+  highest probability through the underlying states.
 }
 
 \usage{

@@ -1,3 +1,53 @@
+2007-04-18 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R: Don't drop covariates on transition process which are
+	missing at the last observation for a patient, because they are
+	not used in the analysis.  This has the consequences that output
+	from prevalence.msm may be different from earlier versions (0.7 or
+	earlier) if there are missing values in the data.  Users are
+	advised to drop missing values from their data (if statistically
+	appropriate!)  before using msm.
+	
+	* DESCRIPTION: Maintainer email address changed.
+
+	* DESCRIPTION: Version 0.7.1 released.
+	
+2007-04-05 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/outputs.R(viterbi.msm): Bug fix for models with
+	covariates. Thanks to Hongjie Wang.
+
+	* R/outputs.R(prevalence.msm): Can now calculate expected
+	prevalences for models with piecewise-constant intensities, in the
+	same manner as pmatrix.piecewise.msm.  
+
+2007-04-04 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/outputs.R(prevalence.msm): Bug fix, initstates was being
+	ignored. Thanks to Peter Jensen. 
+
+	* R/msm.R: Give a warning when the standard errors cannot be
+	calculated.
+
+	* R/msm.R(msm.form.houtput): Bug fix for initprobs display with
+	only two states.
+	
+2007-03-02 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* R/outputs.R(print.msm, qematrix.msm): Bug fix: When
+	center=FALSE, reported baseline intensity matrix should be
+	labelled as with covariates set to zero, not at their means.
+	Thanks to Ross Boylan.
+
+2007-02-09 Chris Jackson   <chris.jackson@imperial.ac.uk>
+
+	* src/lik.c: Return likelihood of zero for individuals with only
+	one observation in censoring and hidden models. Thanks to Jonathan
+	Williams for discovering the bug.
+
+	* data/heart.txt: Age at transplant date corrected.  Thanks to
+	Jonathan Williams.
+	
 2006-11-21 Chris Jackson   <chris.jackson@imperial.ac.uk>
 
 	* R/msm.R: Initial state occupancy probabilities can now be
@@ -625,7 +675,7 @@ Bug fixes
 	the only transition times. 
  
 	* R/msm.R: New function statetable.msm to calculate frequencies of
-	successive state pairs in data
+	successive state pairs in data.
 
 	* R/outputs.R: Methodology changed for prevalencemisc.msm to make
 	it more similar to prevalence.msm, avoiding confusion.  Observed
@@ -642,7 +692,7 @@ Bug fixes
 	death states (Thanks to Martyn Plummer).
 
 	* R/simul.R: Bugfix in getobs.msm, which led to the entrance to
-	not being observed for models with absorbing states,
+	not being observed for models with absorbing states.
 	
 2002-12-09  Chris Jackson  <chris.jackson@ic.ac.uk>
 
@@ -724,5 +774,3 @@ Bug fixes
 	* src/lik.c: Debugging print statements removed from onestep
 
 	* msm_0.1.tar.gz: First release 
-
-

@@ -1,5 +1,7 @@
 source("local.R")
 library(msm)
+#library(msm, lib.loc="~/lib/R")
+#library(msm, lib.loc="~/msm/lib/sun/0.7")
 data(heart)
 
 ### TESTS FOR SIMPLE NON-HIDDEN MARKOV MODELS
@@ -110,7 +112,7 @@ stopifnot(isTRUE(all.equal(0.0953882330391683, qmatrix.msm(psor.msm)$estimates[1
 
 
 
-## No death state
+## No death state
 heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
                  qmatrix = twoway4.q, death = FALSE, fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4833.0064065267, heart.msm$minus2loglik, tol=1e-06)))
@@ -213,21 +215,21 @@ q <- qratio.msm(psor.msm, c(2,2), c(2,3))
 stopifnot(isTRUE(all.equal(c(-1,0,-1,-1), as.numeric(q), tol=1e-06)))
 
 p <- prevalence.msm(psor.msm)
-stopifnot(isTRUE(all.equal(59, p$Observed[5,5], tol=1e-06)))
-stopifnot(isTRUE(all.equal(59, p$Expected[5,5], tol=1e-06)))
-stopifnot(isTRUE(all.equal(57.3529411764706, p$"Observed percentages"[4,4], tol=1e-03)))
+stopifnot(isTRUE(all.equal(64, p$Observed[5,5], tol=1e-06)))
+stopifnot(isTRUE(all.equal(64, p$Expected[5,5], tol=1e-06)))
+stopifnot(isTRUE(all.equal(60.27397, p$"Observed percentages"[4,4], tol=1e-03)))
 stopifnot(isTRUE(all.equal(47.399, p$"Expected percentages"[4,4], tol=1e-03)))
 p <- prevalence.msm(psor.msm, times=seq(0,60,5))
-stopifnot(isTRUE(all.equal(63, p$Observed[5,5], tol=1e-06)))
-stopifnot(isTRUE(all.equal(63, p$Expected[5,5], tol=1e-06)))
-stopifnot(isTRUE(all.equal(50.7042253521127, p$"Observed percentages"[4,4], tol=1e-03)))
-stopifnot(isTRUE(all.equal(39.2884374332881, p$"Expected percentages"[4,4], tol=1e-03)))
+stopifnot(isTRUE(all.equal(68, p$Observed[5,5], tol=1e-06)))
+stopifnot(isTRUE(all.equal(68, p$Expected[5,5], tol=1e-06)))
+stopifnot(isTRUE(all.equal(53.33333, p$"Observed percentages"[4,4], tol=1e-03)))
+stopifnot(isTRUE(all.equal(39.28835, p$"Expected percentages"[4,4], tol=1e-03)))
 
 summ <- summary.msm(psor.msm)
 p <- summ$prevalences
-stopifnot(isTRUE(all.equal(59, p$Observed[5,5], tol=1e-06)))
-stopifnot(isTRUE(all.equal(59, p$Expected[5,5], tol=1e-06)))
-stopifnot(isTRUE(all.equal(57.3529411764706, p$"Observed percentages"[4,4], tol=1e-03)))
+stopifnot(isTRUE(all.equal(64, p$Observed[5,5], tol=1e-06)))
+stopifnot(isTRUE(all.equal(64, p$Expected[5,5], tol=1e-06)))
+stopifnot(isTRUE(all.equal(60.27397, p$"Observed percentages"[4,4], tol=1e-03)))
 stopifnot(isTRUE(all.equal(47.399, p$"Expected percentages"[4,4], tol=1e-03)))
 stopifnot(isTRUE(all.equal(0.385347226135311, summ$hazard$ollwsdrt[1,2], tol=1e-04)))
 stopifnot(isTRUE(all.equal(0.385347226135311, summ$hazard$ollwsdrt[2,2], tol=1e-04)))
@@ -255,9 +257,9 @@ if (interactive())
       persp(psor.msm)
       persp(psor.msm, np=5)
       image(psor.msm)
-  }
+    }
 
-
+          
 co <- coef.msm(psor.msm)
 stopifnot(isTRUE(all.equal(0.498319866154661, co$hieffusn[1,2], tol=1e-04)))
 
@@ -318,7 +320,6 @@ covariates <- list(list(ollwsdrt=0, hieffusn=0),
                    )
 p <- pmatrix.piecewise.msm(psor.msm, 0, 7, times, covariates)
 stopifnot(isTRUE(all.equal(0.172773087945103, p[1,3], tol=1e-04)))
-
 
 #######  MISCELLANEOUS FEATURES  ##########
 
@@ -386,7 +387,7 @@ if (developer.local) {
     covariates <- list("IHD", 1)
     try(msm:::factorcov2numeric.msm(covariates, heartfaccov2.msm))
     qmatrix.msm(heartfaccov.msm)
-    qmatrix.msm(heartfaccov.msm, covariates=list(pdiag2="IDC"))
+    qmatrix.msm(heartfaccov.msm, covariates=list(pdiag2="IDC")) # bug in 0.7.1 here 
     qmatrix.msm(heartfaccov.msm, covariates=list("IDC"))
     qmatrix.msm(heartfaccov.msm, covariates=list(pdiag2="IHD"))
     qmatrix.msm(heartfaccov.msm, covariates=list("IHD"))
