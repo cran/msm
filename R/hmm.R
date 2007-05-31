@@ -1,5 +1,5 @@
 ### FUNCTIONS FOR HIDDEN MARKOV MODELS IN CONTINUOUS TIME
-### WITH ARBITRARY RESPONSE DISTRIBUTION
+### WITH ARBITRARY RESPONSE DISTRIBUTION
 
 print.hmmdist <- function(x, ...)
   {
@@ -41,7 +41,7 @@ msm.form.hmodel <- function(hmodel, hconstraint=NULL, initprobs=NULL, est.initpr
           if (length(initprobs) != nst) stop("initprobs of length ", length(initprobs), ", should be ", nst)
           initprobs <- initprobs / sum(initprobs)
       }
-      nipars <- if (est.initprobs) nst-1 else 0
+      nipars <- nst - 1
       labels <- sapply(hmodel, function(x) x$label)
       models <- match(labels, .msm.HMODELS)
       pars <- lapply(hmodel, function(x) x$pars)
@@ -101,6 +101,32 @@ msm.form.hcmodel <- function(hmodel, hcovdata, hcovinits, hconstraint)
       hmodel
   }
 
+msm.form.icmodel <- function(hmodel, icovdata, icovinits) {
+  nst <- hmodel$nstates
+  nicovs <- if (is.null(icovdata)) 0 else icovdata$ncovs # distinct covariates
+  nicovs <- rep(nicovs, nst-1)
+  nicovs[hmodel$initprobs[-1] == 0] <- 0 # don't estimate cov effects on probs which are fixed to zero
+  if (is.null(icovinits))
+    icoveffect <- rep(0, sum(nicovs))
+  else {
+      icoveffect <- unlist(icovinits)
+      if (!(length(icoveffect) == sum(nicovs))) {
+          warning("Initial values for initial state covariate effects do not match numbers of covariates, ignoring")
+          icoveffect <- rep(0, sum(nicovs))
+      }
+      else if (!is.numeric(icoveffect)) {
+          warning("icovinits should be numeric")
+          icoveffect <- rep(0, sum(nicovs))
+      }
+  }
+  names(icoveffect) <- rep(icovdata$covlabels, each=sum(nicovs>0))
+  icmod <- list(nicovs=nicovs, icoveffect=icoveffect,
+                nicoveffs=length(icoveffect), whichcovi=icovdata$whichcov)
+  hmodel <- c(hmodel, icmod)
+  class(hmodel) <- "hmodel"
+  hmodel
+}
+
 ## Convert old-style misclassification model specification to a new-style HMM with categorical response
 
 msm.emodel2hmodel <- function(emodel, qmodel)
@@ -122,7 +148,7 @@ msm.emodel2hmodel <- function(emodel, qmodel)
                   plab[i] <- "pbase"
                   plabs[[i]] <- c("ncats", "basecat", plab)
                   ## Baseline category is the probability of no misclassification (diagonal of ematrix)
-                  pars[[i]] <- c(nst, i, ppars) 
+                  pars[[i]] <- c(nst, i, ppars)
               }
               else {
                   plabs[[i]] <- "which"
@@ -133,13 +159,13 @@ msm.emodel2hmodel <- function(emodel, qmodel)
           pars <- unlist(pars)
           plabs <- unlist(plabs)
           names(pars) <- plabs
-          links <- ifelse(models==1, "qlogis", "identity")
+          links <- ifelse(models==1, "log", "identity")
           links <- match(links, .msm.LINKFNS)
           labels <- .msm.HMODELS[models]
           locpars <- which(plabs == rep(.msm.LOCPARS[labels], npars))
-          
+
           hmod <- list(hidden=TRUE, fitted=FALSE, nstates=nst, models=models, labels=labels,
-                       npars=npars, totpars=sum(npars), links=links, locpars=locpars,  
+                       npars=npars, totpars=sum(npars), links=links, locpars=locpars,
                        pars=pars, plabs=plabs, parstate=parstate, firstpar=firstpar, nipars=emodel$nipars, initprobs=emodel$initprobs)
           hmod$constr <- msm.econstr2hconstr(emodel$constr, hmod)
       }
@@ -163,7 +189,7 @@ msm.misccov2hcov <- function(misccovariates, emodel)
   }
 
 msm.misccovinits2hcovinits <- function(misccovinits, hcovariates, emodel, ecmodel)
-  {      
+  {
       nst <- nrow(emodel$imatrix)
       whichst <- rep(1:nst, rowSums(emodel$imatrix))
       hcovinits <- vector(nst, mode="list")
@@ -188,7 +214,7 @@ msm.econstr2hconstr <- function(econstr, hmodel)
 print.hmodel <- function(x, ...)
   {
       ci <- (x$fitted && x$foundse)
-      cols <- if (ci) c("estimate","l95","u95") else ("")
+      cols <- if (ci) c("Estimate","LCL","UCL") else ("")
       if (!x$hidden)
         cat("Non-hidden Markov model\n")
       else {
@@ -200,6 +226,11 @@ print.hmodel <- function(x, ...)
             cat("\n")
             print(x$initprobs)
             cat("\n")
+            if (any(x$nicovs > 0)) {
+              cat("Covariates on log odds of initial states relative to state 1\n")
+              print(x$icoveffect)
+            }
+            cat("\n")
           }
           else cat(paste(x$initprobs, collapse=","), "\n\n")
           for (i in 1:nst) {
@@ -207,9 +238,9 @@ print.hmodel <- function(x, ...)
               cat("Parameters: \n")
               if (x$label[i]=="categorical")
                 pars <- print.hmmcat(x, i)
-              else { 
+              else {
                   pars <- as.matrix(x$pars[x$parstate==i])
-                  if (ci) pars <- cbind(pars, matrix(x$ci[rownames(x$ci)!="initp",][x$parstate==i ,], ncol=2))
+                  if (ci) pars <- cbind(pars, matrix(x$ci[x$parstate==i ,], ncol=2))
                   dimnames(pars) <- list(x$plabs[x$parstate==i], cols)
               }
               if (any(x$ncovs[x$parstate==i]) > 0){
@@ -232,11 +263,11 @@ print.hmmcat <- function(x, i)
     if (x$fitted && x$foundse) {
         ci <- matrix(x$ci[x$parstate==i,], ncol=2)
         res <- cbind(res,  ci[3:(2+pars[1]),])
-        colnames(res) <- c("estimate","l95","u95")
+        colnames(res) <- c("Estimate","LCL","UCL")
     }
     else colnames(res) <- "prob"
     res
-}    
+}
 
 msm.form.hconstraint <- function(constraint, hmodel)
   {

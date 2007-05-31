@@ -76,5 +76,5 @@ form
 deltamethod(as.formula(form), estmean, estvar)
 
 }
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{math}

@@ -15,15 +15,18 @@
   subject to a Normally distributed measurement error. 
 }
 \usage{
-     dmenorm(x, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0, log = FALSE)
+     dmenorm(x, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0,
+             log = FALSE)
      pmenorm(q, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0,
              lower.tail = TRUE, log.p = FALSE)
      qmenorm(p, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0,
              lower.tail = TRUE, log.p = FALSE)
      rmenorm(n, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0)
      dmeunif(x, lower=0, upper=1, sderr=0, meanerr=0, log = FALSE)
-     pmeunif(q, lower=0, upper=1, sderr=0, meanerr=0, lower.tail = TRUE, log.p = FALSE)
-     qmeunif(p, lower=0, upper=1, sderr=0, meanerr=0, lower.tail = TRUE, log.p = FALSE)
+     pmeunif(q, lower=0, upper=1, sderr=0, meanerr=0, lower.tail = TRUE,
+             log.p = FALSE)
+     qmeunif(p, lower=0, upper=1, sderr=0, meanerr=0, lower.tail = TRUE,
+             log.p = FALSE)
      rmeunif(n, lower=0, upper=1, sderr=0, meanerr=0)
 }
 \arguments{
@@ -106,7 +109,7 @@
   rejection.
 
   These distribution functions are just provided for convenience, and are not
-  optimised  for numerical accuracy.  To fit a hidden Markov model with these response distributions, use a
+  optimised for numerical accuracy or speed.  To fit a hidden Markov model with these response distributions, use a
   \code{\link{hmmMETNorm}} or \code{\link{hmmMEUnif}} constructor. See
   the \code{\link{hmm-dists}} help page for further details.  
   
@@ -133,5 +136,5 @@ lines(x, dtnorm(x, 70, 10, 60, 80), type="l")       ## truncated Normal
 ## truncated Normal with small measurement error
 lines(x, dmenorm(x, 70, 10, 60, 80, sderr=3), type="l")
 }
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{}

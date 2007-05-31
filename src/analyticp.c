@@ -1,6 +1,6 @@
 /* Analytic formulae for P(t) in terms of transition intensities, for
 selected 2, 3, 4 and 5-state models. These were derived using symbolic
-algebra software.
+algebra software (Mathematica).
 
 Increases speed and stability by avoiding the numeric calculation of
 the matrix exponential.
@@ -251,6 +251,7 @@ void p3q1246(Matrix pmat, double t, vector intens, int *degen)
     pmat[MI(2,2,3)] = (c + d*e2)/(c + d);
 }
 
+/* TODO: p3q1234, reversible illness-death model. No more complex than the five-state models below... */ 
 
 /* FOUR STATES */
 

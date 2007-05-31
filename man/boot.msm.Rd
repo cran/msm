@@ -48,7 +48,7 @@ boot.msm(x, stat=pmatrix.msm, B=500, file=NULL)
   
   If \code{stat} is \code{NULL}, then \code{B} different \code{msm} model
   objects will be stored in memory. This is unadvisable, as \code{msm}
-  objects tend to be large, as they contain the original data used for
+  objects tend to be large, since they contain the original data used for
   the \code{msm} fit, so this will be wasteful of memory.
 
   To specify more than one statistic, write a function consisting of a
@@ -70,7 +70,7 @@ boot.msm(x, stat=pmatrix.msm, B=500, file=NULL)
     Bootstrap}, Chapman and Hall.
 }
 \seealso{
-  \code{\link{pmatrix.msm}}, \code{\link{totlos.msm}}
+  \code{\link{pmatrix.msm}}, \code{\link{totlos.msm}}, \code{\link{prevalence.msm}}.
 }
 \examples{
 \dontrun{
@@ -88,5 +88,5 @@ boot.msm(x, stat=pmatrix.msm, B=500, file=NULL)
   psor.msm$QmatricesSE$baseline
 }
 }
-\author{C.H.Jackson <chris.jackson@imperial.ac.uk>}
+\author{C.H.Jackson <chris.jackson@mrc-bsu.cam.ac.uk>}
 \keyword{}

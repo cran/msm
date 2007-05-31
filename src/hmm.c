@@ -8,7 +8,17 @@
 
 /* Categorical distribution on the set (1, 2, 3, ..., pars[0]), 
    Baseline category is given by pars[1]
-   Probabilities are given by pars[2], ... pars[ncats+1] */
+   Probabilities are defined by pars[2], ... pars[ncats+1] 
+
+   Multinomial logistic regression: 
+   On entry to this function, the baseline probabilities "oldpars"
+   may have been transformed by covariates using AddCovs, as: 
+   newpars[r] --> oldpars[r]*exp(beta x)
+   In this function, these are used to calculate the actual probabilities as: 
+   p[r] = newpars[r] / (sum of non-baseline newpars)  for r = not baseline
+   p[r] = 1 / (sum of non-baseline newpars)  for r = baseline
+      
+*/
 
 double hmmCat(double x, double *pars)
 {
@@ -17,22 +27,11 @@ double hmmCat(double x, double *pars)
     int cat = fprec(x, 0);
     int ncats = fprec(pars[0], 0);
     int basecat = fprec(pars[1], 0); /* pars[2], ... pars[ncats+1] are the probabilities */
-    double psum=0; 
-    for (i = 1; i <= ncats; ++i) {
-	if (cat == i) { 
-	    if (cat != basecat) 
-		return pars[i+1];
-	    else {
-		/* Non-baseline probabilities might have been adjusted by
-		   covariates, so the baseline should be adjusted accordingly */
-		for (i = 1; i <= ncats; ++i) 
-		    if (i != basecat) 
-			psum += pars[i+1];
-		return 1 - psum;
-	    }
-	}
-    }
-    return 0;
+    double ret, *p = Calloc(ncats, double); 
+    relative2absolutep(&pars[2], p, ncats, basecat-1);
+    ret = p[cat-1];
+    Free(p);
+    return ret;	    
 }
 
 double hmmIdent(double x, double *pars)

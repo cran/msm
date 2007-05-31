@@ -1,3 +1,59 @@
+2007-05-31 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* DESCRIPTION: Version 0.7.2 released.
+	
+2007-05-29 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: Functions to calculate SEs and CIs for ematrix.msm
+	adapted to deal with multinomial logistic regression.  CIs for
+	probabilities are calculated using delta method approximation to
+	variance of logit p, instead of log p as previously. 
+	
+2007-05-26 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/utils.R: Truncated normal random sampling algorithm 
+	improved to use the rejection method by Christian Robert. 
+	Thanks to Vivek Roy for the suggestion. 
+	
+2007-05-25 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R: Constraints on intensity covariate effects that some
+	effects are equal to other effects multiplied by -1 are now
+	allowed.
+
+	* R/msm.R: Structural zeroes are allowed for initial state
+	occupancy probabilities.
+
+	* inst/doc/msm-manual.pdf: Misclassification examples on heart
+	data changed so that individuals' first observations are not
+	misclassified.
+ 	
+2007-05-21 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/lik.c: Serious bug fix. Effects of covariates on outcome
+	probabilities in misclassification models (categorical HMMs) are
+	now estimated using multinomial logistic regressions, instead of
+	(incorrectly) independent univariate logistic regressions for each
+	probability.
+	
+	* R/msm.R, R/lik.c: Effects of covariates on initial state
+	probabilities in HMMs can now be estimated through multinomial
+	logistic regression.
+
+2007-05-13 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+        * R/outputs.R, R/boot.R: New option "ci.boot" to prevalence.msm, a
+	helper to calculate bootstrap confidence limits for the expected
+	prevalences using "boot.msm". 
+
+	* R/msm.R, src/lik.c: New argument "obstrue" to msm, to allow some
+	observations to be observed without error in misclassification models.
+	
+2007-05-11 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+        * R/msm.R: Return derivatives in $deriv component of the msm
+	object after optimisation. Thanks to Ole Rummel.
+	
 2007-04-18 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* R/msm.R: Don't drop covariates on transition process which are

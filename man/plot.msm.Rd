@@ -51,5 +51,5 @@
 \seealso{
   \code{\link{msm}}
 }
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{models}

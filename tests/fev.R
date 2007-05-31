@@ -30,27 +30,34 @@ stopifnot(isTRUE(all.equal(50223.9497625937, fev4.hid$minus2loglik, tol=1e-06)))
 (fev5.hid <- msm(fev ~ days, subject=ptnum, data=fev, qmatrix=five.q, death=5, hmodel=hmodel5, fixedpars=TRUE))
 stopifnot(isTRUE(all.equal(49937.9840668066, fev5.hid$minus2loglik, tol=1e-06)))
 
-## One-level model with covariate on response - indicator for acute events within 14 days 
+## test new obstrue facility. death states are observed exactly.
+fev$obstrue <- as.numeric(fev$fev==999)
+fev$fev2 <- fev$fev; fev$fev2[fev$obstrue==1] <- 3
+hmodel32 <- list(hmmNorm(mean=100, sd=16), hmmNorm(mean=54, sd=18), hmmIdent(3))
+(fev3.hid <- msm(fev2 ~ days, subject=ptnum, obstrue=obstrue, data=fev, qmatrix=three.q, death=3, hmodel=hmodel32, fixedpars=TRUE))
+stopifnot(isTRUE(all.equal(52388.7381942858, fev3.hid$minus2loglik, tol=1e-06)))
+
+## One-level model with covariate on response - indicator for acute events within 14 days
 
 (fev3.hid <- msm(fev ~ days, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel3,
                  hcovariates=list(~acute, ~acute, NULL), hcovinits = list(-8, -8, NULL),
-                 hconstraint = list(acute = c(1,1)), 
+                 hconstraint = list(acute = c(1,1)),
                  fixedpars=TRUE, center=FALSE))
 stopifnot(isTRUE(all.equal(52134.2372359988, fev3.hid$minus2loglik, tol=1e-06)))
 
 (fev4.hid <- msm(fev ~ days, subject=ptnum, data=fev, qmatrix=four.q, death=4, hmodel=hmodel4,
                  hcovariates=list(~acute, ~acute, ~acute, NULL), hcovinits = list(-8, -8, -8, NULL),
-                 hconstraint = list(acute = c(1,1,1)), 
+                 hconstraint = list(acute = c(1,1,1)),
                  fixedpars=TRUE, center=FALSE))
 stopifnot(isTRUE(all.equal(50095.8606697016, fev4.hid$minus2loglik, tol=1e-06)))
 
 (fev5.hid <- msm(fev ~ days, subject=ptnum, data=fev, qmatrix=five.q, death=5, hmodel=hmodel5,
                  hcovariates=list(~acute, ~acute, ~acute, ~acute, NULL), hcovinits = list(-8, -8, -8, -8, NULL),
-                 hconstraint = list(acute = c(1,1,1,1)), 
+                 hconstraint = list(acute = c(1,1,1,1)),
                  fixedpars=TRUE, center=FALSE))
 stopifnot(isTRUE(all.equal(49839.1627881087, fev5.hid$minus2loglik, tol=1e-06)))
 
-## Two-level Satten and Longini model 
+## Two-level Satten and Longini model
 
 hmodel3 <- list(hmmMETNorm(mean=100, sd=16, sderr=8, lower=80, upper=Inf, meanerr=0),
                 hmmMETNorm(mean=54, sd=18, sderr=8, lower=0, upper=80, meanerr=0),
@@ -93,18 +100,18 @@ stopifnot(isTRUE(all.equal(49933.2168265887, fev4.hid$minus2loglik, tol=1e-06)))
 stopifnot(isTRUE(all.equal(49167.8668910928, fev5.hid$minus2loglik, tol=1e-06)))
 
 
-#### MODELS ACTUALLY FITTED. These are the two models presented in the manual. 
+#### MODELS ACTUALLY FITTED. These are the two models presented in the manual.
 
-### On some platforms (not bumblebee) doesn't converge (no SEs) with days - use months instead. 
+### On some platforms (not bumblebee) doesn't converge (no SEs) with days - use months instead.
 
-if (developer.local) { 
+if (developer.local) {
 
     three.q <- rbind(c(0, exp(-6), exp(-9)), c(0, 0, exp(-6)), c(0, 0, 0))
     months <- fev$days * 12 / 365
     hmodel1 <- list(hmmNorm(mean=100, sd=16), hmmNorm(mean=54, sd=18), hmmIdent(999))
     (fev1.msm <- msm(fev ~ days, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel1,
                      hcovariates=list(~acute, ~acute, NULL), hcovinits = list(-8, -8, NULL),
-                     hconstraint = list(acute = c(1,1)), 
+                     hconstraint = list(acute = c(1,1)),
                      fixedpars=FALSE, center=FALSE, method="BFGS", control=list(trace=1, REPORT=1)))
     stopifnot(isTRUE(all.equal(51597.8909140275, fev1.msm$minus2loglik, tol=1e-06)))
 ##    stopifnot(isTRUE(all.equal(51600.522477903, fev1.msm$minus2loglik, tol=1e-06)))  # with NM alg
@@ -116,20 +123,20 @@ if (developer.local) {
                     hmmIdent(999))
     (fev2.msm <- msm(fev ~ days, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel2,
                      hcovariates=list(~acute, ~acute, NULL), hcovinits = list(-8, -8, NULL),
-                     hconstraint = list(sderr = c(1,1), acute = c(1,1)), 
-                     method="BFGS", control=list(trace=3, REPORT=1), 
+                     hconstraint = list(sderr = c(1,1), acute = c(1,1)),
+                     method="BFGS", control=list(trace=3, REPORT=1),
                      fixedpars=FALSE))
 ##    stopifnot(isTRUE(all.equal(50950.3548197944, fev2.msm$minus2loglik, tol=1e-06))) ## ??
 ##    stopifnot(isTRUE(all.equal(51445.9726641155, fev2.msm$minus2loglik, tol=1e-06))) ## with center=FALSE
-    stopifnot(isTRUE(all.equal(51411.1704398278, fev2.msm$minus2loglik, tol=1e-06))) ## with center=TRUE. 
+    stopifnot(isTRUE(all.equal(51411.1704398278, fev2.msm$minus2loglik, tol=1e-06))) ## with center=TRUE.
 
     if (interactive()) save(fev2.msm, file="~/msm/devel/models/fev2.msm.rda")
 
 #    hmodel3 <- list(hmmNorm(mean=100, sd=16), hmmNorm(mean=54, sd=18), hmmIdent(999))
 #    (fev2.msm <- msm(fev ~ days, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel3,
 #                     hcovariates=list(~acute, ~acute, NULL), hcovinits = list(-8, -8, NULL),
-#                     hconstraint = list(sderr = c(1,1), acute = c(1,1)), 
-#                     method="BFGS", control=list(trace=3, REPORT=1), 
+#                     hconstraint = list(sderr = c(1,1), acute = c(1,1)),
+#                     method="BFGS", control=list(trace=3, REPORT=1),
 #                     fixedpars=FALSE))
 #    stopifnot(isTRUE(all.equal(51411.1704398273, fev2.msm$minus2loglik, tol=1e-06)))
 
@@ -164,7 +171,7 @@ if (developer.local) {
     if (interactive()) plot.msm(fev1.msm)
 
     stopifnot(isTRUE(all.equal(c(1,2), transient.msm(fev1.msm), tol=1e-06)))
-    
+
     stopifnot(isTRUE(all.equal(3, absorbing.msm(fev1.msm), tol=1e-06)))
 
     tot <- totlos.msm(fev1.msm)
@@ -173,7 +180,7 @@ if (developer.local) {
     stopifnot(isTRUE(all.equal(25798.9454570137, as.numeric(logLik.msm(fev1.msm)), tol=1e-06)))
 
 
-### example of Viterbi algorithm in the PDF manual 
+### example of Viterbi algorithm in the PDF manual
 
     keep <- fev$ptnum==1 & fev$fev<999
     vit <- viterbi.msm(fev1.msm)[keep,]
@@ -190,13 +197,13 @@ if (developer.local) {
 }
 
 ### Estimating initprobs.
-if (developer.local) { 
-    months <- fev$days/365.25*12
-    (fev3.hid <- msm(fev ~ months, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel3, est.initprobs=TRUE)) # no SEs
-    (fev3.hid <- msm(fev ~ months, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel3,
-                     hcovariates=list(~acute, ~acute, NULL), hcovinits = list(-8, -8, NULL),
-                     hconstraint = list(acute = c(1,1)), 
-                     est.initprobs=TRUE, center=FALSE)) # no SEs 
+if (developer.local) {
+#    months <- fev$days/365.25*12
+#    (fev3.hid <- msm(fev ~ months, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel3, est.initprobs=TRUE)) # no SEs
+#    (fev3.hid <- msm(fev ~ months, subject=ptnum, data=fev, qmatrix=three.q, death=3, hmodel=hmodel3,
+#                     hcovariates=list(~acute, ~acute, NULL), hcovinits = list(-8, -8, NULL),
+#                     hconstraint = list(acute = c(1,1)),
+#                     est.initprobs=TRUE, center=FALSE)) # no SEs
     hmodel3 <- list(hmmMETNorm(mean=100, sd=16, sderr=8, lower=80, upper=Inf, meanerr=0),
                     hmmMETNorm(mean=54, sd=18, sderr=8, lower=0, upper=80, meanerr=0),
                     hmmIdent(999))

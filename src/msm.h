@@ -3,7 +3,7 @@
 #include <R.h>
 #include <R_ext/Applic.h>
 
- /* index to treat a vector as a matrix. ith row, jth column. Fills columns first, as in R */
+/* index to treat a vector as a matrix. ith row, jth column. Fills columns first, as in R */
 #define MI(i, j, nrows) ( (int) ((j)*(nrows) + (i)) )
 /* index to treat a vector as a 3-dimensional array. Left-most index varies fastest, as in R */
 #define MI3(i, j, k, n1, n2) ( (int) ((k)*(n1*n2) + (j)*(n1) + (i)) )
@@ -37,6 +37,7 @@ struct msmdata {
     int *nocc;
     int *whicha;
     int *obstype;
+    int *obstrue;
 
     /* for hidden model */
     int *subject;
@@ -44,6 +45,7 @@ struct msmdata {
     double *obs; /* observed state or any other HMM observation */
     int *firstobs;
     int *whichcovh;
+    int *whichcovi;
 
     int nobs;
     int npts;
@@ -88,6 +90,8 @@ struct hmodel {
     double *coveffect;
     int *links;
     double *initp;
+    int *nicovs;
+    double *icoveffect;
 };
 
 typedef struct msmdata msmdata;
@@ -109,6 +113,7 @@ double logit(double x);
 double expit(double x);
 double identity(double x);
 int all_equal(double x, double y);
+void relative2absolutep(double *relative, double *absolute, int n, int baseline);
 
 void MatrixExpPadeR(double *ExpAt, double *A, int *n, double *t);
 

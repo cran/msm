@@ -54,5 +54,5 @@ sojourn.msm(x, covariates="mean", cl=0.95)
 \seealso{
   \code{\link{msm}}, \code{\link{qmatrix.msm}}, \code{\link{deltamethod}}
 }
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{models}

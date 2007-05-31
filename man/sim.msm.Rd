@@ -70,5 +70,5 @@ qmatrix <- rbind(
                  )
 sim.msm(qmatrix, 30)
 }
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{models}

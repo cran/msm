@@ -10,6 +10,7 @@
 
 #include "msm.h"
 #include "hmm.h"
+#include <Rmath.h>
 #define NODEBUG
 #define NOVITDEBUG
 
@@ -69,7 +70,7 @@ int all_equal(double x, double y)
    For HMMs, each set is the set of parameters of the model for one state
    Only certain of these parameters (means and rates) can have
    covariates on them, ncovs[i] > 0
-   whichcov[j] is the column of the (vectorised) data matrix "cov" containing the kth covariate
+   whichcov[j] is the column of the (vectorised) data matrix "cov" containing the jth covariate
    totcovs is a call-by-referenced integer which counts the covariates so far, used for indexing whichcov
    coveffect is a vectorised ncovs * npars matrix, filled by rows
    (par1) cov1 cov2 ..  (par2) cov1 cov2
@@ -82,18 +83,20 @@ void AddCovs(int obs, int nobs, int npars, int *ncovs,
 	     double link(double x), double invlink(double x))
 {
     int i, j, k=0;
+    double x;
     for (i = 0; i < npars; ++i)
 	{
+	    newpars[i] = oldpars[i];
 	    if (ncovs[i] > 0) { 
-		newpars[i] = link(oldpars[i]);
+		newpars[i] = link(newpars[i]);
 		for (j = 0; j < ncovs[i]; ++j) {
-		    newpars[i] += coveffect[k] * cov[MI(obs, whichcov[j]-1, nobs)];
+			x =  cov[MI(obs, whichcov[j]-1, nobs)];
+		    newpars[i] += coveffect[k] * x;
 		    ++k;
 		}
 		newpars[i] = invlink(newpars[i]);
 		*totcovs += ncovs[i];
 	    }
-	    else newpars[i] = oldpars[i];
 	}
 }
 
@@ -104,7 +107,7 @@ void GetCovData(int obs, double *allcovs, int *whichcov, double *thiscov, int nc
 	thiscov[i] = allcovs[MI(obs, whichcov[i]-1, nobs)];
 }
 
-/* Return a vector of the possible states that a censored state could represent */ 
+/* Return a vector of the nc possible states that a censored state could represent */ 
 /* These will be summed over when calculating the likelihood */
 /* Compare one-indexed obs against one-indexed cm->censor. Return one-indexed current (*states) */
 
@@ -131,21 +134,21 @@ void GetCensored (double obs, cmodel *cm, int *nc, double **states)
 
 /*
   Calculate p (obs curr | true i) for hidden Markov models 
-  If no censoring (nc==1), then this is just the HMM outcome model. 
+  If no censoring (nc==1), and observation is not necessarily of the true state (!obstrue), 
+  then this is just the HMM outcome model. 
   For censored outcomes, there is no misclassification / HMM outcome model. 
   e.g. censor set 1,2,3,    state set 1,2,3,4, 
   pout =   if i in curr 1, else 0 
 */
 
-void GetOutcomeProb(double *pout, double *curr, int nc, double *newpars, hmodel *hm, qmodel *qm)
+void GetOutcomeProb(double *pout, double *curr, int nc, double *newpars, hmodel *hm, qmodel *qm, int obstrue)
 {
     int i, j;
     for (i=0; i<qm->nst; ++i) {
 	pout[i] = 0;
-	if (nc == 1)
+	if (nc == 1 && !obstrue)
 	    pout[i] = (HMODELS[hm->models[i]])(curr[0], &(newpars[hm->firstpar[i]]));
 	else { 
-	    /* Censored outcomes not subject to misclassification/HMM outcome model */
 	    for (j=0; j<nc; ++j) 
 		if ((int) curr[j] == i+1) 
 		    pout[i] = 1;
@@ -165,6 +168,20 @@ void normalize(double *in, double *out, int n, double *lweight)
     *lweight -= log(ave);
 }
 
+/* Transform relative probabilities p2/p1, p3/p1, ... pn/p1 to 
+   absolute probabilities p1,p2,...,pn.  
+   element "baseline" of relative (usually first element 0) can be anything on entry. */
+
+void relative2absolutep(double *relative, double *absolute, int n, int baseline)
+{
+    int i; double psum=0;
+    for (i = 0; i < n; ++i)
+	if (i != baseline) 
+	    psum += relative[i];
+    for (i = 0; i < n; ++i)
+	absolute[i] = (i==baseline ? 1 : relative[i]) / (1 + psum);
+}
+
 /* Post-multiply the row-vector cump by matrix T to accumulate the likelihood */
 
 void update_likhidden(double *curr, int nc, int obsno, msmdata *d, qmodel *qm, qcmodel *qcm, 
@@ -176,7 +193,7 @@ void update_likhidden(double *curr, int nc, int obsno, msmdata *d, qmodel *qm, q
     double *newintens   = Calloc(qm->npars, double);
     double *pmat        = Calloc((qm->nst)*(qm->nst), double);
     double *newpars = Calloc(hm->totpars, double);
-    AddCovs(obsno-1, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens, 
+    AddCovs(obsno-1, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens,
 	    qcm->coveffect, d->cov, d->whichcov, &totcovs, log, exp); 	
     totcovs = 0;
     for (i = 0; i < qm->nst; ++i) {
@@ -186,9 +203,11 @@ void update_likhidden(double *curr, int nc, int obsno, msmdata *d, qmodel *qm, q
 		&(d->whichcovh[totcovs]), &totcovs,
 		LINKFNS[hm->links[i]][0], LINKFNS[hm->links[i]][1]);
     }
-    GetOutcomeProb(pout, curr, nc, newpars, hm, qm);
+    GetOutcomeProb(pout, curr, nc, newpars, hm, qm, d->obstrue[obsno]);
+/*     printf("pout: %4.3f, %4.3f, %4.3f, %4.3f\n", pout[0], pout[1], pout[2], pout[3]);   */
     /* calculate the transition probability (P) matrix for the time interval dt */
-    Pmat(pmat, d->time[obsno] - d->time[obsno-1], newintens, qm->npars, qm->ivector, qm->nst,  (d->obstype[obsno] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm, qm->qperm, 0);
+    Pmat(pmat, d->time[obsno] - d->time[obsno-1], newintens, qm->npars, qm->ivector, qm->nst,
+	 (d->obstype[obsno] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm, qm->qperm, 0);
     for(j = 0; j < qm->nst; ++j)
 	{
 	    newp[j] = 0.0;
@@ -196,9 +215,12 @@ void update_likhidden(double *curr, int nc, int obsno, msmdata *d, qmodel *qm, q
 		{
  		    if (d->obstype[obsno] == OBS_DEATH) {
 			/* Find the true state that obs represents.  This should be the state with outcome model hmmIdent(obs) */
-			for (ideath=0; ideath < qm->nst; ++ideath)
-			    if (hm->models[ideath] == 1 && hmmIdent(curr[0], &(newpars[hm->firstpar[ideath]])))
-				break;
+ 			if (d->obstrue[obsno])  
+ 			    ideath = curr[0] - 1;  
+ 			else 
+			    for (ideath=0; ideath < qm->nst; ++ideath)
+				if (hm->models[ideath] == 1 && hmmIdent(curr[0], &(newpars[hm->firstpar[ideath]])))
+				    break;
 			T[MI(i,j,qm->nst)] = pmat[MI(i,j,qm->nst)] * qij(j, ideath, newintens, qm->ivector, qm->nst);
 		    }
 		    else {
@@ -206,7 +228,10 @@ void update_likhidden(double *curr, int nc, int obsno, msmdata *d, qmodel *qm, q
 		    }
 		    if (T[MI(i,j,qm->nst)] < 0) T[MI(i,j,qm->nst)] = 0;
 		    newp[j] = newp[j] + cump[i]*T[MI(i,j,qm->nst)];
+/*   		    printf("%4.3f, ", pmat[MI(i,j,qm->nst)]);   */
 		}
+/*   	    printf("\n");   */
+			
 	}
     /* re-scale the likelihood at each step to prevent it getting too small and underflowing */
     /*  while cumulatively recording the log scale factor   */
@@ -227,7 +252,8 @@ double likhidden(int pt, /* ordinal subject ID */
     double *newp     = Calloc(qm->nst, double);  
     double *pout = Calloc(qm->nst, double); 
     double *newpars = Calloc(hm->totpars, double);
-    double lweight, lik;
+    double *newinitp = Calloc(qm->nst, double);
+    double lweight, lik; 
     int i, fp, totcovs=0, obsno, nc=1;
     if (d->firstobs[pt] + 1 == d->firstobs[pt+1]) 
       return 0; /* individual has only one observation */ 
@@ -239,9 +265,15 @@ double likhidden(int pt, /* ordinal subject ID */
 		&totcovs, LINKFNS[hm->links[i]][0], LINKFNS[hm->links[i]][1]);
     }
     GetCensored((double)d->obs[d->firstobs[pt]], cm, &nc, &curr);
-    GetOutcomeProb(pout, curr, nc, newpars, hm, qm);
-    for (i = 0; i < qm->nst; ++i)
-	cump[i] = pout[i] * hm->initp[i]; 
+    GetOutcomeProb(pout, curr, nc, newpars, hm, qm, d->obstrue[d->firstobs[pt]]);
+    /* Add covariate effects on initp (expressed as p(cat) / p(baseline cat)) */
+    AddCovs(d->firstobs[pt], d->nobs, qm->nst - 1, hm->nicovs, &hm->initp[1], &newinitp[1], 
+	    hm->icoveffect, d->cov, d->whichcovi, &totcovs, log, exp);
+    /* Transform initp from probs relative to state 1 prob back to absolute probs */
+    relative2absolutep(newinitp, newinitp, qm->nst, 0);
+    /* Likelihood contribution for initial observation */
+    for (i = 0; i < qm->nst; ++i) 
+	cump[i] = pout[i] * newinitp[i];
     lweight=0;
     /* Matrix product loop to accumulate the likelihood for subsequent observations */
     for (obsno = d->firstobs[pt]+1; obsno <= d->firstobs[pt+1] - 1; ++obsno)
@@ -252,7 +284,7 @@ double likhidden(int pt, /* ordinal subject ID */
 	}
     for (i = 0, lik = 0; i < qm->nst; ++i)
 	lik = lik + cump[i];
-    Free(curr); Free(cump);  Free(newp);  Free(pout); Free(newpars); 
+    Free(curr); Free(cump);  Free(newp); Free(pout); Free(newpars); Free(newinitp);
     /* Transform the likelihood back to the proper scale */
     return -2*(log(lik) - lweight); 
 }
@@ -266,9 +298,10 @@ void update_likcensor(int obsno, double *prev, double *curr, int np, int nc,
     double *pmat        = Calloc((qm->nst)*(qm->nst), double);
     double contrib;
     int i, j, k, totcovs = 0;
-    AddCovs(obsno-1, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens, 
+    AddCovs(obsno-1, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens,
 	    qcm->coveffect, d->cov, d->whichcov, &totcovs, log, exp); 	
-    Pmat(pmat, d->time[obsno] - d->time[obsno-1], newintens, qm->npars, qm->ivector, qm->nst,  (d->obstype[obsno] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
+    Pmat(pmat, d->time[obsno] - d->time[obsno-1], newintens, qm->npars, qm->ivector, qm->nst,
+	 (d->obstype[obsno] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
     for(i = 0; i < nc; ++i)
 	{
 	    newp[i] = 0.0;
@@ -341,7 +374,7 @@ double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm,
 	    if ((i==0) || (d->whicha[i] != d->whicha[i-1])) {
 		/* we have a new timelag/covariates combination. Recalculate the 
 		   P matrix for this */
-		AddCovs(i, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens, 
+		AddCovs(i, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens,
 			qcm->coveffect, d->cov, d->whichcov, &totcovs,
 			log, exp);
 		Pmat(pmat, d->timelag[i], newintens, qm->npars, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
@@ -383,7 +416,8 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
 {
     int i, j, tru, fp, k, kmax, obs, totcovs=0, nc = 1;
     double *newintens   = (double *) S_alloc(qm->npars, sizeof(double));
-    double *newpars;
+    double *newpars = (double *) S_alloc(hm->totpars, sizeof(double));
+    double *newinitp = (double *) S_alloc(qm->nst, sizeof(double));
     double *pmat = (double *) S_alloc((qm->nst)*(qm->nst), sizeof(double));
     int *ptr = (int *) S_alloc((d->nobs)*(qm->nst), sizeof(int));
     double *lvold = (double *) S_alloc(qm->nst, sizeof(double));
@@ -393,10 +427,12 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
     double *pout = (double *) S_alloc(qm->nst, sizeof(double)); 
     double dt;
 
+    /* Add covariate effects on initp (expressed as p(cat) / p(baseline cat)) */
+    AddCovs(0, d->nobs, qm->nst - 1, hm->nicovs, &hm->initp[1], &newinitp[1], 
+	    hm->icoveffect, d->cov, d->whichcovi, &totcovs, log, exp);
+    relative2absolutep(newinitp, newinitp, qm->nst, 0);
     for (k = 0; k < qm->nst; ++k) 
-	lvold[k] = log(hm->initp[k]);
-
-    newpars = (double *) S_alloc(hm->totpars, sizeof(double));    
+	lvold[k] = log(newinitp[k]);
 
     for (i = 1; i <= d->nobs; ++i)
 	{
@@ -410,7 +446,7 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
 		    printf("subject %d\n ", d->subject[i]);
 #endif
 		    dt = d->time[i] - d->time[i-1];
-		    AddCovs(i - 1, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens, 
+		    AddCovs(i - 1, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens,
 			    qcm->coveffect, d->cov, d->whichcov, &totcovs,
 			    log, exp); 	
 		    totcovs = 0;
@@ -421,8 +457,9 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
 				&totcovs, LINKFNS[hm->links[j]][0], LINKFNS[hm->links[j]][1]);
 		    }
 		    GetCensored(d->obs[i], cm, &nc, &curr);
-		    GetOutcomeProb(pout, curr, nc, newpars, hm, qm);
-		    Pmat(pmat, dt, newintens, qm->npars, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
+		    GetOutcomeProb(pout, curr, nc, newpars, hm, qm, d->obstrue[i]);
+		    Pmat(pmat, dt, newintens, qm->npars, qm->ivector, qm->nst,
+			 (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
 
 		    for (tru = 0; tru < qm->nst; ++tru)
 			{
@@ -461,8 +498,12 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
 			    --obs;
 			}
 
+		    /* Add covariate effects on initp (expressed as p(cat) / p(baseline cat)) */
+		    AddCovs(i, d->nobs, qm->nst - 1, hm->nicovs, &hm->initp[1], &newinitp[1], 
+			    hm->icoveffect, d->cov, d->whichcovi, &totcovs, log, exp);
+		    relative2absolutep(newinitp, newinitp, qm->nst, 0);
 		    for (k = 0; k < qm->nst; ++k) 
-			lvold[k] = log(hm->initp[k]);
+			lvold[k] = log(newinitp[k]);
 		}
 	}
 }
@@ -526,7 +567,7 @@ void derivsimple(msmdata *d, qmodel *qm, qcmodel *qcm,
 		/* we have a new timelag/covariates combination. Recalculate the 
 		   P matrix and its derivatives for this */
 		GetCovData(i, d->cov, d->whichcov, x, qcm->ncovs[0], d->nobs);
-		AddCovs(i, d->nobs, np, qcm->ncovs, qm->intens, newintens, 
+		AddCovs(i, d->nobs, np, qcm->ncovs, qm->intens, newintens,
 			qcm->coveffect, d->cov, d->whichcov, &totcovs, log, exp);
 		Pmat(pmat, d->timelag[i], newintens, qm->npars, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
  		DPmat(dpmat, d->timelag[i], x, newintens, qm->intens, qm->ivector, qm->nst, np, ndp, ndc,
@@ -588,6 +629,7 @@ void msmCEntry(
 	       double *timevec,   /* vector of observation times */
 	       double *obsvec,     /* vector of observations (observed states in the case of misclassification models) */
 	       int *firstobs,   /* 0-based index into data of the first observation for each individual */
+	       int *obstrue,   /* which observations in a HMM represent the true underlying state (none by default) */
 	       
 	       /* HMM specification */
 	       int *hidden,       /* well, is it or isn't it? */
@@ -595,10 +637,13 @@ void msmCEntry(
 	       int *hnpars,       /* number of basic HMM parameters for each state, not including covariate effects */
 	       int *htotpars,      /* total number of HMM parameters */
 	       int *hfirstpar,    /* index into hmmpars of first parameter for each state */
-	       int *hncovs,       /* number of HMM covariate effects for each state */
+	       int *hncovs,       /* number of covariate effects on each HMM parameter */
 	       int *whichcovh,    /* which column in the covariate data */
 	       int *links,        /* link function for each state distribution */
 	       double *initprobs, /* initial state occupancy probabilities */
+	       int *nicovs,        /* number of covariate effects on these */
+	       double *icoveffect, /* values of these effects */
+	       int *whichcovi,    /* which column in the covariate data */
 
 	       int *nst,      /* number of Markov states */
 	       int *analyticp, /* should P matrix be calculated analytically */
@@ -625,10 +670,10 @@ void msmCEntry(
 	       )
 {
     msmdata d; qmodel qm; qcmodel qcm; cmodel cm; hmodel hm; 
-
+    
     d.fromstate = fromstate;     d.tostate = tostate;     d.timelag = timelag;   
-    d.cov = covvec;     d.nocc = nocc;  d.whicha = whicha; d.obstype = obstype; 
-    d.whichcov = whichcov;  d.whichcovh = whichcovh;
+    d.cov = covvec;  d.nocc = nocc;  d.whicha = whicha; d.obstype = obstype;  d.obstrue = obstrue; 
+    d.whichcov = whichcov;  d.whichcovh = whichcovh;  d.whichcovi=whichcovi;
     d.subject = subjvec; d.time = timevec; d.obs = obsvec; d.firstobs = firstobs;
     d.nobs = *nobs;  d.npts = *npts;
 
@@ -641,7 +686,8 @@ void msmCEntry(
 
     hm.hidden = *hidden;  hm.models = hmodels;  hm.npars = hnpars;  hm.totpars = *htotpars;
     hm.firstpar = hfirstpar;  hm.ncovs = hncovs;  hm.pars = hmmpars; 
-    hm.coveffect = hcoveffect;  hm.links = links; hm.initp = initprobs;
+    hm.coveffect = hcoveffect;  hm.links = links; 
+    hm.initp = initprobs; hm.nicovs = nicovs; hm.icoveffect = icoveffect;
 
     if (*do_what == 0) {
 	msmLikelihood(&d, &qm, &qcm, &cm, &hm, returned);

@@ -28,6 +28,8 @@
     \code{state} \tab (numeric) \tab State at the examination. \cr \tab \tab State 1
     represents no CAV, state 2 is mild/moderate CAV \cr \tab \tab and state 3 is severe
   CAV.  State 4 indicates death.   \cr
+    \code{firstobs}   \tab (numeric) \tab 0 = record represents an angiogram.\cr \tab \tab
+    1 = record represents transplant (patient's first observation) \cr
   }}
 \source{
   Papworth Hospital, U.K.

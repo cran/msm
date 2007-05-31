@@ -65,5 +65,5 @@ surface.msm(x, params=c(1,2), np=10, type=c("contour","filled.contour","persp","
   \code{\link{filled.contour}}, \code{\link{persp}},
   \code{\link{image}}. 
 }
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{models}

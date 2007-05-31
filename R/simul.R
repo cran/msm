@@ -1,6 +1,6 @@
 ### FUNCTIONS FOR SIMULATING FROM MULTI-STATE MODELS
 
-### from help(sample) in base R 
+### from help(sample) in base R
 resample <- function(x, size, ...)
   if(length(x) <= 1) {
       if(!missing(size) && size == 0) x[FALSE] else x
@@ -11,11 +11,11 @@ resample <- function(x, size, ...)
 
 sim.msm <- function(qmatrix,   # intensity matrix
                     maxtime,   # maximum time for realisations
-                    covs=NULL,     # covariate matrix, nobs rows, ncovs cols 
-                    beta=NULL,     # matrix of cov effects on qmatrix. ncovs rows, nintens cols. 
+                    covs=NULL,     # covariate matrix, nobs rows, ncovs cols
+                    beta=NULL,     # matrix of cov effects on qmatrix. ncovs rows, nintens cols.
                     obstimes=0, # times at which time-dependent covariates change
                     start = 1,     # starting state
-                    mintime = 0    # time to start from 
+                    mintime = 0    # time to start from
                     )
 {
     ## Keep only times where time-dependent covariates change
@@ -35,7 +35,7 @@ sim.msm <- function(qmatrix,   # intensity matrix
       qmatrices[,,i] <- msm.fixdiag.qmatrix(t(qmatrices[,,i]))
     cur.t <- mintime; cur.st <- start; rem.times <- obstimes; t.ind <- 1
     nsim <- 0; max.nsim <- 10
-    simstates <- simtimes <- numeric(max.nsim) ## allocate memory up-front for simulated outcome 
+    simstates <- simtimes <- numeric(max.nsim) ## allocate memory up-front for simulated outcome
     absorb <- absorbing.msm(qmatrix=qmatrix)
     ## Simulate up to maxtime or absorption
     while (cur.t < maxtime) {
@@ -58,7 +58,7 @@ sim.msm <- function(qmatrix,   # intensity matrix
         }
     }
     ## If process hasn't absorbed by the end, then include a censoring time
-    if (cur.t >= maxtime) { 
+    if (cur.t >= maxtime) {
         nsim <- nsim+1
         simstates[nsim] <- simstates[nsim-1]
         simtimes[nsim] <- maxtime
@@ -87,7 +87,7 @@ collapse.covs <- function(covs)
 getobs.msm <- function(sim, obstimes, death=FALSE, tunit=1.0)
   {
       absorb <- absorbing.msm(qmatrix=sim$qmatrix)
-      # Only keep one observation in the absorbing state 
+      # Only keep one observation in the absorbing state
       if (any(sim$states %in% absorb)) {
           if (any(sim$states %in% death))
             keep <- which(obstimes < max(sim$times))
@@ -112,11 +112,11 @@ getobs.msm <- function(sim, obstimes, death=FALSE, tunit=1.0)
 
 ### Simulate a multi-state Markov or hidden Markov model dataset using fixed observation times
 
-### Would it be better to make specification of covariate model consistent with model fitting function? 
+### Would it be better to make specification of covariate model consistent with model fitting function?
 ### e.g. separate hcovariates and  covariates formulae,
-### plus covinits and hcovinits? 
+### plus covinits and hcovinits?
 
-simmulti.msm <- function(data,           # data frame with subject, times, covariates... 
+simmulti.msm <- function(data,           # data frame with subject, times, covariates...
                          qmatrix,        # intensity matrix
                          covariates=NULL,  # initial values
                          death = FALSE,  # vector of indicators for "death" states, ie absorbing states whose entry time is known exactly,
@@ -127,7 +127,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
                          hcovariates = NULL   # covariate effects on hidden Markov model response distribution
                          )
   {
-            
+
 ### Check consistency of qmatrix and covariate inits
       nstates <- dim(qmatrix)[1]
       msm.check.qmatrix(qmatrix)
@@ -154,7 +154,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
       times <- split(time, subject)
       n <- length(unique(subject))
 
-### Covariates on intensities 
+### Covariates on intensities
       covnames <- names(covariates)
       ncovs <- length(covnames)
       misscovs <- setdiff(covnames, names(data))
@@ -163,7 +163,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
       covs <- if (ncovs > 0) lapply(split(data[,covnames], subject), as.matrix) else NULL
       allcovs <- covnames
 
-### Covariates on HMM 
+### Covariates on HMM
       if (!is.null(hcovariates)) {
           if (is.null(hmodel)) stop("hcovariates specified, but no hmodel")
           hcovnames <- unique(names(unlist(hcovariates)))
@@ -176,7 +176,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
           hcovs <- lapply(split(data[,setdiff(hcovnames, covnames)], subject), as.matrix)
       }
       else hcovs <- hcovnames <- NULL
-      
+
 ### Starting states
       if (missing(start)) start <- rep(1, n)
       else if (length(start) != n)
@@ -189,13 +189,13 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
       beta <- do.call("rbind", as.list(covariates))
 
 ### Check death argument. Logical values allowed for backwards compatibility
-### (TRUE means final state is death, FALSE means no death state)       
+### (TRUE means final state is death, FALSE means no death state)
       statelist <- if (nstates==2) "1, 2" else if (nstates==3) "1, 2, 3" else paste("1, 2, ... ,",nstates)
       if (is.logical(death) && death==TRUE)  {death <- nstates}
       else if (is.logical(death) && death==FALSE) {death <- 0}
       else if (length(setdiff(unique(death), 1:nstates)) > 0)
         stop(paste("Death states indicator contains states not in",statelist))
-      
+
 ### Simulate a realisation for each person
       state <- numeric()
       keep.data <- numeric()
@@ -205,9 +205,10 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
             sim.mod <- sim.msm(qmatrix, max(times[[pt]]), covs[[pt]], beta, times[[pt]], start[pt], min(times[[pt]]))
             obsd <- getobs.msm(sim.mod, times[[pt]], death)
             keep.data <- rbind(keep.data,
-                               cbind(subj[[pt]][obsd$keep], obsd$time, covs[[pt]][obsd$keep,,drop=FALSE], hcovs[[pt]][obsd$keep,,drop=FALSE], obsd$state))
+                               cbind(subj[[pt]][obsd$keep], obsd$time, obsd$state,
+                                     covs[[pt]][obsd$keep,,drop=FALSE], hcovs[[pt]][obsd$keep,,drop=FALSE]))
         }
-      colnames(keep.data) <- c("subject","time",covnames,setdiff(hcovnames, covnames),"state")
+      colnames(keep.data) <- c("subject","time","state",covnames,setdiff(hcovnames, covnames))
       keep.data <- as.data.frame(keep.data)
 
 ### Simulate some misclassification or a HMM conditionally on the underlying state
@@ -215,7 +216,8 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
         keep.data <- cbind(keep.data, obs=simmisc.msm(keep.data$state, ematrix))
       else if (!missing(hmodel))
         keep.data <- cbind(keep.data, obs=simhidden.msm(keep.data$state, hmodel, nstates, hcovariates, keep.data[,hcovnames,drop=FALSE]))
-      keep.data 
+      attr(keep.data, "keep") <- obsd$keep
+      keep.data
   }
 
 

@@ -40,7 +40,13 @@ pmatrix.msm(x, t=1, covariates="mean", ci.boot=FALSE, cl=0.95, B=500)
 }
 \value{
   The matrix of estimated transition probabilities \eqn{P(t)} in the given time. 
-  Rows correspond to "from-state" and columns to "to-state". 
+  Rows correspond to "from-state" and columns to "to-state".   
+
+  Or if \code{ci.boot=TRUE}, \code{pmatrix.msm} returns a list with
+  components \code{estimates} and \code{ci}, where \code{estimates} is
+  the matrix of estimated transition probabilities, and \code{ci} is a
+  list of two matrices containing the upper and lower confidence
+  limits.
 }
 \details{
   For a continuous-time homogeneous Markov process with transition
@@ -58,5 +64,5 @@ pmatrix.msm(x, t=1, covariates="mean", ci.boot=FALSE, cl=0.95, B=500)
 \seealso{
   \code{\link{qmatrix.msm}},  \code{\link{pmatrix.piecewise.msm}}, \code{\link{boot.msm}}
 }
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{}

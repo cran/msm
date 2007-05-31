@@ -83,5 +83,5 @@ totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean", ci.boot=FALSE, cl=0.
 \seealso{
   \code{\link{sojourn.msm}}, \code{\link{pmatrix.msm}}, \code{\link{integrate}}, \code{\link{boot.msm}}.
 }
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{}
