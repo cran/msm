@@ -1,7 +1,7 @@
 
 ### CONSTRUCTORS FOR VARIOUS DISTRIBUTIONS FOR RESPONSE CONDITIONALLY ON HIDDEN STATE
 
-### Categorical distribution on the set 1,...,n 
+### Categorical distribution on the set 1,...,n
 
 hmmCat <- function(prob, basecat)
   {
@@ -12,7 +12,7 @@ hmmCat <- function(prob, basecat)
       if (all(p == 0)) stop("insufficient positive probabilities")
       p <- p / sum(p)
       ncats <- length(p)
-      link <- "qlogis"
+      link <- "log" # covariates are added to log odds relative to baseline in lik.c(AddCovs)
       cats <- seq(ncats)
       basei <- if (missing(basecat)) which.max(p) else which(cats==basecat)
       r <- function(n, rp=p) sample(cats, size=n, prob=rp, replace=TRUE)

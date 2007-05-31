@@ -3,6 +3,49 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.7.2  (2007-05-31)
+-------------
+
+* An error in the calculation of multinomial logistic regression
+  probabilities has been fixed.  This will change the results of
+  misclassification models where there were both a) three or more
+  possible classifications for a particular underlying state and b)
+  covariates on the corresponding classification probabilities. Any
+  changes are not expected to be substantial.
+
+* Misclassification probabilities are now estimated on a different
+  scale during the optimisation: log relative to baseline probability,
+  instead of on a univariate logit scale. Therefore maximum likelihood
+  estimates for misclassification models may be very slightly
+  different from previous versions.
+
+* Confidence intervals for probabilities are now more appropriately
+  calculated using a delta method approximation to the variance of
+  logit(p), instead of log(p).
+
+* New argument "initcovariates" and "initcovinits" to msm, to allow
+  covariate effects on initial state probabilities in hidden Markov
+  models to be estimated through multinomial logistic regression.
+
+* Initial state probabilities initialised to zero are now fixed at
+  zero during optimisation, if initprobs is being estimated
+  ("structural zeroes").
+
+* New argument "obstrue" to msm, to allow some observations to be
+  observed without error in misclassification models.
+
+* Constraints on covariate effects on transition intensities are now
+  allowed such that some effects are equal to other effects multiplied
+  by -1.
+
+* New option "ci.boot" to prevalence.msm. This is a helper to
+  calculate bootstrap confidence limits for the expected prevalences
+  using "boot.msm".
+
+* rtnorm() for sampling from the truncated normal distribution now
+  uses the efficient rejection sampling methods by Christian Robert.
+
+
 Version 0.7.1  (2007-04-18)
 -------------
 

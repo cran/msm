@@ -59,7 +59,7 @@ MatrixExp <- function(mat, t = 1, n = 20, k = 3, method="pade")
               res <- sum
           }
           else if (method == "pade") {
-              ## C function adapted from JAGS by Martyn Plummer 
+              ## C function adapted from JAGS by Martyn Plummer
               res <- .C("MatrixExpPadeR", res=double(length(mat)), as.double(mat),
                         as.integer(n), as.double(t))$res
               res <- matrix(res, nrow=nrow(mat))
@@ -133,26 +133,81 @@ qtnorm <- function(p, mean=0, sd=1, lower=-Inf, upper=Inf, lower.tail=TRUE, log.
       ret
   }
 
+## Rejection sampling algorithm by Robert (Stat. Comp (1995), 5, 121-5)
+## for simulating from the truncated normal distribution.
+
 rtnorm <- function (n, mean = 0, sd = 1, lower = -Inf, upper = Inf) {
-    ret <- numeric()
     if (length(n) > 1)
         n <- length(n)
     mean <- rep(mean, length=n)
     sd <- rep(sd, length=n)
     lower <- rep(lower, length=n)
     upper <- rep(upper, length=n)
+    lower <- qnorm(pnorm(lower, mean, sd)) ## Algorithm works on mean 0, sd 1 scale
+    upper <- qnorm(pnorm(upper, mean, sd))
     ind <- seq(length=n)
-    while (length(ind) > 0) {
-        y <- rnorm(length(ind), mean[ind], sd[ind])
-        done <- which(y >= lower[ind] & y <= upper[ind])
-        ret[ind[done]] <- y[done]
-        ind <- setdiff(ind, ind[done])
+    ret <- numeric(n)
+    ## Different algorithms depending on where upper/lower limits lie.
+    alg <- ifelse(
+                  lower > upper,
+                  -1,# return NaN if lower > upper
+                  ifelse(
+                         ((lower < 0 & upper == Inf) |
+                          (lower == -Inf & upper > 0) |
+                          (is.finite(lower) & is.finite(upper) & (lower < 0) & (upper > 0) & (upper-lower > sqrt(2*pi)))
+                          ),
+                         0, # standard "simulate from normal and reject if outside limits" method. Use if bounds are wide.
+                         ifelse(
+                                (lower >= 0 & (upper > lower + 2*sqrt(exp(1)) /
+                                 (lower + sqrt(lower^2 + 4)) * exp((lower*2 - lower*sqrt(lower^2 + 4)) / 4))),
+                                1, # rejection sampling with exponential proposal. Use if lower >> mean
+                                ifelse(upper <= 0 & (-lower > -upper + 2*sqrt(exp(1)) /
+                                       (-upper + sqrt(upper^2 + 4)) * exp((upper*2 - -upper*sqrt(upper^2 + 4)) / 4)),
+                                       2, # rejection sampling with exponential proposal. Use if upper << mean.
+                                       3)))) # rejection sampling with uniform proposal. Use if bounds are narrow and central.
+    ind.nan <- ind[alg==-1]; ind.no <- ind[alg==0]; ind.expl <- ind[alg==1]; ind.expu <- ind[alg==2]; ind.u <- ind[alg==3]
+    ret[ind.nan] <- NaN
+    while (length(ind.no) > 0) {
+        y <- rnorm(length(ind.no))
+        done <- which(y >= lower[ind.no] & y <= upper[ind.no])
+        ret[ind.no[done]] <- y[done]
+        ind.no <- setdiff(ind.no, ind.no[done])
     }
-    stopifnot(length(ind) == 0)
-    ret
+    stopifnot(length(ind.no) == 0)
+    while (length(ind.expl) > 0) {
+        a <- (lower[ind.expl] + sqrt(lower[ind.expl]^2 + 4)) / 2
+        z <- rexp(length(ind.expl), a) + lower[ind.expl]
+        u <- runif(length(ind.expl))
+        done <- which((u <= exp(-(z - a)^2 / 2)) & (z <= upper[ind.expl]))
+        ret[ind.expl[done]] <- z[done]
+        ind.expl <- setdiff(ind.expl, ind.expl[done])
+    }
+    stopifnot(length(ind.expl) == 0)
+    while (length(ind.expu) > 0) {
+        a <- (-upper[ind.expu] + sqrt(upper[ind.expu]^2 +4)) / 2
+        z <- rexp(length(ind.expu), a) - upper[ind.expu]
+        u <- runif(length(ind.expu))
+        done <- which((u <= exp(-(z - a)^2 / 2)) & (z <= -lower[ind.expu]))
+        ret[ind.expu[done]] <- -z[done]
+        ind.expu <- setdiff(ind.expu, ind.expu[done])
+    }
+    stopifnot(length(ind.expu) == 0)
+    while (length(ind.u) > 0) {
+        z <- runif(length(ind.u), lower[ind.u], upper[ind.u])
+        rho <- ifelse(lower[ind.u] > 0,
+                      exp((lower[ind.u]^2 - z^2) / 2), ifelse(upper[ind.u] < 0,
+                                                            exp((upper[ind.u]^2 - z^2) / 2),
+                                                            exp(-z^2/2)))
+        u <- runif(length(ind.u))
+        done <- which(u <= rho)
+        ret[ind.u[done]] <- z[done]
+        ind.u <- setdiff(ind.u, ind.u[done])
+    }
+    stopifnot(length(ind.u) == 0)
+    ret*sd + mean
 }
 
-### Normal distribution with measurement error and optional truncation 
+### Normal distribution with measurement error and optional truncation
 
 dmenorm <- function(x, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0, log = FALSE)
 {
@@ -163,7 +218,7 @@ dmenorm <- function(x, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0, 
     nctmp <- pnorm(upper, mutmp, sigtmp) - pnorm(lower, mutmp, sigtmp)
     if (log)
       log(nc) + log(nctmp) + log(dnorm(x, meanerr + mean, sqrt(sumsq), 0))
-    else 
+    else
       nc * nctmp * dnorm(x, meanerr + mean, sqrt(sumsq), 0)
 }
 
@@ -171,7 +226,7 @@ pmenorm <- function(q, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0, 
 {
     ret <- numeric(length(q))
     dmenorm2 <- function(x)dmenorm(x, mean=mean, sd=sd, lower=lower, upper=upper, sderr=sderr, meanerr=meanerr)
-    for (i in 1:length(q)) { 
+    for (i in 1:length(q)) {
         ret[i] <- integrate(dmenorm2, -Inf, q[i])$value
     }
     if (!lower.tail) ret <- 1 - ret
@@ -211,7 +266,7 @@ rmenorm <- function(n, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0)
     rnorm(n, meanerr + rtnorm(n, mean, sd, lower, upper), sderr)
 }
 
-### Uniform distribution with measurement error
+### Uniform distribution with measurement error
 
 dmeunif <- function(x, lower=0, upper=1, sderr=0, meanerr=0, log = FALSE)
 {
@@ -225,7 +280,7 @@ pmeunif <- function(q, lower=0, upper=1, sderr=0, meanerr=0, lower.tail = TRUE, 
 {
     ret <- numeric(length(q))
     dmeunif2 <- function(x)dmeunif(x, lower=lower, upper=upper, sderr=sderr, meanerr=meanerr)
-    for (i in 1:length(q)) { 
+    for (i in 1:length(q)) {
         ret[i] <- integrate(dmeunif2, -Inf, q[i])$value
     }
     if (!lower.tail) ret <- 1 - ret
@@ -293,7 +348,7 @@ dpexp <- function (x, rate = 1, t = 0, log = FALSE)
 
 ppexp <- function(q, rate = 1, t = 0, lower.tail = TRUE, log.p = FALSE)
   {
-      if (length(t) != length(rate)) 
+      if (length(t) != length(rate))
         stop("length of t must be equal to length of rate")
       if (!isTRUE(all.equal(0, t[1]))) stop("first element of t should be 0")
       if (is.unsorted(t)) stop("t should be in increasing order")
@@ -332,13 +387,13 @@ qpexp <- function (p, rate = 1, t = 0, lower.tail = TRUE, log.p = FALSE)
           ptmp <- numeric(length(p[ind]))
           for (i in 1:length(p[ind])) {
               interval <- c(-1, 1)
-              while (h(interval[1]) * h(interval[2]) >= 0) interval <- interval + 
+              while (h(interval[1]) * h(interval[2]) >= 0) interval <- interval +
                 c(-1, 1) * 0.5 * (interval[2] - interval[1])
               ptmp[i] <- uniroot(h, interval)$root
           }
           ret[ind] <- ptmp
       }
-      if (any(is.nan(ret))) 
+      if (any(is.nan(ret)))
         warning("NaNs produced")
       ret
   }
@@ -355,14 +410,14 @@ rpexp <- function(n=1, rate=1, t=0)
       if (length(rate) == 1) return(rexp(n, rate))
       if (n == 0) return(numeric(0))
       if (length(n) > 1) n <- length(n)
-      ret <- numeric(n)                          # outcome is a vector length n 
+      ret <- numeric(n)                          # outcome is a vector length n
       left <- 1:n
       for (i in seq(along=rate)){
-          re <- rexp(length(left), rate[i])   # simulate as many exponentials as there are values remaining 
+          re <- rexp(length(left), rate[i])   # simulate as many exponentials as there are values remaining
           r <- t[i] + re
           success <- if (i == length(rate)) seq(along=left) else which(r < t[i+1])
-          ret[left[success]] <- r[success]  
-          left <- setdiff(left, left[success])  # indices of values in outcome remaining to simulate. 
+          ret[left[success]] <- r[success]
+          left <- setdiff(left, left[success])  # indices of values in outcome remaining to simulate.
           if (length(left)==0) break;
       }
       ret

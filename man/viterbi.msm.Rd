@@ -34,5 +34,5 @@ viterbi.msm(x)
   Durbin, R., Eddy, S., Krogh, A. and Mitchison, G. \emph{Biological
     sequence analysis}, Cambridge University Press, 1998.
 }
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{models}

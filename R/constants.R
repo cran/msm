@@ -4,7 +4,7 @@
 ### and names of parameters for each distribution
 ### MUST BE KEPT IN THE SAME ORDER as the C variable HMODELS in lik.c
 .msm.HMODELPARS <- list(
-                        categorical=c("ncats","basecat","prob"),  # vector 
+                        categorical=c("ncats","basecat","prob"),  # vector
                         identity = NULL,
                         uniform = c("lower", "upper"),
                         normal = c("mean", "sd"),
@@ -21,39 +21,40 @@
                         )
 
 ## TODO - beta, non-central beta, cauchy, chisq, noncentral chisq, F,
-## non-central F, geometric, hypergeometric, logistic, negative
-## binomial, t, noncentral t.
+## non-central F, geometric, hypergeometric, logistic, t, noncentral
+## t.
 
 .msm.HMODELS <- names(.msm.HMODELPARS)
 
-### Parameter in each distribution that can have covariates on it 
+### Parameter in each distribution that can have covariates on it
 .msm.LOCPARS <- c(categorical="p", identity=NA, uniform=NA, normal="mean", lognormal="meanlog",
-                  exponential="rate", gamma="rate", weibull="scale", 
+                  exponential="rate", gamma="rate", weibull="scale",
                   poisson="rate", binomial="prob", truncnorm="mean",
                   metruncnorm="meanerr", meuniform="meanerr", nbinom="prob")
 
 ### Link functions for generalised regressions.
 ### MUST BE KEPT IN SAME ORDER as LINKFNS in lik.c
-.msm.LINKFNS <- c("identity", "log", "qlogis")                    
+.msm.LINKFNS <- c("identity", "log", "qlogis")
 .msm.INVLINK <- c(identity="identity", log="exp", qlogis="plogis")
-                  
+
 ### Parameters which are always fixed, never estimated
-.msm.AUXPARS <- c("lower", "upper", "which", "size", "meanerr", "ncats", "basecat", "p0", "pbase")
+.msm.AUXPARS <- c("lower", "upper", "which", "size", "meanerr", "ncats", "basecat", "p0", "pbase", "initp0")
 
 ### Parameters which should be defined as integer
 .msm.INTEGERPARS <- c("size")
 
 ### Defined ranges for parameters
-.msm.PARRANGES <- list(qbase=c(0, Inf), p=c(0, 1), lower=c(-Inf,Inf), upper=c(-Inf, Inf),
-                       mean=c(-Inf, Inf), sd=c(0, Inf), 
+.msm.PARRANGES <- list(qbase=c(0, Inf), lower=c(-Inf,Inf), upper=c(-Inf, Inf),
+                       mean=c(-Inf, Inf), sd=c(0, Inf),
                        meanlog=c(-Inf,Inf), sdlog=c(0, Inf), rate=c(0, Inf), shape=c(0, Inf),
                        prob=c(0, 1), meanerr=c(0, Inf), sderr=c(0, Inf), disp=c(0, Inf),
-                       initp=c(0, 1)
+                       initp=c(0, 1), initpcov=c(-Inf,Inf)
                        )
 
 ### Transforms to optimise some parameters on a different scale
+### Univariate transforms only: doesn't include multinomial logit transform used for misclassification p.
 .msm.TRANSFORMS <-
-  do.call("rbind", 
+  do.call("rbind",
           lapply(.msm.PARRANGES,
                  function(x) {
                      if (identical(x, c(0, Inf))) c(fn="log",inv="exp")
@@ -63,9 +64,9 @@
                  ) )
 
 ### Distinct labelled (1 and) 2 and 3 state directed graphs.
-### graphs with common "iso" are isomorphic (i.e. identical when states are unlabelled) 
+### graphs with common "iso" are isomorphic (i.e. identical when states are unlabelled)
 ### "perm" is permutation of states needed to transform graph into the first in the list of isomorphisms
-### This database is used to determine the appropriate method for calculating the analytic P matrix. 
+### This database is used to determine the appropriate method for calculating the analytic P matrix.
 
 .msm.graphs <-
   list(
@@ -82,10 +83,10 @@
 
          "1-4" = list(iso=2, perm=c(1,2,3)),
          "1-5" = list(iso=2, perm=c(2,3,1)),
-         "2-3" = list(iso=2, perm=c(2,1,3)),         
+         "2-3" = list(iso=2, perm=c(2,1,3)),
          "2-6" = list(iso=2, perm=c(1,3,2)),
          "3-6" = list(iso=2, perm=c(3,2,1)),
-         "4-5" = list(iso=2, perm=c(3,1,2)),        
+         "4-5" = list(iso=2, perm=c(3,1,2)),
 
          "1-6" = list(iso=3, perm=c(1,2,3)),
          "2-4" = list(iso=3, perm=c(3,1,2)),
@@ -119,5 +120,5 @@
          "1-4-6-8-11-12-16" = list(iso=2,perm=c(1,2,3,4,5)),
          "1-6-7-11-12" = list(iso=3,perm=c(1,2,3,4,5))
          )
-       
+
        )

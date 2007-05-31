@@ -56,7 +56,7 @@ maximum \eqn{t_i}{ti} such that
   Only \code{rpexp} is used in the \code{msm} package, to simulate
   from Markov processes with piecewise-constant intensities depending on
   time-dependent covariates.  These functions are merely provided for
-  completion, and are not optimized for numerical stability.  
+  completion, and are not optimized for numerical stability or speed.  
 }
 \seealso{
   \code{\link{dexp}}, \code{\link{sim.msm}}.
@@ -70,5 +70,5 @@ lines(x, dpexp(x, rate, t), type="l", lty=2)  ## distribution with piecewise con
 plot(x, pexp(x, 0.1), type="l") ## standard exponential distribution
 lines(x, ppexp(x, rate, t), type="l", lty=2)  ## distribution with piecewise constant rate
 }
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{}

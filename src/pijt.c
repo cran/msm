@@ -20,7 +20,11 @@
 #include "msm.h"
 /* Crude benchmarks have shown that using the eigensystem routines
    from LINPACK, and the matrix inversion routines from LAPACK, is the
-   faster combination */
+   faster combination. However...
+   Occasional crashes on extremely flat optimisations. 
+   Valgrind reveals memory errors within LINPACK Fortran eigen code. 
+   Crashes don't occur if use LAPACK code. 
+*/
 #define _USE_LAPACK_EIGEN_
 #define _USE_LAPACK_INVERSE_
 #define _MEXP_METHOD_ 1 /* 1 for Pade approximation, 2 for series. Pade is more robust. */
@@ -128,7 +132,7 @@ void MultMatDiag(vector diag, Matrix B, int n, Matrix AB)
 }
 
 /* Calculate a matrix exponential using a power series approximation
-   Adapted from mexp in Jim Lindsey's rmutil library 
+   Adapted from mexp in Jim Lindsey's "rmutil" package
    exp(A)  =  I + A + AA/2  + AAA/2*3 + AAAA/2*3*4 + ...
    Overflow correction: 
    exp(A)  =  exp(A/2^3) exp(A/2^3) exp(A/2^3)

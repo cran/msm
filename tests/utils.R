@@ -31,16 +31,9 @@ stopifnot(isTRUE(all.equal(c(0.139068959153926, 0, 0.156451685781240), ptnorm(c(
 stopifnot(isTRUE(all.equal(rl, qtnorm(ptnorm(rl)), tol=1e-03)))
 
 try(qtnorm(c(-1, 0, 1, 2)))
-set.seed(220676)
-rtnorm(10, mean=1:10, sd=1:10, lower=0, upper=2)
-set.seed(220676)
-rt <- rtnorm(10, mean=1:10, sd=1:10)
-set.seed(220676)
-r <- rnorm(10, mean=1:10, sd=1:10)
-stopifnot(isTRUE(all.equal(rt, r, tol=1e-06)))
 
 
-## Measurement error distributions 
+## Measurement error distributions
 
 stopifnot(isTRUE(all.equal(dnorm(2), dmenorm(2), tol=1e-06)))
 stopifnot(isTRUE(all.equal(dnorm(2, log=TRUE), dmenorm(2, log=TRUE), tol=1e-06)))
@@ -95,7 +88,7 @@ stopifnot(isTRUE(all.equal(1, ppexp(9999999, rate, t))))
 stopifnot(isTRUE(all.equal(pexp(c(5, 6, 7), rate[1]), ppexp(c(5, 6, 7), rate, t))))
 try(ppexp(q, rate=c(1,2,3), t=c(1,2))) # rate and t different lengths
 try(ppexp(q, rate=-4)) # negative rates, NaN
-try(ppexp(q, rate=c(1,2,3), t=c(-1, 4, 6))) # first elt of t not zero 
+try(ppexp(q, rate=c(1,2,3), t=c(-1, 4, 6))) # first elt of t not zero
 
 
 set.seed(22061976)
@@ -117,7 +110,7 @@ stopifnot(isTRUE(all.equal(rt, r, tol=1e-06)))
 
 
 ## Example in help(deltamethod)
-## Simple linear regression, E(y) = alpha + beta x 
+## Simple linear regression, E(y) = alpha + beta x
 x <- 1:100
 set.seed(220676)
 y <- rnorm(100, 4*x, 5)
@@ -127,5 +120,59 @@ estvar <- summary(toy.lm)$cov.unscaled * summary(toy.lm)$sigma^2
 
 ## Estimate of (1 / (alphahat + betahat))
 stopifnot(isTRUE(all.equal(0.206982798128202, as.numeric(1 / (estmean[1] + estmean[2])))))
+
+if (interactive()) {
+### works for mean0,sd1,lower>0, all scalar
+    plot(density(rtnorm(10000, 0, 1, 0.2, Inf)))
+    lines(density(rtnorm.old(10000, 0, 1, 0.2, Inf)), lty=2)
+### works for gen mean, sd, lower > mean, all scalar
+    plot(density(rtnorm(10000, 4, 5, 6, Inf)))
+    lines(density(rtnorm.old(10000, 4, 5, 6, Inf)), lty=2)
+### works for gen mean, sd, lower > mean, all vector, elements varying
+    n <- 1000; vmean <- sample(c(0, 10, 20), size=n, replace=TRUE); vsd <- sample(c(1, 5, 10), size=n, replace=TRUE); vlower <- vmean + 3
+    plot(density(rtnorm(n, vmean, vsd, vlower, Inf)))
+    lines(density(rtnorm.old(n, vmean, vsd, vlower, Inf)), lty=2)
+### also works for lower <= mean
+    n <- 10000; vmean <- sample(c(0, 10, 20), size=n, replace=TRUE); vsd <- sample(c(1, 5, 10), size=n, replace=TRUE); vlower <- vmean - 5
+    plot(density(rtnorm(n, vmean, vsd, vlower, Inf)))
+    lines(density(rtnorm.old(n, vmean, vsd, vlower, Inf)), lty=2)
+### Lower and some upper truncated.
+    n <- 1000; vmean <- sample(c(0, 10, 20), size=n, replace=TRUE); vsd <- sample(c(1, 5, 10), size=n, replace=TRUE); vlower <- vmean - 1; vupper <- vmean + 1; vupper[sample(n,round(n/5))] <- Inf
+    plot(density(rtnorm(n, vmean, vsd, vlower, vupper)))
+    lines(density(rtnorm.old(n, vmean, vsd, vlower, vupper)), lty=2)
+### lower -inf, upper neg
+    plot(density(rtnorm(n, vmean, vsd, -Inf, vupper)))
+    lines(density(rtnorm.old(n, vmean, vsd, -Inf, vupper)), lty=2)
+### lower -inf, upper pos
+    vupper <- 20
+    plot(density(rtnorm(n, vmean, vsd, -Inf, vupper)))
+    lines(density(rtnorm.old(n, vmean, vsd, -Inf, vupper)), lty=2)
+### lower, upper neg
+    n <- 10000; vmean <- sample(c(0, 10, 20), size=n, replace=TRUE); vsd <- sample(c(1, 5, 10), size=n, replace=TRUE); vlower <- vmean - 2*vsd; vupper <- vmean - vsd; vlower[sample(n,round(n/5))] <- -Inf
+    plot(density(rtnorm(n, vmean, vsd, vlower, vupper)))
+    lines(density(rtnorm.old(n, vmean, vsd, vlower, vupper)), lty=2)
+    ## Speed tests to see if it's ever worth using the old alg.
+    system.time(plot(density(rtnorm(100000, 0, 1, -2, 2))))
+    system.time(lines(density(rtnorm.old(100000, 0, 1, -2, 2)), lty=2)) # old is faster when bounds are wide
+    system.time(plot(density(rtnorm(100000, 0, 1, -0.5*sqrt(2*pi), 0.5*sqrt(2*pi)))))
+    system.time(lines(density(rtnorm.old(100000, 0, 1, -0.5*sqrt(2*pi), 0.5*sqrt(2*pi))), lty=2)) # old is faster
+    system.time(plot(density(rtnorm(100000, 0, 1, -0.5*pi, 0.5*pi))))
+    system.time(lines(density(rtnorm.old(100000, 0, 1, -0.5*pi, 0.5*pi)), lty=2)) # old is faster
+    system.time(plot(density(rtnorm(100000, 0, 1, -0.1, 0.1))))
+    system.time(lines(density(rtnorm.old(100000, 0, 1, -0.1, 0.1)), lty=2)) # old is slower if bounds are narrow
+    ## one-sided, new always better for lower>0, is old faster for lower<0?  yes it seems to be.
+    system.time(plot(density(rtnorm(100000, 0, 1, 0, Inf))))
+    system.time(lines(density(rtnorm.old(100000, 0, 1, 0, Inf)), lty=2))
+    ## return NaN if lower < upper
+    rtnorm(10, 0, 1, Inf, 0)
+    ## allow lower = upper
+    rtnorm(10, 0, 1, 0, 0)
+    system.time(lines(density(rtnorm.old(100000, 0, 1, -Inf, 0)), lty=2))
+    ## test use of these in rmenorm
+    system.time(plot(density(rmenorm(10000, 0, 1, 1, 2, 0.2, 0))))
+    system.time(plot(density(rtnorm(10000, 0, 1, 1, 2))))
+    system.time(lines(density(rtnorm.old(10000, 0, 1, 1, 2)),lty=2))
+    summary(rmenorm(10000, 0, 1, 1, 2, 0, 0))
+}
 
 cat("utils.R: ALL TESTS PASSED\n")

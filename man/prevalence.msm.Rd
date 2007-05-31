@@ -10,7 +10,8 @@
 }
 \usage{
 prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
-               misccovariates="mean", piecewise.times, piecewise.covariates)
+               misccovariates="mean", piecewise.times, piecewise.covariates,
+	       ci.boot=FALSE, cl=0.95, B=500)
 }
 \arguments{
   \item{x}{A fitted multi-state model produced by \code{\link{msm}}.}
@@ -34,9 +35,12 @@ prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
   \item{piecewise.covariates}{Covariates on which the piecewise-constant
     intensities depend. See \code{\link{pmatrix.piecewise.msm}} for how
     to specify this.}
+  \item{ci.boot}{Calculate a bootstrap confidence interval for the expected prevalences. This is usually time-consuming, and disabled by default. See \code{\link{boot.msm}} for more details of bootstrapping in \pkg{msm}.}
+  \item{cl}{Width of the symmetric confidence interval}
+  \item{B}{Number of bootstrap replicates}
 }
 \value{
-  A list with components:
+  A list of matrices, with components:
   
   \item{Observed}{Table of observed numbers of individuals in each state at
     each time}
@@ -48,7 +52,13 @@ prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
   
   \item{Expected percentages}{Corresponding percentage of the
     individuals at risk at each time.}
-  
+
+  Or if \code{ci.boot = TRUE}, the component \code{Expected} is a list
+  with components \code{estimates} and \code{ci}. \code{estimates} is
+  a matrix of the expected prevalences, and \code{ci} is a list of two
+  matrices, containing the confidence limits.  The component
+  \item{Expected percentages} has a similar format.
+
 }
 
 \details{
@@ -82,10 +92,11 @@ prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
   (\code{\link{viterbi.msm}}).  The goodness of fit of
   these states to the underlying Markov model is tested. 
 
-  Note that this function currently assumes intensities are the same
-  for all individuals.  Piecewise-constant intensities may be assumed,
-  through the arguments \code{piecewise.times} and
-  \code{piecewise.covariates}. 
+  Note that this function assumes intensities are the same for all
+  individuals. By default they are taken from the mean values of the
+  covariates in the population.  Piecewise-constant intensities may be
+  assumed, through the arguments \code{piecewise.times} and
+  \code{piecewise.covariates}.
   
   For an example of this approach, see Gentleman \emph{et al.} (1994).
 }
@@ -101,5 +112,5 @@ prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
   \code{\link{msm}}, \code{\link{summary.msm}}}
 }
 
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{models}

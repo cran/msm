@@ -117,5 +117,5 @@ qmatrix <- rbind(c(-0.11,   0.1,  0.01 ),
                  c(0.02,   0.07, -0.09))
 simmulti.msm(sim.df, qmatrix)
 }
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{models}

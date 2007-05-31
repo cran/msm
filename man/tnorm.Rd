@@ -68,12 +68,17 @@
   
   Only \code{rtnorm} is used in the \code{msm} package, to simulate
   from hidden Markov models with truncated normal
-  distributions. These functions are merely provided for completion,
-  and are not optimized for numerical stability.  To fit a hidden Markov
+  distributions. This uses the rejection sampling algorithms described by Robert (1995).
+  These functions are merely provided for completion,
+  and are not optimized for numerical stability or speed.  To fit a hidden Markov
   model with a truncated Normal response distribution, use a
   \code{\link{hmmTNorm}} constructor. See the \code{\link{hmm-dists}}
   help page for further details.
 
+}
+\references{
+ Robert, C. P. Simulation of truncated normal variables. Statistics and
+ Computing (1995) 5, 121--125
 }
 \seealso{
   \code{\link{dnorm}}
@@ -83,5 +88,5 @@ x <- seq(50, 90, by=1)
 plot(x, dnorm(x, 70, 10), type="l", ylim=c(0,0.06)) ## standard Normal distribution
 lines(x, dtnorm(x, 70, 10, 60, 80), type="l")       ## truncated Normal distribution
 }
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{}

@@ -44,7 +44,7 @@ hmmNBinom(disp, prob)
   \code{hmmCat} represents a categorical response distribution on the
   set \code{1, 2, \dots, length(prob)}.  The
   Markov model with misclassification is an example of this type of model. The
-  categories in this case are (some subset of) the observed states. 
+  categories in this case are (some subset of) the underlying states. 
   
   The \code{hmmIdent} distribution is used for underlying states which are
   observed exactly without error.
@@ -141,7 +141,7 @@ the truncated Normal distribution.
     \code{rate} \tab log \cr
     \code{scale} \tab log \cr
     \code{meanerr} \tab identity \cr
-    \code{prob} \tab logit
+    \code{prob} \tab (multinomial logistic regression)
   }
 
   Parameters \code{basecat, lower, upper, size, meanerr} are fixed at
@@ -153,7 +153,8 @@ the truncated Normal distribution.
   outcome probabilities initialized to zero are fixed at zero, and the
   probability corresponding to \code{basecat} is fixed to one minus the
   sum of the remaining probabilities.  These remaining probabilities are
-  estimated, and can be modelled in terms of covariates. 
+  estimated, and can be modelled in terms of covariates via multinomial
+  logistic regression (relative to \code{basecat}).
   
 }
 \references{
@@ -174,5 +175,5 @@ the truncated Normal distribution.
 \seealso{
   \code{\link{msm}}
 }
-\author{C. H. Jackson \email{chris.jackson@imperial.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{}
