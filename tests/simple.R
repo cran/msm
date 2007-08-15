@@ -45,8 +45,6 @@ system.time(heart.msm <- msm( state ~ years, subject=PTNUM, data = heart,
 stopifnot(isTRUE(all.equal(3986.08765893935, heart.msm$minus2loglik, tol=1e-06)))
 heart.msm
 
-
-
 ## auto-generated initial values.
 state.g <- heart$state; time.g <- heart$years; subj.g <- heart$PTNUM
 heart.msm <- msm(state.g ~ time.g, subject=subj.g, qmatrix = twoway4.i, gen.inits=TRUE, fixedpars=TRUE)
@@ -208,16 +206,21 @@ qmat <- qmatrix.msm(psor.msm, covariates=list(ollwsdrt=0.1, hieffusn=0.4), cl=0.
 stopifnot(isTRUE(all.equal(c(-0.171282667596986, 0, 0, 0, 0.0860880282792585, -0.289385121267802, 0, 0, 0, 0.149463467106753, -0.370756460718086, 0, 0, 0, 0.178889538008097, 0), as.numeric(qmat$L), tol=1e-04)))
 soj <- qmatrix.msm(psor.msm, covariates=list(ollwsdrt=0.1, hieffusn=0.4), sojourn=TRUE)$sojourn
 stopifnot(isTRUE(all.equal(c(8.23515751512713, 4.80833120370037, 3.88296221911705, Inf), as.numeric(soj), tol=1e-03)))
+qmatrix.msm(psor.msm, ci="normal", B=2)
+qmatrix.msm(psor.msm, ci="boot", B=2)
 
 soj <- sojourn.msm(psor.msm, covariates=list(ollwsdrt=0.1, hieffusn=0.4))
 stopifnot(isTRUE(all.equal(c(8.23515751512713, 4.80833120370037, 3.88296221911705, 1.09971073904434, 0.616674252838334, 0.549301375677405, 6.33875136203292, 3.73961380505919, 2.94271599303942, 10.6989240349703, 6.18246967994404, 5.12363260020806), as.numeric(unlist(soj)), tol=1e-04)))
 soj <- sojourn.msm(psor.msm, covariates=list(ollwsdrt=0.1, hieffusn=0.4), cl=0.99)
 stopifnot(isTRUE(all.equal(5.83830234564607, soj[1,"L"], tol=1e-04)))
 
-stopifnot(isTRUE(all.equal(0.148036812842411, pmatrix.msm(psor.msm, t=10)[1,3], tol=1e-04)))
+stopifnot(isTRUE(all.equal(0.148036812842411, pmatrix.msm(psor.msm, ci="none", t=10)[1,3], tol=1e-04)))
 try(pmatrix.msm(psor.msm, t=10, covariates=list(hieffusn=0.1))) # deliberate error
 p <- pmatrix.msm(psor.msm, t=10, covariates=list(ollwsdrt=0.1, hieffusn=0.2))
 stopifnot(isTRUE(all.equal(0.18196160265907, p[1,3], tol=1e-04)))
+
+set.seed(22061976); stopifnot(isTRUE(all.equal(0.132458837652275, pmatrix.msm(psor.msm, ci="normal", B=3)$L[2,3], tol=1e-04)))
+set.seed(22061976); stopifnot(isTRUE(all.equal(0.108510190194430, pmatrix.msm(psor.msm, ci="boot", B=3)$L[2,3], tol=1e-04)))
 
 q <- qratio.msm(psor.msm, c(1,2), c(2,3))
 stopifnot(isTRUE(all.equal(c(0.583878474075081, 0.0996029045389022, 0.417943274168735, 0.815694601537263), as.numeric(q), tol=1e-04)))
@@ -227,6 +230,9 @@ q <- qratio.msm(psor.msm, c(1,1), c(2,3))
 stopifnot(isTRUE(all.equal(c(-0.583878474075081, 0.0996029045389022, -0.815694601537263, -0.417943274168735), as.numeric(q), tol=1e-04)))
 q <- qratio.msm(psor.msm, c(2,2), c(2,3))
 stopifnot(isTRUE(all.equal(c(-1,0,-1,-1), as.numeric(q), tol=1e-06)))
+
+qratio.msm(psor.msm, c(1,2), c(2,3), ci="norm", B=2)
+qratio.msm(psor.msm, c(1,2), c(2,3), ci="boot", B=2)
 
 p <- prevalence.msm(psor.msm)
 stopifnot(isTRUE(all.equal(64, p$Observed[5,5], tol=1e-06)))
@@ -238,7 +244,8 @@ stopifnot(isTRUE(all.equal(68, p$Observed[5,5], tol=1e-06)))
 stopifnot(isTRUE(all.equal(68, p$Expected[5,5], tol=1e-06)))
 stopifnot(isTRUE(all.equal(53.33333, p$"Observed percentages"[4,4], tol=1e-03)))
 stopifnot(isTRUE(all.equal(39.28835, p$"Expected percentages"[4,4], tol=1e-03)))
-## p <- prevalence.msm(psor.msm, ci.boot=TRUE, B=3)
+#p <- prevalence.msm(psor.msm, ci="boot", B=3)
+#p <- prevalence.msm(psor.msm, ci="norm", B=10)
 
 summ <- summary.msm(psor.msm)
 p <- summ$prevalences
@@ -272,6 +279,7 @@ if (interactive())
       persp(psor.msm)
       persp(psor.msm, np=5)
       image(psor.msm)
+      plot.prevalence.msm(psor.msm)
     }
 
 
@@ -296,9 +304,9 @@ stopifnot(isTRUE(all.equal(0.385347226135311, haz$ollwsdrt[2,2], tol=1e-04)))
 stopifnot(isTRUE(all.equal(5.56622121095267, haz$hieffusn[1,3], tol=1e-04)))
 stopifnot(isTRUE(all.equal(5.56622121095267, haz$hieffusn[3,3], tol=1e-04)))
 
-stopifnot(isTRUE(all.equal(c(1,2,3), transient.msm(psor.msm), tol=1e-06)))
+stopifnot(isTRUE(all.equal(c(1,2,3), as.numeric(transient.msm(psor.msm)), tol=1e-06)))
 
-stopifnot(isTRUE(all.equal(4, absorbing.msm(psor.msm), tol=1e-06)))
+stopifnot(isTRUE(all.equal(4, as.numeric(absorbing.msm(psor.msm)), tol=1e-06)))
 
 tot <- totlos.msm(psor.msm)
 stopifnot(isTRUE(all.equal(c(10.4834733848813, 6.12107442888416, 3.91804478713086), as.numeric(tot), tol=1e-04)))
@@ -327,6 +335,7 @@ p <- pmatrix.piecewise.msm(psor.msm, 0, 19, times, covariates)
 stopifnot(isTRUE(all.equal(0.0510873669808412, p[1,3], tol=1e-04)))
 p <- pmatrix.msm(psor.msm, 5, covariates[[1]]) %*% pmatrix.msm(psor.msm, 5, covariates[[2]]) %*% pmatrix.msm(psor.msm, 5, covariates[[3]]) %*% pmatrix.msm(psor.msm, 4, covariates[[4]])
 stopifnot(isTRUE(all.equal(0.0510873669808412, p[1,3], tol=1e-04)))
+
 
 ## bug with one time in 0.5
 times <- c(5)

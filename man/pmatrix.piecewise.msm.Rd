@@ -5,9 +5,10 @@
   Extract the estimated transition probability matrix from a fitted
   non-time-homogeneous multi-state model for a given time interval.
   This is a generalisation of \code{\link{pmatrix.msm}} to
-  non-homogeneous models with time-dependent covariates.  }
+  models with time-dependent covariates.  }
 \usage{
-pmatrix.piecewise.msm(x, t1, t2, times, covariates)
+pmatrix.piecewise.msm(x, t1, t2, times, covariates,
+ci=c("none","normal","bootstrap"), cl=0.95, B=1000)
 }
 \arguments{
 
@@ -34,6 +35,26 @@ pmatrix.piecewise.msm(x, t1, t2, times, covariates)
     (assuming that all elements of \code{times} are in the interval
     \code{(t1, t2)}).
   }
+  \item{ci}{If \code{"normal"}, then calculate a confidence interval for
+    the transition probabilities by simulating \code{B} random vectors
+    from the asymptotic multivariate normal distribution implied by the
+    maximum likelihood estimates (and covariance matrix) of the log
+    transition intensities and covariate effects, then calculating the
+    resulting transition probability matrix for each replicate.
+    
+    If \code{"bootstrap"} then calculate a confidence interval by
+    non-parametric bootstrap refitting.  This is 1-2 orders of magnitude
+    slower than the \code{"normal"} method, but is expected to be more
+    accurate. See \code{\link{boot.msm}} for more details of
+    bootstrapping in \pkg{msm}.
+
+    If \code{"none"} (the default) then no confidence interval is
+    calculated.}
+  
+  \item{cl}{Width of the symmetric confidence interval, relative to 1.}
+
+  \item{B}{Number of bootstrap replicates, or number of normal
+    simulations from the distribution of the MLEs}
 }
 \details{
     Suppose a multi-state model has been fitted, in which
@@ -74,8 +95,9 @@ constant:
 ## Cut points for when treatment covariate changes 
 times <- c(0, 5, 10)
 
-## Indicators for which treatments are active at the three cut points
-covariates <- list( list (treat1=0, treat2=0), list(treat1=1, treat2=0),
+## Indicators for which treatments are active in the four intervals
+## defined by the three cut points
+covariates <- list( list (treat1=0, treat2=0), list (treat1=0, treat2=0), list(treat1=1, treat2=0),
 list(treat1=1, treat2=1) )
 
 ## Calculate transition probabilities from the start of the study to 15 weeks

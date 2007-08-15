@@ -7,7 +7,8 @@
   at a given set of covariate values. 
 }
 \usage{
-qratio.msm(x, ind1, ind2, covariates = "mean", cl = 0.95)
+qratio.msm(x, ind1, ind2, covariates = "mean",
+           ci=c("delta","normal","bootstrap"), cl = 0.95, B=1000)
 }
 \arguments{
   \item{x}{A fitted multi-state model, as returned by
@@ -39,9 +40,27 @@ qratio.msm(x, ind1, ind2, covariates = "mean", cl = 0.95)
     \code{list (age = 60, sex = 1)}
   }
 
+  \item{ci}{
+    If \code{"delta"} (the default) then confidence intervals are
+    calculated by the delta method. 
+    
+    If \code{"normal"}, then calculate a confidence interval by
+    simulating \code{B} random vectors
+    from the asymptotic multivariate normal distribution implied by the
+    maximum likelihood estimates (and covariance matrix) of the log
+    transition intensities and covariate effects, then transforming. 
+    
+    If \code{"bootstrap"} then calculate a confidence interval by
+    non-parametric bootstrap refitting.  This is 1-2 orders of magnitude
+    slower than the \code{"normal"} method, but is expected to be more
+    accurate. See \code{\link{boot.msm}} for more details of
+    bootstrapping in \pkg{msm}.}
+
   \item{cl}{Width of the symmetric confidence interval to present. 
     Defaults to 0.95.}
 
+  \item{B}{Number of bootstrap replicates, or number of normal
+    simulations from the distribution of the MLEs}
 }
 \value{
   A named vector with elements \code{estimate}, \code{se}, \code{L} and \code{U}

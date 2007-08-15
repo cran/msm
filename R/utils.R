@@ -44,7 +44,7 @@ MatrixExp <- function(mat, t = 1, n = 20, k = 3, method="pade")
       if (!is.matrix(mat) || (nrow(mat)!= ncol(mat))) stop("\"mat\" must be a square matrix")
       n <- nrow(mat)
       ev <- eigen(mat)
-      if (any ( duplicated(ev$values) ) ) {
+      if (any ( duplicated(ev$values)  ) || is.complex(ev$values) ) {
           if (method=="series") {
               ## series approximation
               ## adapted from mexp in Jim Lindsey's rmutil library

@@ -97,6 +97,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
         msmdata <- msm.aggregate.data(msmdata)
         msmdata$subject <- msmdata$state <- msmdata$time <- numeric(0)
         for (i in c("subject", "time", "state")) msmdata[[i]] <- msmdata.obs[[i]]
+        msmdata$obstype.obs <- msmdata.obs$obstype
         msmdata$cov <- msmdata.obs$covmat
     }
 
@@ -619,6 +620,7 @@ msm.obs.to.fromto <- function(dat)
     obs <- seq(n)[!firstsubj]
     datf <- list(fromstate=fromstate, tostate=tostate, timelag=timelag, subject=subject, obstype=obstype,
                  time=dat$time, obs=obs, firstsubj=firstsubj, npts=dat$npts, ncovs=dat$ncovs, covlabels=dat$covlabels,
+                 obstype.obs=dat$obstype, # need to keep this, e.g. for bootstrap resampling. 
                  covdata=dat$covdata, hcovdata=dat$hcovdata)
     if (datf$ncovs > 0) {
         ## match time-dependent covariates with the start of the transition

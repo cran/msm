@@ -23,7 +23,6 @@
 double hmmCat(double x, double *pars)
 {
     /* check that data x is in the set should already have been done in R */
-    int i;
     int cat = fprec(x, 0);
     int ncats = fprec(pars[0], 0);
     int basecat = fprec(pars[1], 0); /* pars[2], ... pars[ncats+1] are the probabilities */

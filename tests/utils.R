@@ -116,10 +116,17 @@ set.seed(220676)
 y <- rnorm(100, 4*x, 5)
 toy.lm <- lm(y ~ x)
 (estmean <- coef(toy.lm))
-estvar <- summary(toy.lm)$cov.unscaled * summary(toy.lm)$sigma^2
+(estvar <- summary(toy.lm)$cov.unscaled * summary(toy.lm)$sigma^2)
 
 ## Estimate of (1 / (alphahat + betahat))
 stopifnot(isTRUE(all.equal(0.206982798128202, as.numeric(1 / (estmean[1] + estmean[2])))))
+## Approximate standard error
+stopifnot(isTRUE(all.equal(0.0396485739892983, deltamethod(~ 1 / (x1 + x2), estmean, estvar))))
+
+estvar2 <- estvar; estvar2[1,2] <- Inf
+deltamethod(~ 1 / (x1 + x2), estmean, estvar2)
+ 
+
 
 if (interactive()) {
 ### works for mean0,sd1,lower>0, all scalar

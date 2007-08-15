@@ -118,9 +118,9 @@ if (developer.local) {
     if (interactive()) plot.msm(misccovnew.msm)
                                         #coef.msm(misccovbothnew.msm)
                                         #hazard.msm(misccovbothnew.msm)
-    stopifnot(isTRUE(all.equal(c(1,2,3), transient.msm(misccovnew.msm), tol=1e-06)))
+    stopifnot(isTRUE(all.equal(c(1,2,3), as.numeric(transient.msm(misccovnew.msm)), tol=1e-06)))
 
-    stopifnot(isTRUE(all.equal(4, absorbing.msm(misccovnew.msm), tol=1e-06)))
+    stopifnot(isTRUE(all.equal(4, as.numeric(absorbing.msm(misccovnew.msm)), tol=1e-06)))
 
     tot <- totlos.msm(misccovnew.msm)
     stopifnot(isTRUE(all.equal(c(6.83321639468168, 2.7553561747237, 2.1336934417779), as.numeric(tot), tol=1e-06)))

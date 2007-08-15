@@ -170,9 +170,9 @@ if (developer.local) {
 
     if (interactive()) plot.msm(fev1.msm)
 
-    stopifnot(isTRUE(all.equal(c(1,2), transient.msm(fev1.msm), tol=1e-06)))
+    stopifnot(isTRUE(all.equal(c(1,2), as.numeric(transient.msm(fev1.msm)), tol=1e-06)))
 
-    stopifnot(isTRUE(all.equal(3, absorbing.msm(fev1.msm), tol=1e-06)))
+    stopifnot(isTRUE(all.equal(3, as.numeric(absorbing.msm(fev1.msm)), tol=1e-06)))
 
     tot <- totlos.msm(fev1.msm)
     stopifnot(isTRUE(all.equal(c(1420.72075298143, 1113.04493977146), as.numeric(tot), tol=1e-06)))

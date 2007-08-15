@@ -334,7 +334,7 @@ void Eigen(Matrix mat, int n, vector revals, vector ievals, Matrix evecs, int *e
 
 void MatrixExp(Matrix mat, int n, Matrix expmat, double t, int debug, int degen)
 {  
-    int i, err=0, nsq=n*n;
+    int i, err=0, complex_evals=0, nsq=n*n;
     Matrix work = (Matrix) Calloc(nsq, double);
     vector revals = (vector) Calloc(n, double);
     vector ievals = (vector) Calloc(n, double);
@@ -343,7 +343,13 @@ void MatrixExp(Matrix mat, int n, Matrix expmat, double t, int debug, int degen)
     /* calculate eigensystem */
     if (!degen) 
 	Eigen(mat, n, revals, ievals, evecs, &err);
-    if (repeated_entries (revals, n) || (err != 0) || degen){
+    /* Check for eigenvalues with nonzero imaginary part */
+    for (i=0; i<n; ++i)
+      if (!all_equal(ievals[i],0)){
+	complex_evals = 1;
+	break;
+      }
+    if (repeated_entries (revals, n) || (err != 0) || degen || complex_evals){
 #if _MEXP_METHOD_==1 
 	MatrixExpPade(expmat, mat, n, t);
 #elif _MEXP_METHOD_==2 

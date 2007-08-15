@@ -68,7 +68,9 @@
   
   Only \code{rtnorm} is used in the \code{msm} package, to simulate
   from hidden Markov models with truncated normal
-  distributions. This uses the rejection sampling algorithms described by Robert (1995).
+  distributions. This uses the rejection sampling algorithms described
+  by Robert (1995).
+  
   These functions are merely provided for completion,
   and are not optimized for numerical stability or speed.  To fit a hidden Markov
   model with a truncated Normal response distribution, use a

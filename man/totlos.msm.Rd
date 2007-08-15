@@ -7,7 +7,8 @@
   transition rates do not change with time. 
 }
 \usage{
-totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean", ci.boot=FALSE, cl=0.95, B=500, ...)
+totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean",
+           ci=c("none","normal","bootstrap"), cl=0.95, B=1000, ...)
 }
 \arguments{
   \item{x}{A fitted multi-state model, as returned by
@@ -42,8 +43,25 @@ totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean", ci.boot=FALSE, cl=0.
     \code{list (age = 60, sex = 1)}
       
   }
-  \item{ci.boot}{Calculate a bootstrap confidence interval. This is usually time-consuming, and disabled by default. See \code{\link{boot.msm}} for more details of bootstrapping in \pkg{msm}.}
-  \item{cl}{Width of the symmetric confidence interval}
+
+  \item{ci}{If \code{"normal"}, then calculate a confidence interval 
+    by simulating \code{B} random vectors
+    from the asymptotic multivariate normal distribution implied by the
+    maximum likelihood estimates (and covariance matrix) of the log
+    transition intensities and covariate effects, then calculating the
+    total length of stay for each replicate.
+    
+    If \code{"bootstrap"} then calculate a confidence interval by
+    non-parametric bootstrap refitting.  This is 1-2 orders of magnitude
+    slower than the \code{"normal"} method, but is expected to be more
+    accurate. See \code{\link{boot.msm}} for more details of
+    bootstrapping in \pkg{msm}.
+
+    If \code{"none"} (the default) then no confidence interval is
+    calculated.}
+  
+  \item{cl}{Width of the symmetric confidence interval, relative to 1}
+
   \item{B}{Number of bootstrap replicates}
 
   \item{...}{Further arguments to be passed to the

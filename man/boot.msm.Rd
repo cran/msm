@@ -6,7 +6,7 @@
   resamples, and calculate statistics on the refitted models.
 }
 \usage{
-boot.msm(x, stat=pmatrix.msm, B=500, file=NULL)
+boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
 }
 \arguments{
   \item{x}{A fitted msm model, as output by \code{\link{msm}}.}
@@ -70,7 +70,8 @@ boot.msm(x, stat=pmatrix.msm, B=500, file=NULL)
     Bootstrap}, Chapman and Hall.
 }
 \seealso{
-  \code{\link{pmatrix.msm}}, \code{\link{totlos.msm}}, \code{\link{prevalence.msm}}.
+  \code{\link{qmatrix.msm}}, \code{\link{qratio.msm}},
+  \code{\link{sojourn.msm}}, \code{\link{ematrix.msm}}, \code{\link{pmatrix.msm}}, \code{\link{pmatrix.piecewise.msm}}, \code{\link{totlos.msm}}, \code{\link{prevalence.msm}}.
 }
 \examples{
 \dontrun{
