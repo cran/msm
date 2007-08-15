@@ -9,9 +9,10 @@
   forecasts from the fitted model.   
 }
 \usage{
-prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
-               misccovariates="mean", piecewise.times, piecewise.covariates,
-	       ci.boot=FALSE, cl=0.95, B=500)
+prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="mean",
+               misccovariates="mean", piecewise.times=NULL, piecewise.covariates=NULL,
+	       ci=c("none","normal","bootstrap"), cl=0.95, B=1000,
+               interp=c("start","midpoint"), plot=FALSE)
 }
 \arguments{
   \item{x}{A fitted multi-state model produced by \code{\link{msm}}.}
@@ -35,9 +36,41 @@ prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
   \item{piecewise.covariates}{Covariates on which the piecewise-constant
     intensities depend. See \code{\link{pmatrix.piecewise.msm}} for how
     to specify this.}
-  \item{ci.boot}{Calculate a bootstrap confidence interval for the expected prevalences. This is usually time-consuming, and disabled by default. See \code{\link{boot.msm}} for more details of bootstrapping in \pkg{msm}.}
-  \item{cl}{Width of the symmetric confidence interval}
+
+  \item{ci}{If \code{"normal"}, then calculate a confidence interval for
+    the expected prevalences by simulating \code{B} random vectors
+    from the asymptotic multivariate normal distribution implied by the
+    maximum likelihood estimates (and covariance matrix) of the log
+    transition intensities and covariate effects, then calculating the
+    expected prevalences for each replicate.
+    
+    If \code{"bootstrap"} then calculate a confidence interval by
+    non-parametric bootstrap refitting.  This is 1-2 orders of magnitude
+    slower than the \code{"normal"} method, but is expected to be more
+    accurate. See \code{\link{boot.msm}} for more details of
+    bootstrapping in \pkg{msm}.
+
+    If \code{"none"} (the default) then no confidence interval is
+    calculated.}
+    
+  \item{cl}{Width of the symmetric confidence interval, relative to 1}
   \item{B}{Number of bootstrap replicates}
+
+  \item{interp}{Suppose an individual was observed in states
+  \eqn{S_{r-1}} and \eqn{S_r} at two consecutive times \eqn{t_{r-1}}
+  and \eqn{t_r}, and we want to estimate 'observed' prevalences at a
+  time \eqn{t} between \eqn{t_{r-1}} and \eqn{t_r}.
+
+  If \code{interp="start"}, then individuals are assumed to be in
+  state \eqn{S_{r-1}} at time \eqn{t}, the same state as they were at \eqn{t_{r-1}}.
+  
+  If \code{interp="midpoint"} then if \eqn{t <= (t_{r-1} + t_r) / 2},
+     the midpoint of \eqn{t_{r-1}} and \eqn{t_r}, the state at \eqn{t}
+     is assumed to be \eqn{S_{r-1}}, otherwise \eqn{S_{r}}. This is
+     generally more reasonable for ``progressive" models. 
+   }  	    
+
+  \item{plot}{Generate a plot of observed against expected prevalences. See \code{\link{plot.prevalence.msm}}}
 }
 \value{
   A list of matrices, with components:
@@ -54,17 +87,15 @@ prevalence.msm(x, times, timezero=NULL, initstates, covariates="mean",
     individuals at risk at each time.}
 
   Or if \code{ci.boot = TRUE}, the component \code{Expected} is a list
-  with components \code{estimates} and \code{ci}. \code{estimates} is
-  a matrix of the expected prevalences, and \code{ci} is a list of two
-  matrices, containing the confidence limits.  The component
-  \item{Expected percentages} has a similar format.
+  with components \code{estimates} and \code{ci}.\cr
+  \code{estimates} is a matrix of the expected prevalences, and
+\code{ci} is a list of two matrices, containing the confidence limits.
+The component
+  \code{Expected percentages} has a similar format.
 
 }
 
 \details{
-  To compute `observed'  prevalences at a time \eqn{t}, individuals are
-  assumed to be in the same state as at their last observation time preceding
-  \eqn{t}.  
 
   The fitted transition probability matrix is used to forecast expected prevalences from the
   state occupancy at the initial time.  To

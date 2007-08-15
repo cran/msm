@@ -166,9 +166,9 @@ if (developer.local) {
     stopifnot(isTRUE(all.equal(-0.535346454908361, cf$Qmatrices$sex[1,2], tol=1e-04)))
     stopifnot(isTRUE(all.equal(-6.71038434136682, cf$Ematrices$sex[1,2], tol=1e-04)))
 
-    stopifnot(isTRUE(all.equal(c(1,2,3), transient.msm(misccov.msm), tol=1e-06)))
+    stopifnot(isTRUE(all.equal(c(1,2,3), as.numeric(transient.msm(misccov.msm)), tol=1e-06)))
 
-    stopifnot(isTRUE(all.equal(4, absorbing.msm(misccov.msm), tol=1e-06)))
+    stopifnot(isTRUE(all.equal(4, as.numeric(absorbing.msm(misccov.msm)), tol=1e-06)))
 
     tot <- totlos.msm(misccov.msm)
     stopifnot(isTRUE(all.equal(c(6.83075273082287, 2.75543070960308, 2.13503613252349), as.numeric(tot), tol=1e-06)))

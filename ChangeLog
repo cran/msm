@@ -1,3 +1,60 @@
+2007-08-15 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* DESCRIPTION: Version 0.7.3 released.
+
+2007-08-14 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+        * R/boot.R: Handle obstype and obsmisc in bootstrap refitting, and
+	handle refitting of msm models where obstype, obsmisc and subject
+	vectors are calculated within the argument to msm.  Thanks to
+	Peter Jepsen for the report.
+
+	* R/boot.R, R/outputs.R: Add bootstrap handlers (both
+	nonparametric and normal-theory) for qmatrix.msm, ematrix.msm,
+	sojourn.msm, qratio.msm, pmatrix.piecewise.msm, totlos.msm,
+	prevalence.msm.
+	
+2007-07-27 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* src/analyticp.c: Bug fix: exponential of certain degenerate 5
+	state intensity matrices was not being calculated properly. Thanks
+	to Ross Boylan for the report.
+
+	* man/msm.Rd: Make clear that the initial values for constrained
+	parameters are taken from the first of the multiple initial values
+	supplied.  Thanks to Ross Boylan.
+ 	
+2007-06-30 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R(surface.msm): Bug fix: don't include auxiliary
+	parameters in HMMs. Thanks to Michael Sweeting.
+ 	
+2007-06-29 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/utils.R(MatrixExp), src/pijt.c(MatrixExp): Bug fix. When there
+	are complex eigenvalues, don't use the eigensystem method of
+	calculating the matrix exponential. Thanks to Véronique Bouchard.
+ 	
+2007-06-05 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R(expected.msm): Bug fix, wrong risk set was being
+	calculated for user-specified "times".
+
+	* R/outputs.R(observed.msm): Allow interpolation of observed
+	states using the midpoint of an interval.	
+
+	* R/outputs.R(pmatrix.msm), R/boot.R: Confidence intervals for P
+	matrix can now be calculated by simulating from multivariate
+	normal distribution of MLEs.
+
+	* R/outputs.R(plot.prevalence.msm),man/plot.prevalence.msm.Rd: new
+	function for prevalence plots.
+
+	* man/pmatrix.piecewise.msm.Rd: Example corrected to use four sets
+	of covariates. Thanks to Qing Wang.
+ 
+	* DESCRIPTION,NAMESPACE: Added rmvnorm import from "mvtnorm" package.
+
 2007-05-31 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* DESCRIPTION: Version 0.7.2 released.

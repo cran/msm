@@ -3,6 +3,39 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.7.3  (2007-08-15)
+-------------
+
+* Confidence intervals in various output functions can now be
+  calculated by simulating from the asymptotic normal distribution of
+  the maximum likelihood estimates of the Q matrix and transforming.
+  The "ci.boot" argument in these functions has been replaced by the
+  "ci" argument, which can take values "none", "normal" and
+  "bootstrap".  This is implemented for qmatrix.msm, ematrix.msm,
+  sojourn.msm, qratio.msm, pmatrix.msm, pmatrix.piecewise.msm,
+  totlos.msm and prevalence.msm.  Such CIs are expected to be more
+  accurate than the delta method, but less accurate than
+  bootstrapping. There is a similar compromise in computation time.
+  Thanks to Andrew Titman for the suggestion. 
+
+* As a result, msm now depends on the mvtnorm package. 
+
+* In prevalence.msm, observed and expected prevalences can now be
+  plotted against time. Thanks to Andrew Titman for the suggestion.
+
+* In prevalence.msm, observed states can be interpolated using the
+  assumption that they change at the midpoints between observation
+  times. 
+
+* Matrix exponential routines now handle matrices with complex
+  eigenvalues. Thanks to Véronique Bouchard for uncovering the bug.
+
+* Bug fix to surface.msm for HMMs. Thanks to Michael Sweeting.  
+
+* Bug fix for bootstrapping - now handles models with obstype and
+  obstrue. Thanks to Peter Jepsen for the report.
+
+
 Version 0.7.2  (2007-05-31)
 -------------
 

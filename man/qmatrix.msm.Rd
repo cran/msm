@@ -7,7 +7,8 @@
   multi-state model at a given set of covariate values. 
 }
 \usage{
-qmatrix.msm(x, covariates="mean", sojourn=FALSE, cl=0.95)
+qmatrix.msm(x, covariates="mean", sojourn=FALSE,
+            ci=c("delta","normal","bootstrap"), cl=0.95, B=1000)
 }
 \arguments{
  
@@ -35,8 +36,29 @@ qmatrix.msm(x, covariates="mean", sojourn=FALSE, cl=0.95)
   \item{sojourn}{Set to TRUE if the estimated sojourn times and their
     standard errors should also be returned.}
 
+  \item{ci}{
+    If \code{"delta"} (the default) then confidence intervals are
+    calculated by the delta method, or by simple transformation of the
+    Hessian in the very simplest cases. 
+    
+    If \code{"normal"}, then calculate a confidence interval by
+    simulating \code{B} random vectors
+    from the asymptotic multivariate normal distribution implied by the
+    maximum likelihood estimates (and covariance matrix) of the log
+    transition intensities and covariate effects, then transforming. 
+    
+    If \code{"bootstrap"} then calculate a confidence interval by
+    non-parametric bootstrap refitting.  This is 1-2 orders of magnitude
+    slower than the \code{"normal"} method, but is expected to be more
+    accurate. See \code{\link{boot.msm}} for more details of
+    bootstrapping in \pkg{msm}.
+  }
+  
   \item{cl}{Width of the symmetric confidence interval to present. 
     Defaults to 0.95.}
+
+  \item{B}{Number of bootstrap replicates, or number of normal
+    simulations from the distribution of the MLEs}
 }
 
 \value{
@@ -51,9 +73,9 @@ qmatrix.msm(x, covariates="mean", sojourn=FALSE, cl=0.95)
   \item{U}{Upper confidence limits}
   
   If \code{sojourn} is \code{TRUE}, extra components called
-  \code{sojourn} and \code{sojournSE} are included, containing the
-  estimate and standard errors, respectively, of the mean sojourn times in
-  each transient state.
+  \code{sojourn}, \code{sojournSE}, \code{sojournL} and \code{sojournU} are included, containing the
+  estimates, standard errors and confidence limits, respectively, of the
+  mean sojourn times in each transient state.
 
   The default print method for objects returned by
   \code{\link{qmatrix.msm}} presents estimates and confidence limits. To

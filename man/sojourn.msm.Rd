@@ -6,7 +6,7 @@
   multi-state model and their confidence limits. 
 }
 \usage{
-sojourn.msm(x, covariates="mean", cl=0.95)
+sojourn.msm(x, covariates="mean", ci=c("delta","normal","bootstrap"), cl=0.95, B=1000)
 }
 \arguments{
 
@@ -30,9 +30,28 @@ sojourn.msm(x, covariates="mean", cl=0.95)
     \code{list (age = 60, sex = 1)}
    
   }
-  
+
+  \item{ci}{
+    If \code{"delta"} (the default) then confidence intervals are
+    calculated by the delta method, or by simple transformation of the
+    Hessian in the very simplest cases. 
+    
+    If \code{"normal"}, then calculate a confidence interval by simulating \code{B} random vectors
+    from the asymptotic multivariate normal distribution implied by the
+    maximum likelihood estimates (and covariance matrix) of the log
+    transition intensities and covariate effects, then transforming.
+    
+    If \code{"bootstrap"} then calculate a confidence interval by
+    non-parametric bootstrap refitting.  This is 1-2 orders of magnitude
+    slower than the \code{"normal"} method, but is expected to be more
+    accurate. See \code{\link{boot.msm}} for more details of
+    bootstrapping in \pkg{msm}.}
+    
   \item{cl}{Width of the symmetric confidence interval to present. 
     Defaults to 0.95.}
+
+  \item{B}{Number of bootstrap replicates, or number of normal
+    simulations from the distribution of the MLEs}
   
 }
 \value{

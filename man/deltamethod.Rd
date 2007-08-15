@@ -49,6 +49,10 @@ deltamethod(g, mean, cov, ses=TRUE)
   is necessary to build the formula as a string, using functions such as
   \code{sprintf}, then to convert the string to a formula using
   \code{as.formula}.  See the example below. 
+
+  If you can spare the computational time, bootstrapping is a more  
+  accurate method of calculating confidence intervals or standard errors
+  of transformations of parameters. See \code{\link{boot.msm}}.  
 }
 \references{Oehlert, G. W. \emph{A note on the delta method}. American
   Statistician 46(1), 1992}}

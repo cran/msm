@@ -6,7 +6,7 @@
   model for a given time interval, at a given set of covariate values. 
 }
 \usage{
-pmatrix.msm(x, t=1, covariates="mean", ci.boot=FALSE, cl=0.95, B=500)
+pmatrix.msm(x, t=1, covariates="mean", ci=c("none","normal","bootstrap"), cl=0.95, B=1000)
 }
 \arguments{
 
@@ -34,15 +34,34 @@ pmatrix.msm(x, t=1, covariates="mean", ci.boot=FALSE, cl=0.95, B=500)
 
     \code{list (age = 60, sex = 1)}
   }
-  \item{ci.boot}{Calculate a bootstrap confidence interval. This is usually time-consuming, and disabled by default. See \code{\link{boot.msm}} for more details of bootstrapping in \pkg{msm}.}
-  \item{cl}{Width of the symmetric confidence interval}
-  \item{B}{Number of bootstrap replicates}
+
+  \item{ci}{If \code{"normal"}, then calculate a confidence interval for
+    the transition probabilities by simulating \code{B} random vectors
+    from the asymptotic multivariate normal distribution implied by the
+    maximum likelihood estimates (and covariance matrix) of the log
+    transition intensities and covariate effects, then calculating the
+    resulting transition probability matrix for each replicate.
+    
+    If \code{"bootstrap"} then calculate a confidence interval by
+    non-parametric bootstrap refitting.  This is 1-2 orders of magnitude
+    slower than the \code{"normal"} method, but is expected to be more
+    accurate. See \code{\link{boot.msm}} for more details of
+    bootstrapping in \pkg{msm}.
+
+    If \code{"none"} (the default) then no confidence interval is
+    calculated.}
+  
+  \item{cl}{Width of the symmetric confidence interval, relative to 1.}
+
+  \item{B}{Number of bootstrap replicates, or number of normal
+    simulations from the distribution of the MLEs}
 }
 \value{
   The matrix of estimated transition probabilities \eqn{P(t)} in the given time. 
   Rows correspond to "from-state" and columns to "to-state".   
 
-  Or if \code{ci.boot=TRUE}, \code{pmatrix.msm} returns a list with
+  Or if \code{ci="normal"} or \code{ci="bootstrap"}, \code{pmatrix.msm}
+returns a list with
   components \code{estimates} and \code{ci}, where \code{estimates} is
   the matrix of estimated transition probabilities, and \code{ci} is a
   list of two matrices containing the upper and lower confidence
@@ -64,5 +83,5 @@ pmatrix.msm(x, t=1, covariates="mean", ci.boot=FALSE, cl=0.95, B=500)
 \seealso{
   \code{\link{qmatrix.msm}},  \code{\link{pmatrix.piecewise.msm}}, \code{\link{boot.msm}}
 }
-\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
+\author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}.}
 \keyword{}

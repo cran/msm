@@ -416,7 +416,7 @@ void p5q1_6_11_16(Matrix pmat, double t, vector intens, int *degen){
   pmat[MI(4,2,5)] = 0;
   pmat[MI(4,3,5)] = 0;
   pmat[MI(4,4,5)] = 1;
-  if (all_equal(a,b) && !all_equal(a,c) && !all_equal(a,d)){
+  if (all_equal(a,b) && !all_equal(a,c) && !all_equal(a,d) && !all_equal(c,d)){
       pmat[MI(0,1,5)] = (a*t)*e1;
       pmat[MI(0,2,5)] = -((pow(a,2)*(-1/e1 + 1/e3*(1 + a*t - c*t)))/
 			  (pow(a - c,2)/(e1*e3)));
@@ -440,7 +440,7 @@ void p5q1_6_11_16(Matrix pmat, double t, vector intens, int *degen){
       pmat[MI(2,3,5)] = -((c*(e3 - e4))/(c - d));
       pmat[MI(2,4,5)] = (c - c*e4 + d*(-1 + e3))/(c - d);
   }
-  else if (all_equal(a,c) && !all_equal(a,b) && !all_equal(a,d)){
+  else if (all_equal(a,c) && !all_equal(a,b) && !all_equal(a,d) && !all_equal(b,d)){
       pmat[MI(0,1,5)] = -((a*(e1 - e2))/(a - b));
       pmat[MI(0,2,5)] = -((a*b*(-1/e1 + 1/e2*(1 + a*t - b*t)))/    
 			  (pow(a - b,2)/(e1*e2)));
@@ -468,7 +468,7 @@ void p5q1_6_11_16(Matrix pmat, double t, vector intens, int *degen){
       pmat[MI(2,3,5)] = -((a*(e1 - e4))/(a - d));
       pmat[MI(2,4,5)] = (a - a*e4 + d*(-1 + e1))/(a - d);
   }
-  else if (all_equal(a,d) && !all_equal(a,b) && !all_equal(a,c)){
+  else if (all_equal(a,d) && !all_equal(a,b) && !all_equal(a,c) && !all_equal(b,c)){
       pmat[MI(0,1,5)] = -((a*(e1 - e2))/(a - b));
       pmat[MI(0,2,5)] = (a*b*(a*(1/(e1*e2) - 1/(e1*e3)) + 
 			      c*(1/(e1*e3) - 1/(e2*e3)) + 
@@ -498,7 +498,7 @@ void p5q1_6_11_16(Matrix pmat, double t, vector intens, int *degen){
       pmat[MI(2,3,5)] = -((c*(e1 - e3))/(a - c));
       pmat[MI(2,4,5)] = (a - a*e3 + c*(-1 + e1))/(a - c);
   }
-  else if (all_equal(b,c) && !all_equal(b,a) && !all_equal(b,d)){
+  else if (all_equal(b,c) && !all_equal(b,a) && !all_equal(b,d) && !all_equal(a,d)){
       pmat[MI(0,1,5)] = -((a*(e1 - e2))/(a - b));
       pmat[MI(0,2,5)] = (a*b*(1/e2 + 1/e1*(-1 + a*t - b*t)))/
 	  (pow(a - b,2)/(e1*e2));
@@ -519,7 +519,7 @@ void p5q1_6_11_16(Matrix pmat, double t, vector intens, int *degen){
       pmat[MI(2,3,5)] = -((b*(e2 - e4))/(b - d));
       pmat[MI(2,4,5)] = (b - b*e4 + d*(-1 + e2))/(b - d);
   }
-  else if (all_equal(b,d) && !all_equal(b,a) && !all_equal(b,c)){
+  else if (all_equal(b,d) && !all_equal(b,a) && !all_equal(b,c) && !all_equal(a,c)){
       pmat[MI(0,1,5)] = -((a*(e1 - e2))/(a - b));
       pmat[MI(0,2,5)] = (a*b*(a*(1/(e1*e2) - 1/(e1*e3)) + 
 			      c*(1/(e1*e3) - 1/(e2*e3)) + 
@@ -542,7 +542,7 @@ void p5q1_6_11_16(Matrix pmat, double t, vector intens, int *degen){
       pmat[MI(2,3,5)] = -((c*(e2 - e3))/(b - c));
       pmat[MI(2,4,5)] = (b - b*e3 + c*(-1 + e2))/(b - c);
   }
-  else if (all_equal(c,d) && !all_equal(c,a) && !all_equal(c,b)){
+  else if (all_equal(c,d) && !all_equal(c,a) && !all_equal(c,b) && !all_equal(a,b)){
       pmat[MI(0,1,5)] = -((a*(e1 - e2))/(a - b));
       pmat[MI(0,2,5)] = (a*b*(a*(1/(e1*e2) - 1/(e1*e3)) + 
 			      c*(1/(e1*e3) - 1/(e2*e3)) + 
@@ -574,6 +574,63 @@ void p5q1_6_11_16(Matrix pmat, double t, vector intens, int *degen){
 	  (b*c)/(pow(b - c,2)/e3) - (b*(1 + c*t))/((b - c)/e3);
       pmat[MI(2,3,5)] = (c*t)*e3;
       pmat[MI(2,4,5)] = (-1 + 1/e3 - c*t)*e3;
+  }
+  else if (all_equal(a,b) && all_equal(c,d) && !all_equal(a,c)){
+    pmat[MI(0,1,5)] = (a*t)/exp(a*t);
+    pmat[MI(0,2,5)] = -((pow(a,2)*(-exp(a*t) + exp(c*t)*(1 + a*t - c*t)))/
+			(pow(a - c,2)*exp((a + c)*t)));
+    pmat[MI(0,3,5)] = (pow(a,2)*c*(exp(a*t)*(-2 + a*t - c*t) + exp(c*t)*(2 + a*t - c*t)))/
+      (pow(a - c,3)*exp((a + c)*t));
+    pmat[MI(0,4,5)] = 1 + pow(c,3)/(pow(a - c,3)*exp(a*t)) - 
+      (a*pow(c,2)*(3 + a*t - c*t))/(pow(a - c,3)*exp(a*t)) - 
+      (pow(a,2)*(a + a*c*t - c*(3 + c*t)))/(pow(a - c,3)*exp(c*t));
+    pmat[MI(1,2,5)] = -((a*(exp(-(a*t)) - exp(-(c*t))))/(a - c));
+    pmat[MI(1,3,5)] = (a*c*(exp(c*t) + exp(a*t)*(-1 + a*t - c*t)))/
+      (pow(a - c,2)*exp((a + c)*t));
+    pmat[MI(1,4,5)] = 1 - pow(c,2)/(pow(a - c,2)*exp(a*t)) + 
+      (a*c)/(pow(a - c,2)*exp(c*t)) - (a*(1 + c*t))/((a - c)*exp(c*t));
+    pmat[MI(2,3,5)] = (c*t)/exp(c*t);
+    pmat[MI(2,4,5)] = (-1 + exp(c*t) - c*t)/exp(c*t);
+  }
+  else if (all_equal(a,c) && all_equal(b,d) && !all_equal(a,b)){
+    pmat[MI(0,1,5)] = -((a*(exp(-(a*t)) - exp(-(b*t))))/(a - b));
+    pmat[MI(0,2,5)] = -((a*b*(-exp(a*t) + exp(b*t)*(1 + a*t - b*t)))/
+			(pow(a - b,2)*exp((a + b)*t)));
+    pmat[MI(0,3,5)] = (pow(a,2)*b*(exp(a*t)*(-2 + a*t - b*t) + exp(b*t)*(2 + a*t - b*t)))/
+      (pow(a - b,3)*exp((a + b)*t));
+    pmat[MI(0,4,5)] = (-(pow(b,3)*exp(b*t)*(-1 + exp(a*t))) + 
+		       pow(a,3)*exp(a*t)*(-1 + exp(b*t) - b*t) + 
+		       a*pow(b,2)*exp(b*t)*(-3 + 3*exp(a*t) + b*t) + 
+		       pow(a,2)*b*(-3*exp((a + b)*t) - b*exp(b*t)*t + 
+				   exp(a*t)*(3 + b*t)))/(pow(a - b,3)*exp((a + b)*t));
+    pmat[MI(1,2,5)] = -((b*(exp(-(a*t)) - exp(-(b*t))))/(a - b));
+    pmat[MI(1,3,5)] = (a*b*(exp(b*t) + exp(a*t)*(-1 + a*t - b*t)))/
+      (pow(a - b,2)*exp((a + b)*t));
+    pmat[MI(1,4,5)] = 1 - pow(b,2)/(pow(a - b,2)*exp(a*t)) - 
+      (a*(a - 2*b))/(pow(a - b,2)*exp(b*t)) - 
+      (a*b*t)/((a - b)*exp(b*t));
+    pmat[MI(2,3,5)] = -((a*(exp(-(a*t)) - exp(-(b*t))))/(a - b));
+    pmat[MI(2,4,5)] = (a - a/exp(b*t) + b*(-1 + exp(-(a*t))))/(a - b);
+  }
+  else if (all_equal(a,d) && all_equal(b,c) && !all_equal(a,b)){
+    pmat[MI(0,1,5)] = -((a*(exp(-(a*t)) - exp(-(b*t))))/(a - b));
+    pmat[MI(0,2,5)] = (a*b*(exp(b*t) + exp(a*t)*(-1 + a*t - b*t)))/
+      (pow(a - b,2)*exp((a + b)*t));
+    pmat[MI(0,3,5)] = (a*pow(b,2)*(exp(a*t)*(-2 + a*t - b*t) + exp(b*t)*(2 + a*t - b*t)))/
+      (pow(a - b,3)*exp((a + b)*t));
+    pmat[MI(0,4,5)] = (-(pow(b,3)*exp(b*t)*(-1 + exp(a*t))) + 
+		       pow(a,3)*exp(a*t)*(-1 + exp(b*t) - b*t) + 
+		       a*pow(b,2)*exp(b*t)*(-3 + 3*exp(a*t) + b*t) + 
+		       pow(a,2)*b*(-3*exp((a + b)*t) - b*exp(b*t)*t + 
+				   exp(a*t)*(3 + b*t)))/(pow(a - b,3)*exp((a + b)*t));
+    pmat[MI(1,2,5)] = (b*t)/exp(b*t);
+    pmat[MI(1,3,5)] = (pow(b,2)*(exp(b*t) + exp(a*t)*(-1 + a*t - b*t)))/
+      (pow(a - b,2)*exp((a + b)*t));
+    pmat[MI(1,4,5)] = 1 - pow(b,2)/(pow(a - b,2)*exp(a*t)) - 
+      (a*(a - 2*b))/(pow(a - b,2)*exp(b*t)) - 
+      (a*b*t)/((a - b)*exp(b*t));
+    pmat[MI(2,3,5)] = -((b*(exp(-(a*t)) - exp(-(b*t))))/(a - b));
+    pmat[MI(2,4,5)] = (a - a/exp(b*t) + b*(-1 + exp(-(a*t))))/(a - b);
   }
   else if (all_equal(a,b) && all_equal(a,c) && !all_equal(a,d)){
       pmat[MI(0,1,5)] = (a*t)*e1;
@@ -899,6 +956,94 @@ void p5q1_4_6_8_11_12_16(Matrix pmat, double t, vector intens, int *degen){
 	    (c*(1 + e*t))/(1/e3*(c + d - e - f));
 	pmat[MI(2,3,5)] = (e*t)*e3;
 	pmat[MI(2,4,5)] = (-1 + 1/e3 - e*t)*e3;
+    }
+    else if (all_equal(a+b,c+d) && all_equal(e+f,g) && !all_equal(a+b,e+f)){
+      pmat[MI(0,1,5)] = (a*t)/exp((a + b)*t);
+      pmat[MI(0,2,5)] = -((a*c*(-exp((a + b)*t) + exp((e + f)*t)*
+				(1 + a*t + b*t - e*t - f*t)))/
+			  (exp((a + b + e + f)*t)*pow(a + b - e - f,2)));
+      pmat[MI(0,3,5)] = (a*c*e*(exp((a + b)*t)*(-2 + a*t + b*t - e*t - f*t) + 
+				exp((e + f)*t)*(2 + a*t + b*t - e*t - f*t)))/
+	(exp((a + b + e + f)*t)*pow(a + b - e - f,3));
+
+      pmat[MI(0,4,5)] = 1 + (a*(-(1/a) + (c*(a + b - 3*e - f))/pow(a + b - e - f,3)))/
+	exp((a + b)*t) + (2*a*c*e)/
+	(exp((e + f)*t)*pow(a + b - e - f,3)) - 
+	(a*(pow(a,2) + pow(b,2) + 2*c*e + pow(e,2) + c*f + 2*e*f + 
+	    pow(f,2) + a*(2*b - c - 2*(e + f)) - b*(c + 2*(e + f)))*t)/
+	(exp((a + b)*t)*pow(a + b - e - f,2)) - 
+	(a*c*(1 + e*t))/(exp((e + f)*t)*pow(a + b - e - f,2));
+      pmat[MI(1,2,5)] = (c*(-exp(-((a + b)*t)) + exp(-((e + f)*t))))/(a + b - e - f);
+      pmat[MI(1,3,5)] = -((c*e*(-exp((e + f)*t) + exp((a + b)*t)*
+				(1 - a*t - b*t + e*t + f*t)))/
+			  (exp((a + b + e + f)*t)*pow(a + b - e - f,2)));
+      pmat[MI(1,4,5)] = 1 + (c*e)/(exp((e + f)*t)*pow(a + b - e - f,2)) - 
+	(pow(a,2) + pow(b,2) + 2*c*e + pow(e,2) + c*f + 2*e*f + pow(f,2) + 
+	 a*(2*b - c - 2*(e + f)) - b*(c + 2*(e + f)))/
+	(exp((a + b)*t)*pow(a + b - e - f,2)) + 
+	(c*(1 + e*t))/(exp((e + f)*t)*(-a - b + e + f));
+      pmat[MI(2,3,5)] = (e*t)/exp((e + f)*t);
+      pmat[MI(2,4,5)] = (-1 + exp((e + f)*t) - e*t)/exp((e + f)*t);
+    }
+    else if (all_equal(a+b,e+f) && all_equal(c+d,g) && !all_equal(a+b,c+d)){
+      pmat[MI(0,1,5)] = (a*(-exp(-((a + b)*t)) + exp(-((c + d)*t))))/(a + b - c - d);
+      pmat[MI(0,2,5)] = -((a*c*(-exp((a + b)*t) + exp((c + d)*t)*
+				(1 + a*t + b*t - c*t - d*t)))/
+			  (pow(a + b - c - d,2)*exp((a + b + c + d)*t)));
+      pmat[MI(0,3,5)] = (a*c*e*(exp((a + b)*t)*(-2 + a*t + b*t - c*t - d*t) + 
+				exp((c + d)*t)*(2 + a*t + b*t - c*t - d*t)))/
+	(pow(a + b - c - d,3)*exp((a + b + c + d)*t));
+      pmat[MI(0,4,5)] = 1 - (pow(a,2)*(b - 2*c - d) + pow(b - c - d,3) + 
+			     a*(2*pow(b,2) - 5*b*c + 3*pow(c,2) - 4*b*d + 5*c*d + 2*pow(d,2) + 
+				2*c*e))/(pow(a + b - c - d,3)*exp((a + b)*t)) + 
+	(a*c*e)/(pow(a + b - c - d,3)*exp((c + d)*t)) + 
+	(a*c*(a + b - c - d - e)*t)/(pow(a + b - c - d,2)*exp((a + b)*t)) - 
+	(a*(pow(a,2) + pow(b,2) + c*d + pow(d,2) - c*e - pow(c,2)*e*t - 
+	    c*d*e*t + b*(-c - 2*d + c*e*t) + a*(2*b - c - 2*d + c*e*t)))/
+	(pow(a + b - c - d,3)*exp((c + d)*t));
+      pmat[MI(1,2,5)] = (c*(exp(-((a + b)*t)) - exp(-((c + d)*t))))/(-a - b + c + d);
+      pmat[MI(1,3,5)] = -((c*e*(-exp((c + d)*t) + exp((a + b)*t)*
+				(1 - a*t - b*t + c*t + d*t)))/
+			  (pow(a + b - c - d,2)*exp((a + b + c + d)*t)));
+      pmat[MI(1,4,5)] = 1 - (c*(-a - b + c + d + e))/(pow(a + b - c - d,2)*exp((a + b)*t)) - 
+	(pow(a,2) + pow(b,2) + a*(2*b - c - 2*d) + c*d + pow(d,2) - 
+	 b*(c + 2*d) - c*e)/(pow(a + b - c - d,2)*exp((c + d)*t)) + 
+	(c*e*t)/((-a - b + c + d)*exp((c + d)*t));
+      pmat[MI(2,3,5)] = (e*(-exp(-((a + b)*t)) + exp(-((c + d)*t))))/(a + b - c - d);
+      pmat[MI(2,4,5)] = (a - a/exp((a + b)*t) + ((b - c - d)*exp((c + d)*t)*
+						 (-1 + exp((a + b)*t)) + 
+						 e*(-exp((a + b)*t) + exp((c + d)*t)))/
+			 exp((a + b + c + d)*t))/(a + b - c - d);
+    }
+    else if (all_equal(a+b,g) && all_equal(c+d,e+f) && !all_equal(a+b,c+d)){
+      pmat[MI(0,1,5)] = (a*(-exp(-((a + b)*t)) + exp(-((c + d)*t))))/(a + b - c - d);
+      pmat[MI(0,2,5)] = (a*c*(exp((c + d)*t) + exp((a + b)*t)*(-1 + a*t + b*t - c*t - d*t)))/
+	(pow(a + b - c - d,2)*exp((a + b + c + d)*t));
+      pmat[MI(0,3,5)] = (a*c*e*(exp((a + b)*t)*(-2 + a*t + b*t - c*t - d*t) + 
+				exp((c + d)*t)*(2 + a*t + b*t - c*t - d*t)))/
+	(pow(a + b - c - d,3)*exp((a + b + c + d)*t));
+      pmat[MI(0,4,5)] = 1 - (pow(a,2)*(b - d) + pow(b - c - d,3) + 
+			     a*(2*pow(b,2) - 3*b*c + pow(c,2) - 4*b*d + 3*c*d + 2*pow(d,2) + 
+				2*c*e))/(pow(a + b - c - d,3)*exp((a + b)*t)) + 
+	(a*c*(a + b - c - d + e))/(pow(a + b - c - d,3)*exp((c + d)*t)) - 
+	(a*c*e*t)/(pow(a + b - c - d,2)*exp((a + b)*t)) + 
+	(a*(-pow(a,2) - 2*a*b - pow(b,2) + 2*a*c + 2*b*c - pow(c,2) + 
+	    2*a*d + 2*b*d - 2*c*d - pow(d,2) + c*e + 
+	    c*(a + b - c - d)*(-a - b + c + d - e)*t))/
+	(pow(a + b - c - d,3)*exp((c + d)*t));
+      pmat[MI(1,2,5)] = (c*t)/exp((c + d)*t);
+      pmat[MI(1,3,5)] = -((c*e*(-exp((c + d)*t) + exp((a + b)*t)*
+				(1 - a*t - b*t + c*t + d*t)))/
+			  (pow(a + b - c - d,2)*exp((a + b + c + d)*t)));
+      pmat[MI(1,4,5)] = 1 - (c*e)/(pow(a + b - c - d,2)*exp((a + b)*t)) - 
+	(pow(a,2) + pow(b,2) + pow(c,2) + 2*a*(b - c - d) + 2*c*d + 
+	 pow(d,2) - 2*b*(c + d) - c*e)/
+	(pow(a + b - c - d,2)*exp((c + d)*t)) - 
+	(c*(-a - b + c + d - e)*t)/((-a - b + c + d)*exp((c + d)*t));
+      pmat[MI(2,3,5)] = (e*(-exp(-((a + b)*t)) + exp(-((c + d)*t))))/(a + b - c - d);
+      pmat[MI(2,4,5)] = (a + b - c - d + e/exp((a + b)*t) - a/exp((c + d)*t) - 
+			 b/exp((c + d)*t) + c/exp((c + d)*t) + d/exp((c + d)*t) - 
+			 e/exp((c + d)*t))/(a + b - c - d);
     }
     else if (all_equal(a+b,c+d) && all_equal(a+b,e+f) && !all_equal(a+b,g)){
 	pmat[MI(0,1,5)] = (a*t)*e1;

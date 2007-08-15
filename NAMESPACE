@@ -16,6 +16,7 @@ logLik.msm,
 odds.msm,
 persp.msm,
 plot.msm,
+plot.prevalence.msm,
 pmatrix.msm,
 pmatrix.piecewise.msm,
 prevalence.msm,
@@ -67,6 +68,7 @@ importFrom(graphics, persp)
 importFrom(graphics, contour)
 importFrom(graphics, image)
 importFrom(stats, coef)
+importFrom(mvtnorm, rmvnorm)
 
 S3method(print, msm)
 S3method(summary, msm)

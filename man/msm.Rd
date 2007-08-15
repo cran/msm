@@ -61,7 +61,9 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     0.1 from health to disease, 0.01 from health to death, 0.1 from disease to health, 
     and 0.2 from disease to death.  The initial intensities given here
     are with any covariates set to their means in the data (or set to
-    zero, if \code{center} = FALSE). 
+    zero, if \code{center} = FALSE). If any intensities are constrained
+    to be equal using \code{qconstraint}, then the initial value is
+    taken from the first of these (reading across rows). 
   }
 
   \item{gen.inits}{If \code{TRUE}, then initial values for the
@@ -94,6 +96,10 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     represents a model in which misclassifications are only permitted
     between adjacent states. 
 
+    If any probabilities are constrained to be equal using
+    \code{econstraint}, then the initial value is
+    taken from the first of these (reading across rows).
+    
     For an alternative way of specifying misclassification models, see
     \code{hmodel}.
   }
@@ -116,7 +122,12 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     \code{hmodel = list(hmmNorm(mean=100, sd=16), hmmNorm(mean=54, sd=18), hmmIdent(999))}
 
     The mean and standard deviation parameters are estimated starting
-    from these initial values.  See the \code{\link{hmm-dists}} help page
+    from these initial values. If multiple parameters are constrained
+    to be equal using \code{hconstraint}, then the initial value is
+    taken from the value given on the first occasion that
+    parameter appears in \code{hmodel}. 
+
+    See the \code{\link{hmm-dists}} help page
     for details of the constructor functions for each available distribution. 
     
     A misclassification model, that is, a hidden Markov model where
@@ -294,16 +305,19 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     }
 
   \item{hcovinits}{
-    Initial values for the hidden Markov model covariates. A list of the
+    Initial values for the hidden Markov model covariate effects. A list of the
     same length as \code{hcovariates}. Each element is a vector with
-    initial values for each covariate on that state.  For example, the
+    initial values for the effect of each covariate on that state.  For example, the
     above \code{hcovariates} can be initialised with 
     \code{hcovariates = list(c(-8, 0), -8, NULL)}. Initial values must
     be given for all or no covariates, if none are given these are all
     set to zero.  The initial value given in the \code{hmodel}
     constructor function for the corresponding baseline parameter is
     interpreted as the value of that parameter with any covariates fixed
-    to their means in the data.
+    to their means in the data.  If multiple effects are constrained
+    to be equal using \code{hconstraint}, then the
+    initial value is taken from the first of the multiple initial values
+    supplied. 
     }
 
   \item{hconstraint}{
@@ -403,13 +417,21 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     specify corresponding true states explicitly, use a \code{censor.states}
     argument. 
 
-    Note that \code{censor} is not just for handling the familiar
-    unobserved end-points of survival data.  Markov models with
-    piecewise constant transition intensities can be constructed by
-    inserting censored states in the data on occasions when a
-    piecewise constant covariate is known to change but the true state
-    is unknown.
-    }
+    Note that in contrast to the usual terminology of survival
+    analysis, here it is the state which is considered to be censored,
+    rather than the event time.  If at the end of a study, an individual
+    has not died, but their true state is \emph{known}, then \code{censor} is
+    unnecessary, since the standard multi-state model likelihood is
+    applicable. 
+    
+    Note in particular that general time-inhomogenous Markov models with
+    piecewise constant transition
+    intensities can be constructed using the \code{censor}
+    facility. Insert censored states in the data on occasions when a
+    piecewise constant covariate is known to change but the true state is unknown.
+    That covariate may represent time itself, or some other
+    time-dependent variable. 
+  }
 
   \item{censor.states}{
     Specifies the underlying states which censored observations can
@@ -448,6 +470,10 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     initial state occupancy probabilities (excluding the first
     probability, which is fixed at one minus the sum of the others).
 
+    If there are equality constraints on certain parameters, then    
+    \code{fixedpars} refers to the set of unique parameters, excluding
+    those which are constrained to be equal to previous parameters. 
+    
     For covariates on misclassification probabilities, this is a change
     from version 0.4 in the parameter ordering. Previously these were
     ordered by misclassification probabilities within covariates. 
@@ -611,7 +637,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   next time point, conditionally on the state at the current time. These
   are more appropriately fitted using multinomial logistic regression,
   for example, using \code{\link{multinom}} from the
-  R package \pkg{nnet} (Venables and Ripley, 2002)
+  R package \pkg{nnet} (Venables and Ripley, 2002).
 
   For simple continuous-time multi-state Markov models,
   the likelihood is calculated in terms of the transition intensity
