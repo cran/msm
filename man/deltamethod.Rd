@@ -29,7 +29,6 @@ deltamethod(g, mean, cov, ses=TRUE)
     \item{ses}{If \code{TRUE}, then the standard errors of \eqn{g_1(X), g_2(X),\ldots}{g1(X), g2(X),\ldots} are
       returned. Otherwise the covariance matrix of \eqn{g(X)} is returned.}
   }
-}
 \value{
   A vector containing the standard errors of \eqn{g_1(X), g_2(X), \ldots}{g1(X), g2(X), \ldots}
   or a matrix containing the covariance of \eqn{g(X)}.
@@ -55,8 +54,7 @@ deltamethod(g, mean, cov, ses=TRUE)
   of transformations of parameters. See \code{\link{boot.msm}}.  
 }
 \references{Oehlert, G. W. \emph{A note on the delta method}. American
-  Statistician 46(1), 1992}}
-}
+  Statistician 46(1), 1992}
 \examples{
 
 ## Simple linear regression, E(y) = alpha + beta x 

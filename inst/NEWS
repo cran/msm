@@ -3,6 +3,13 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.7.4  (2007-10-01)
+-------------
+
+* Minor changes to satisfy the package-building tools in the new R
+  version 2.6.0.
+
+
 Version 0.7.3  (2007-08-15)
 -------------
 
