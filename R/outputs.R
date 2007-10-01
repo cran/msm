@@ -406,7 +406,7 @@ qematrix.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALSE, 
 
 print.msm.est <- function(x, digits=NULL, ...)
 {
-  if(!is.null(x$estimates))
+  if (is.list(x))
     print.ci(x$estimates, x$L, x$U, digits=digits)
   else print(unclass(x))
 }

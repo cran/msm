@@ -23,7 +23,9 @@ prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="mean",
     times given in the data. }
   \item{initstates}{Optional vector of the same length as the number of
     states. Gives the numbers of individuals occupying each state at the
-    initial time. The default is those observed in the data. }
+    initial time, to be used for forecasting expected prevalences.
+    The default is those observed in the data.  These should add up to
+    the actual number of people in the study at the start. }
   \item{covariates}{Covariate values for which to forecast expected
     state occupancy.  See \code{\link{qmatrix.msm}}.  Defaults to the
     mean values of the covariates in the data set.}
@@ -140,7 +142,7 @@ The component
 }
 
 \seealso{
-  \code{\link{msm}}, \code{\link{summary.msm}}}
+  \code{\link{msm}}, \code{\link{summary.msm}}
 }
 
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}

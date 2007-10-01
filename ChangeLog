@@ -1,3 +1,12 @@
+2007-10-01 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* src/Makevars: CR endings removed to satisfy R CMD CHECK in R 2.6.0
+
+	* R/outputs.R(print.msm.est): test for CI using is.list(), since $
+	on an atomic object fails in R 2.7.0 instead of returning NULL.
+	
+	* DESCRIPTION: Version 0.7.4 released.  Use standardised license string.
+
 2007-08-15 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* DESCRIPTION: Version 0.7.3 released.
