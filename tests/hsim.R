@@ -142,6 +142,15 @@ stopifnot (all (sim.hid$hmodel$ci [3:4,1] <= c(5, 0.3)  &  sim.hid$hmodel$ci [3:
 stopifnot (all (qmatrix.msm(sim.hid)$L <= three.q &  qmatrix.msm(sim.hid)$U >= three.q))
 
 
+### BETA 
+
+hmodel3 <- list(hmmBeta(0.6, 0.3), hmmBeta(0.3, 0.6), hmmIdent(999))
+set.seed(22061976)
+sim2.df <- simmulti.msm(sim.df[,1:2], qmatrix=three.q, hmodel = hmodel3)
+hmodel3 <- list(hmmBeta(0.3, 0.6), hmmBeta(0.6, 0.3), hmmIdent(999))
+sim.hid <- msm(obs ~ time, subject=subject, data=sim2.df, qmatrix=three.q, hmodel=hmodel3,
+               method="BFGS", control=list(trace=3, REPORT=1), fixedpars=FALSE)
+
 
 ### TRUNCATED NORMAL
 ### Again watch out for dodgy local maxima

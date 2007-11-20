@@ -7,7 +7,7 @@
   model at a given set of covariate values. 
 }
 \usage{
-ematrix.msm(x, covariates="mean", ci=c("delta","normal","bootstrap"), cl=0.95, B=1000)
+ematrix.msm(x, covariates="mean", ci=c("delta","normal","bootstrap","none"), cl=0.95, B=1000)
 }
 \arguments{
   
@@ -65,6 +65,9 @@ ematrix.msm(x, covariates="mean", ci=c("delta","normal","bootstrap"), cl=0.95, B
   \item{L}{Lower confidence limits.}
   \item{U}{Upper confidence limits.}
 
+  Or if \code{ci="none"}, then \code{ematrix.msm} just returns the
+  estimated misclassification probability matrix. 
+  
   The default print method for objects returned by
   \code{\link{ematrix.msm}} presents estimates and confidence limits. To
   present estimates and standard errors, do something like 

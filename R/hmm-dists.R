@@ -151,6 +151,14 @@ hmmNBinom <- function(disp, prob)
                match.call())
   }
 
+hmmBeta <- function(shape1, shape2)
+  {
+      hmmDIST (label = "beta",
+               link = "log",
+               r = function(n) rbeta(n, shape1, shape2),
+               match.call())
+  }
+
 hmmTNorm <- function(mean, sd, lower=-Inf, upper=Inf)
   {
       hmmDIST (label = "truncnorm",

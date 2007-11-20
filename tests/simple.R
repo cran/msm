@@ -1,7 +1,7 @@
 source("local.R")
 library(msm)
 #library(msm, lib.loc="~/lib/R")
-#library(msm, lib.loc="~/msm/lib/sun/0.7")
+#library(msm, lib.loc="~/msm/lib/sun/0.7.5")
 data(heart)
 
 ### TESTS FOR SIMPLE NON-HIDDEN MARKOV MODELS
@@ -108,6 +108,13 @@ system.time(psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
 stopifnot(isTRUE(all.equal(1114.89946121717, psor.msm$minus2loglik, tol=1e-06)))
 stopifnot(isTRUE(all.equal(0.0953882330391683, qmatrix.msm(psor.msm)$estimates[1,2], tol=1e-03)))
 
+
+## pears <- pearsonnondeathbasic.msm(psor.msm, obgroups=2, timegroups=2, covgroupings=2, covvec = unlist(psor.msm$data$cov))
+## names(pears)
+## sum(pears$extable)
+## sum(pears$obstable)
+## sum(psor.msm$data$nocc)
+
 ## Constrain some covariate effects to be minus others
 psor.constr.msm <- msm(state ~ months, subject=ptnum, data=psor,
                 qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn,
@@ -128,6 +135,21 @@ stopifnot(isTRUE(all.equal(psor.constr.msm$Qmatrices$ollwsdrt[1,2], -psor.constr
 heart.msm <- msm( state ~ years, subject=PTNUM, data = heart,
                  qmatrix = twoway4.q, death = FALSE, fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4833.0064065267, heart.msm$minus2loglik, tol=1e-06)))
+
+## how big a dataset can 
+if (0) { 
+  c3.df <- NULL
+  for (i in 1:10) {c22.df <- c2.df; c22.df$PTNUM <- c2.df$PTNUM + 120000*(i-1); c3.df <- rbind(c3.df, c22.df)}
+  length(unique(c2.df$PTNUM))
+  length(unique(c3.df$PTNUM))
+  qx <- rbind( c(0, 0.005, 0, 0, 0), c(0, 0, 0.01, 0.02,0), c(0, 0, 0, 0.04, 0.03), c(0, 0, 0, 0, 0), c(0, 0, 0, 0, 0))
+  c2.msm <- msm(state~years, subject=PTNUM, data=c2.df,
+                qmatrix=qx, death=c(4, 5), method="BFGS", 
+                control=list(trace=1, REPORT=1, fnscale=100000))
+  c3.msm <- msm(state~years, subject=PTNUM, data=c3.df,
+                qmatrix=qx, death=c(4, 5), method="BFGS", 
+                control=list(trace=1, REPORT=1, fnscale=100000))
+}
 
 ## Multiple death states (Jean-Luc's data)
 if (developer.local) {
@@ -220,7 +242,6 @@ p <- pmatrix.msm(psor.msm, t=10, covariates=list(ollwsdrt=0.1, hieffusn=0.2))
 stopifnot(isTRUE(all.equal(0.18196160265907, p[1,3], tol=1e-04)))
 
 set.seed(22061976); stopifnot(isTRUE(all.equal(0.132458837652275, pmatrix.msm(psor.msm, ci="normal", B=3)$L[2,3], tol=1e-04)))
-set.seed(22061976); stopifnot(isTRUE(all.equal(0.108510190194430, pmatrix.msm(psor.msm, ci="boot", B=3)$L[2,3], tol=1e-04)))
 
 q <- qratio.msm(psor.msm, c(1,2), c(2,3))
 stopifnot(isTRUE(all.equal(c(0.583878474075081, 0.0996029045389022, 0.417943274168735, 0.815694601537263), as.numeric(q), tol=1e-04)))
@@ -330,11 +351,13 @@ stopifnot(isTRUE(all.equal(0.0526636335836266, p[1,3], tol=1e-04)))
 p <- pmatrix.piecewise.msm(psor.msm, 0, 3, times, covariates)
 stopifnot(isTRUE(all.equal(0.0526636335836266, p[1,3], tol=1e-04)))
 p <- pmatrix.piecewise.msm(psor.msm, 0, 7, times, covariates)
-stopifnot(isTRUE(all.equal(0.172773087945103, p[1,3], tol=1e-04)))  # FIXME TODO
+stopifnot(isTRUE(all.equal(0.172773087945103, p[1,3], tol=1e-04)))
 p <- pmatrix.piecewise.msm(psor.msm, 0, 19, times, covariates)
 stopifnot(isTRUE(all.equal(0.0510873669808412, p[1,3], tol=1e-04)))
 p <- pmatrix.msm(psor.msm, 5, covariates[[1]]) %*% pmatrix.msm(psor.msm, 5, covariates[[2]]) %*% pmatrix.msm(psor.msm, 5, covariates[[3]]) %*% pmatrix.msm(psor.msm, 4, covariates[[4]])
 stopifnot(isTRUE(all.equal(0.0510873669808412, p[1,3], tol=1e-04)))
+
+p <- prevalence.msm(psor.msm, piecewise.times=times, piecewise.covariates=covariates, plot=TRUE)
 
 
 ## bug with one time in 0.5
@@ -384,6 +407,27 @@ heartfaccov.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = two
                        covinits=list(pdiagHyper=rep(0.1,7),pdiagIDC=rep(0.1,7),pdiagIHD=rep(0.1,7),pdiagOther=rep(0.1,7),pdiagRestr=rep(0.1,7)), fixedpars=TRUE) # OK
 stopifnot(isTRUE(all.equal(4793.11816516565, heartfaccov.msm$minus2loglik, tol=1e-06)))
 
+### Factor covariates with bootstrap refitting 
+if (0) { 
+    psor2 <- psor
+    psor2$ollwsdrt <- sample(c(0,1,2), size=nrow(psor), replace=TRUE)
+    psor2$ollwsdrt <- ifelse(psor2$ollwsdrt==0, "foo", ifelse(psor2$ollwsdrt==1, "bar", "boing"))
+#    psor2$state[psor2$state==4][1:5] <- 99
+    system.time(psor2.msm <- msm(state ~ months, subject=ptnum, data=psor2,
+                                 qmatrix = psor.q, covariates = ~factor(ollwsdrt) + hieffusn, # covinits=list(hieffusn = c(0.5, 0.1, 0), ollwsdrt=c(0.2, 0.1, -0.1)),
+                                 constraint = list(hieffusn=c(1,1,1)), # censor=99, censor.states=c(3,4),
+                                 fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS"))
+    pmatrix.msm(psor2.msm, ci="boot", B=5, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo"))
+    qmatrix.msm(psor2.msm, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo"))
+    qmatrix.msm(psor2.msm, ci="normal", B=50, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo"))
+    qmatrix.msm(psor2.msm, ci="boot", B=3, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo"))
+    qratio.msm(psor2.msm, c(1,2), c(2,3), ci="delta", covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo")) # 
+    qratio.msm(psor2.msm, c(1,2), c(2,3), ci="normal", B=50, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo")) # 
+    qratio.msm(psor2.msm, c(1,2), c(2,3), ci="boot", B=3, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo")) # 
+    sojourn.msm(psor2.msm, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo"))
+    sojourn.msm(psor2.msm, ci="normal", B=2, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo"))
+    sojourn.msm(psor2.msm, ci="boot", B=3, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo"))
+}
 
 ### Test new way of supplying factor covariates to output functions
 if (developer.local) {
@@ -449,13 +493,18 @@ stopifnot(isTRUE(all.equal(4724.26606344485, heartcens.msm$minus2loglik, tol=1e-
 
 ### Censored observations - two kinds of censoring
 statetable.msm(state, PTNUM, heart.cens2)
-heartcens.msm <- msm(state ~ years, subject=PTNUM, data=heart.cens2, qmatrix=twoway4.q, censor=c(99, 999), censor.states=list(c(1,2,3), c(2,3)), fixedpars=TRUE)
-stopifnot(isTRUE(all.equal(4678.23348518727, heartcens.msm$minus2loglik, tol=1e-06)))
+heartcens2.msm <- msm(state ~ years, subject=PTNUM, data=heart.cens2, qmatrix=twoway4.q, censor=c(99, 999), censor.states=list(c(1,2,3), c(2,3)), fixedpars=TRUE)
+stopifnot(isTRUE(all.equal(4678.23348518727, heartcens2.msm$minus2loglik, tol=1e-06)))
 
 ### Censored observations - intermediate state censored
 statetable.msm(state, PTNUM, heart.cens3)
-heartcens.msm <- msm(state ~ years, subject=PTNUM, data=heart.cens3, qmatrix=twoway4.q, censor=c(99, 999), censor.states=list(c(2,3), c(1,2,3)), fixedpars=TRUE)
-stopifnot(isTRUE(all.equal(4680.66073438518, heartcens.msm$minus2loglik, tol=1e-06)))
+heartcens3.msm <- msm(state ~ years, subject=PTNUM, data=heart.cens3, qmatrix=twoway4.q, censor=c(99, 999), censor.states=list(c(2,3), c(1,2,3)), fixedpars=TRUE)
+stopifnot(isTRUE(all.equal(4680.66073438518, heartcens3.msm$minus2loglik, tol=1e-06)))
+
+### First state censored 
+heart.cens4 <- heart
+heart.cens4$state[c(1,8,12,22)] <- 99
+heartcens4.msm <- msm(state ~ years, subject=PTNUM, data=heart.cens4, qmatrix=twoway4.q, censor=c(99), censor.states=list(c(2,3)), fixedpars=TRUE)
 
 ### crudeinits with censoring
 try(crudeinits.msm(state~ years, PTNUM, twoway4.q, heart.cens))
@@ -465,6 +514,21 @@ cru <- crudeinits.msm(state~ years, PTNUM, twoway4.q, heart.cens2, censor=c(99,9
 stopifnot(isTRUE(all.equal(c(-0.107299472349819, 0.134927714425074, 0, 0, 0.0697104852209013, -0.369584609077378, 0.0789635719132074, 0, 0, 0.158393403890305, -0.170075385659216, 0, 0.0375889871289174, 0.0762634907619986, 0.0911118137460085, 0), as.numeric(cru), tol=1e-06)))
 cru <- crudeinits.msm(state~ years, PTNUM, twoway4.q, heart.cens3, censor=c(99,999), censor.states=list(c(2,3),c(1,2,3)))
 stopifnot(isTRUE(all.equal(c(-0.112107245394208, 0.124370575094641, 0, 0, 0.0686998668421821, -0.370347934726264, 0.0659650781282531, 0, 0, 0.135425737325276, -0.238489128617530, 0, 0.0434073785520255, 0.110551622306348, 0.172524050489277, 0), as.numeric(cru), tol=1e-06)))
+
+### Viterbi to predict censored states 
+v <- viterbi.msm(heartcens.msm)
+stopifnot(all.equal(v$observed[v$observed<10], v$fitted[v$observed<10])) # non-censored states should be the same
+stopifnot(v$fitted[v$observed==99][1] == 3)
+v <- viterbi.msm(heartcens2.msm)
+stopifnot(all.equal(v$observed[v$observed<10], v$fitted[v$observed<10])) # non-censored states should be the same
+stopifnot(v$fitted[v$observed==99][1] == 3)
+v <- viterbi.msm(heartcens3.msm)
+stopifnot(all.equal(v$observed[v$observed<10], v$fitted[v$observed<10])) # non-censored states should be the same
+stopifnot(all(v$fitted[v$observed==99] %in% 2:3))
+stopifnot(all(v$fitted[v$observed==999] %in% 1:3))
+v <- viterbi.msm(heartcens4.msm)
+stopifnot(all(v$fitted[v$observed==99] %in% 2:3))
+
 
 ### Death with state at previous instant known - HIV model
 heart.dp <- heart

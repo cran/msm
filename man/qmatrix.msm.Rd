@@ -8,7 +8,7 @@
 }
 \usage{
 qmatrix.msm(x, covariates="mean", sojourn=FALSE,
-            ci=c("delta","normal","bootstrap"), cl=0.95, B=1000)
+            ci=c("delta","normal","bootstrap","none"), cl=0.95, B=1000)
 }
 \arguments{
  
@@ -71,6 +71,9 @@ qmatrix.msm(x, covariates="mean", sojourn=FALSE,
   \item{L}{Lower confidence limits}
 
   \item{U}{Upper confidence limits}
+
+  Or if \code{ci="none"}, then \code{qmatrix.msm} just returns the
+  estimated transition intensity matrix. 
   
   If \code{sojourn} is \code{TRUE}, extra components called
   \code{sojourn}, \code{sojournSE}, \code{sojournL} and \code{sojournU} are included, containing the

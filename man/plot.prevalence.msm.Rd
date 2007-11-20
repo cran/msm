@@ -9,17 +9,41 @@
   solid lines, expected prevalences as dashed lines. 
 }
 \usage{
-plot.prevalence.msm(x, mintime, maxtime, interp, ...)
+plot.prevalence.msm(x, mintime=NULL, maxtime=NULL, timezero=NULL,
+                    initstates=NULL, interp=c("start","midpoint"),
+                    covariates="mean", misccovariates="mean",
+                    piecewise.times=NULL, piecewise.covariates=NULL, ...)
 }
 \arguments{
-    \item{x}{A fitted multi-state model produced by \code{\link{msm}}.}
-    \item{mintime}{Minimum time at which to compute the observed and
-      expected prevalences of states.}
-    \item{maxtime}{Maximum time at which to compute the observed and
-      expected prevalences of states.}
-    \item{interp}{Interpolation method for observed states, see \code{\link{prevalence.msm}}}
-    \item{...}{Further arguments to be passed to the generic \code{\link{plot}}
-      function.}
+  \item{x}{A fitted multi-state model produced by \code{\link{msm}}.}
+  \item{mintime}{Minimum time at which to compute the observed and
+    expected prevalences of states.}
+  \item{maxtime}{Maximum time at which to compute the observed and
+    expected prevalences of states.}
+  \item{timezero}{Initial time of the Markov process. Expected values
+    are forecasted from here. Defaults to the minimum of the observation
+    times given in the data. }
+  \item{initstates}{Optional vector of the same length as the number of
+    states. Gives the numbers of individuals occupying each state at the
+    initial time, to be used for forecasting expected prevalences.
+    The default is those observed in the data.  These should add up to
+    the actual number of people in the study at the start. }
+  \item{interp}{Interpolation method for observed states, see
+    \code{\link{prevalence.msm}}}
+  \item{covariates}{Covariate values for which to forecast expected
+    state occupancy.  See \code{\link{qmatrix.msm}}.  Defaults to the
+    mean values of the covariates in the data set.}
+  \item{misccovariates}{(Misclassification models only) Values of covariates on the misclassification
+    probability matrix for which to forecast expected state occupancy.
+    Defaults to the mean values of the covariates in the data set.}
+  \item{piecewise.times}{Times at which piecewise-constant intensities
+    change. See \code{\link{pmatrix.piecewise.msm}} for how
+    to specify this.}
+  \item{piecewise.covariates}{Covariates on which the piecewise-constant
+    intensities depend. See \code{\link{pmatrix.piecewise.msm}} for how
+    to specify this.}
+  \item{...}{Further arguments to be passed to the generic \code{\link{plot}}
+    function.}
 }
 \value{
 }

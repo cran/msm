@@ -14,6 +14,7 @@
 \alias{hmmMETNorm}
 \alias{hmmMEUnif}
 \alias{hmmNBinom}
+\alias{hmmBeta}
 \title{Hidden Markov model constructors}
 
 \description{  
@@ -38,6 +39,7 @@ hmmTNorm(mean, sd, lower, upper)
 hmmMETNorm(mean, sd, lower, upper, sderr, meanerr=0)
 hmmMEUnif(lower, upper, sderr, meanerr=0)
 hmmNBinom(disp, prob)
+hmmBeta(shape1,shape2)
 }
 \arguments{
 
@@ -51,9 +53,9 @@ hmmNBinom(disp, prob)
 
   \code{hmmUnif}, \code{hmmNorm}, \code{hmmLNorm}, \code{hmmExp},
   \code{hmmGamma}, \code{hmmWeibull}, \code{hmmPois}, \code{hmmBinom}, 
-   \code{hmmTNorm} and \code{hmmNBinom} represent Uniform, Normal,
-   log-Normal, exponential, Gamma, Weibull, Poisson, Binomial, truncated Normal and
-  negative binomial distributions, respectively, with parameterisations
+   \code{hmmTNorm}, \code{hmmNBinom} and \code{hmmBeta} represent Uniform, Normal,
+   log-Normal, exponential, Gamma, Weibull, Poisson, Binomial, truncated Normal,
+  negative binomial and beta distributions, respectively, with parameterisations
   the same as the default parameterisations in the corresponding base R
   distribution functions. 
   
@@ -99,7 +101,10 @@ the truncated Normal distribution.
     Gamma or Weibull distribution (see \code{\link{dgamma}},
     \code{\link{dweibull}}). } 
 
-  \item{scale}{ (\code{hmmGamma}) Shape parameter of a Gamma
+  \item{shape1,shape2}{First and second parameters of a beta
+    distribution (see \code{\link{dbeta}}).}
+  
+  \item{scale}{ (\code{hmmGamma}) Scale parameter of a Gamma
     distribution (see \code{\link{dgamma}}). }
   
   \item{size}{Order of a Binomial distribution (see \code{\link{dbinom}}).}
