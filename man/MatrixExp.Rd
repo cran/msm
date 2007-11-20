@@ -10,7 +10,7 @@ MatrixExp(mat, t = 1, n = 20, k = 3, method="pade")
 }
 \arguments{
   \item{mat}{A square matrix}
-  \item{t}{An optional scaling factor for the eigenvalues of \code{mat}}
+  \item{t}{An optional scaling factor, or a vector or scaling factors, for the eigenvalues of \code{mat}}
   \item{n}{Number of terms in the series approximation to the
     exponential}
   \item{k}{Underflow correction factor, for the series approximation}
@@ -19,7 +19,8 @@ MatrixExp(mat, t = 1, n = 20, k = 3, method="pade")
   }
 }
 \value{
-  The exponentiated matrix \eqn{\exp(mat)}{exp(mat)}.
+  The exponentiated matrix \eqn{\exp(mat)}{exp(mat)}. Or, if \code{t} is
+  a vector of length 2 or more, an array of exponentiated matrices. 
 }
 \details{
   The exponential \eqn{E} of a square matrix \eqn{M} is calculated as 

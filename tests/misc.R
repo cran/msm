@@ -3,7 +3,7 @@
 source("local.R")
 
 library(msm)
-#library(msm, lib.loc="../../lib/mac/0.7.1")
+# library(msm, lib.loc="../../lib/sun/0.7.5")
 data(heart)
 oneway4.q <- rbind(c(0, 0.148, 0, 0.0171), c(0, 0, 0.202, 0.081), c(0, 0, 0, 0.126), c(0, 0, 0, 0))
 rownames(oneway4.q) <- colnames(oneway4.q) <- c("Well","Mild","Severe","Death")
@@ -405,6 +405,14 @@ misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
                 misccovariates=~firstobs, misccovinits = list(firstobs=rep(-1e+06,4)))
 stopifnot(all.equal(misc.msm$minus2loglik, 4165.84711809003))
 
+### ignore default initprobs if first obs is true state 2 
+heart2 <- heart
+heart2$state[heart2$firstobs==1] <- 2
+misc.msm <- msm(state ~ years, subject = PTNUM, data = heart2, obstrue=firstobs,
+                qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=TRUE)
+misc.msm
+
+### why nan on old version with initp 0,1,0,0 ? 
 
 ### Are new results same as old when only two classification probs?
 ### slightly diff with no covs: numeric fuzz due to different scale of opt.

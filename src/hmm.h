@@ -16,3 +16,4 @@ double hmmTNorm(double x, double *pars);
 double hmmMETNorm(double x, double *pars);
 double hmmMEUnif(double x, double *pars);
 double hmmNBinom(double x, double *pars);
+double hmmBeta(double x, double *pars);

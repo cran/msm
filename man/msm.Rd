@@ -354,7 +354,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     \code{est.initprobs}), then this defaults to equal probability for
     each state.  Otherwise this defaults to
     \code{c(1, rep(0, nstates-1))}, that is, in state 1 with a
-    probability of 1.  Scaled to sum to 1 if necessary. 
+    probability of 1.  Scaled to sum to 1 if necessary.  The state 1
+    occupancy probability should be non-zero. 
   }
 
   \item{est.initprobs}{If \code{TRUE}, then the underlying state
@@ -362,7 +363,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     starting from initial values taken from the \code{initprobs}
     argument.  Structural zeroes are allowed: if any of these initial
     values are zero they will be fixed at zero during optimisation, and
-    no covariate effects on them are estimated.
+    no covariate effects on them are estimated.  The exception is 
+    state 1, which should have non-zero occupancy probability.
 
     Be warned that if any of these initial values are 1,
     then \code{\link{optim}} will give an "non-finite value" error,
@@ -379,9 +381,10 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   \item{initcovariates}{ Formula representing covariates on the initial
     state occupancy probabilities, via multinomial logistic regression.  The
     linear effects of these covariates, observed at the individual's first
-    observation time, operate on the ratio of the state \eqn{r}
+    observation time, operate on the log ratio of the state \eqn{r}
     occupancy probability to the state 1 occupancy probability, for each 
-    \eqn{r = 2} to the number of states.  If \code{est.initprobs} is
+    \eqn{r = 2} to the number of states.  Thus the state 1 occupancy
+    probability should be non-zero. If \code{est.initprobs} is
     \code{TRUE}, these effects are estimated starting from their initial
     values.  If \code{est.initprobs} is \code{FALSE}, these effects are fixed at
     theit initial values.}
@@ -391,7 +394,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     to a covariate, as in \code{covinits}. Each element is a vector with
     (1 - number of states) elements, containing the initial values for
     the linear effect of that covariate on the log odds of that state
-    relative to state, from state 2 to the final state.  If
+    relative to state 1, from state 2 to the final state.  If
     \code{initcovinits} is not specified, all covariate effects are
     initialised to zero.}
 
@@ -418,8 +421,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     argument. 
 
     Note that in contrast to the usual terminology of survival
-    analysis, here it is the state which is considered to be censored,
-    rather than the event time.  If at the end of a study, an individual
+    analysis, here it is the \emph{state} which is considered to be censored,
+    rather than the \emph{event time}.  If at the end of a study, an individual
     has not died, but their true state is \emph{known}, then \code{censor} is
     unnecessary, since the standard multi-state model likelihood is
     applicable. 
@@ -427,9 +430,10 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     Note in particular that general time-inhomogenous Markov models with
     piecewise constant transition
     intensities can be constructed using the \code{censor}
-    facility. Insert censored states in the data on occasions when a
-    piecewise constant covariate is known to change but the true state is unknown.
-    That covariate may represent time itself, or some other
+    facility. If the true state is unknown on occasions when a
+    piecewise constant covariate is known to change, then censored
+    states can be inserted in the data on those occasions.
+    The covariate may represent time itself, or some other
     time-dependent variable. 
   }
 
@@ -636,7 +640,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   purely governed by the probability distributions of the state at the
   next time point, conditionally on the state at the current time. These
   are more appropriately fitted using multinomial logistic regression,
-  for example, using \code{\link{multinom}} from the
+  for example, using \code{multinom} from the
   R package \pkg{nnet} (Venables and Ripley, 2002).
 
   For simple continuous-time multi-state Markov models,

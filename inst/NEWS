@@ -3,6 +3,25 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.7.5  (2007-11-20)
+-------------
+
+* The Viterbi algorithm can now be used to impute the most likely true
+  state for censored states, as well as for HMMs
+
+* prevalence.msm now handles models with censored states correctly,
+  using the Viterbi algorithm to determine the observed states.
+
+* Bug fix: account for extra arguments supplied to "prevalence.msm"
+  when producing the plot of prevalences against time.  Thanks to
+  Peter Jepsen for the report.
+
+* Bug fixes involving factor covariates in bootstrapping and
+  qratio.msm. Thanks to Peter Jepsen.
+
+* New beta outcome distribution for hidden Markov models
+
+
 Version 0.7.4  (2007-10-01)
 -------------
 

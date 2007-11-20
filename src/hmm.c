@@ -129,3 +129,9 @@ double hmmNBinom(double x, double *pars)
     double size = pars[0], prob = pars[1];
     return dnbinom(x, size, prob, 0);
 }
+
+double hmmBeta(double x, double *pars)
+{
+    double shape1 = pars[0], shape2 = pars[1];
+    return dbeta(x, shape1, shape2, 0);
+}

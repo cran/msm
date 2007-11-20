@@ -33,13 +33,14 @@ sim.msm <- function(qmatrix,   # intensity matrix
     qmatrices[rep(t(qmatrix)>0, nct)] <- qmatrices[rep(t(qmatrix)>0, nct)]*exp(t(beta)%*%t(covs)) # nintens*nobs
     for (i in 1:nct)
       qmatrices[,,i] <- msm.fixdiag.qmatrix(t(qmatrices[,,i]))
-    cur.t <- mintime; cur.st <- start; rem.times <- obstimes; t.ind <- 1
+    cur.t <- mintime; next.st <- start; rem.times <- obstimes; t.ind <- 1
     nsim <- 0; max.nsim <- 10
     simstates <- simtimes <- numeric(max.nsim) ## allocate memory up-front for simulated outcome
     absorb <- absorbing.msm(qmatrix=qmatrix)
     ## Simulate up to maxtime or absorption
     while (cur.t < maxtime) {
         nsim <- nsim + 1
+        cur.st <- next.st
         simstates[nsim] <- cur.st; simtimes[nsim] <- cur.t
         if (cur.st %in% absorb) break;
         rate <- -qmatrices[cur.st,cur.st, t.ind:length(obstimes)]
@@ -50,7 +51,7 @@ sim.msm <- function(qmatrix,   # intensity matrix
         if (any(obstimes > cur.t))
           rem.times <- c(rem.times, obstimes[(t.ind+1): length(obstimes)])
         cur.q <- qmatrices[,, t.ind]
-        cur.st <- resample((1:nstates)[-cur.st], size=1, prob = cur.q[cur.st, -cur.st])
+        next.st <- resample((1:nstates)[-cur.st], size=1, prob = cur.q[cur.st, -cur.st])
         if (nsim > max.nsim) { ## need more memory for simulated outcome, allocate twice as much
             simstates <- c(simstates, numeric(max.nsim))
             simtimes <- c(simtimes, numeric(max.nsim))
@@ -60,7 +61,7 @@ sim.msm <- function(qmatrix,   # intensity matrix
     ## If process hasn't absorbed by the end, then include a censoring time
     if (cur.t >= maxtime) {
         nsim <- nsim+1
-        simstates[nsim] <- simstates[nsim-1]
+        simstates[nsim] <- cur.st
         simtimes[nsim] <- maxtime
     }
     list(states = simstates[1:nsim], times = simtimes[1:nsim], qmatrix = qmatrix)
@@ -212,9 +213,9 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
       keep.data <- as.data.frame(keep.data)
 
 ### Simulate some misclassification or a HMM conditionally on the underlying state
-      if (!missing(ematrix))
+      if (!is.null(ematrix))
         keep.data <- cbind(keep.data, obs=simmisc.msm(keep.data$state, ematrix))
-      else if (!missing(hmodel))
+      else if (!is.null(hmodel))
         keep.data <- cbind(keep.data, obs=simhidden.msm(keep.data$state, hmodel, nstates, hcovariates, keep.data[,hcovnames,drop=FALSE]))
       attr(keep.data, "keep") <- obsd$keep
       keep.data

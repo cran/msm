@@ -35,7 +35,8 @@ hmmfn HMODELS[] = {
     hmmTNorm,
     hmmMETNorm,
     hmmMEUnif,
-    hmmNBinom
+    hmmNBinom,
+    hmmBeta
 };
 
 #define OBS_SNAPSHOT 1 
@@ -107,7 +108,7 @@ void GetCovData(int obs, double *allcovs, int *whichcov, double *thiscov, int nc
 	thiscov[i] = allcovs[MI(obs, whichcov[i]-1, nobs)];
 }
 
-/* Return a vector of the nc possible states that a censored state could represent */ 
+/* Return a vector of the nc possible true states that a censored state could represent */ 
 /* These will be summed over when calculating the likelihood */
 /* Compare one-indexed obs against one-indexed cm->censor. Return one-indexed current (*states) */
 
@@ -272,8 +273,11 @@ double likhidden(int pt, /* ordinal subject ID */
     /* Transform initp from probs relative to state 1 prob back to absolute probs */
     relative2absolutep(newinitp, newinitp, qm->nst, 0);
     /* Likelihood contribution for initial observation */
-    for (i = 0; i < qm->nst; ++i) 
-	cump[i] = pout[i] * newinitp[i];
+    for (i = 0; i < qm->nst; ++i) {
+      /* Ignore initprobs if observation is known to be the true state  */
+      if (d->obstrue[d->firstobs[pt]]) newinitp[i] = 1; 
+      cump[i] = pout[i] * newinitp[i];
+    }
     lweight=0;
     /* Matrix product loop to accumulate the likelihood for subsequent observations */
     for (obsno = d->firstobs[pt]+1; obsno <= d->firstobs[pt+1] - 1; ++obsno)
@@ -395,7 +399,7 @@ double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm,
     return (-2*lik); 
 }
 
-/* Find index of maximum element of a vector x */
+/* Find zero-based index of maximum element of a vector x */
 
 void pmax(double *x, int n, int *maxi)
 {
@@ -428,11 +432,32 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
     double dt;
 
     /* Add covariate effects on initp (expressed as p(cat) / p(baseline cat)) */
-    AddCovs(0, d->nobs, qm->nst - 1, hm->nicovs, &hm->initp[1], &newinitp[1], 
-	    hm->icoveffect, d->cov, d->whichcovi, &totcovs, log, exp);
-    relative2absolutep(newinitp, newinitp, qm->nst, 0);
-    for (k = 0; k < qm->nst; ++k) 
-	lvold[k] = log(newinitp[k]);
+    i = 0;
+    if (d->obstrue[i]) { 
+      for (k = 0; k < qm->nst; ++k) 
+	lvold[k] = (k+1 == d->obs[i] ? 1 : R_NegInf);
+    }
+    else {
+      GetCensored(d->obs[i], cm, &nc, &curr);
+      /* initial observation is a censored state. No HMM here, so initprobs not needed */
+      if (nc > 1) {
+	for (k = 0, j = 0; k < qm->nst; ++k) {
+	  if (k+1 == curr[j]) {
+	    lvold[k] = 1;
+	    ++j;
+	  }
+	  else lvold[k] = R_NegInf;
+	}
+      } 
+      else { 
+	/* use initprobs */
+	AddCovs(i, d->nobs, qm->nst - 1, hm->nicovs, &hm->initp[1], &newinitp[1], 
+		hm->icoveffect, d->cov, d->whichcovi, &totcovs, log, exp);
+	relative2absolutep(newinitp, newinitp, qm->nst, 0);
+	for (k = 0; k < qm->nst; ++k) 
+	  lvold[k] = log(newinitp[k]);
+      }
+    }
 
     for (i = 1; i <= d->nobs; ++i)
 	{
@@ -458,17 +483,26 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
 		    }
 		    GetCensored(d->obs[i], cm, &nc, &curr);
 		    GetOutcomeProb(pout, curr, nc, newpars, hm, qm, d->obstrue[i]);
+#ifdef VITDEBUG			  
+		    for (tru=0;tru<nc;++tru) printf("curr[%d] = %1.0lf, ",tru, curr[tru]); printf("\n");
+#endif
 		    Pmat(pmat, dt, newintens, qm->npars, qm->ivector, qm->nst,
 			 (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
 
 		    for (tru = 0; tru < qm->nst; ++tru)
 			{
+			  if (d->obstrue[i-1]) { 
+			    lvnew[tru] = (tru == d->obs[i-1] - 1 ? 1 : R_NegInf);
+			    ptr[MI(i, tru, d->nobs)] = kmax = d->obs[i-1] - 1;
+			  }
+			  else {
 			    for (k = 0; k < qm->nst; ++k)
 				lvp[k] = lvold[k] + log(pmat[MI(k, tru, qm->nst)]);
-			    pmax(lvp, qm->nst, &kmax);
+			    pmax(lvp, qm->nst, &kmax);			    
 			    lvnew[tru] = log ( pout[tru] )  +  lvp[kmax];
 			    ptr[MI(i, tru, d->nobs)] = kmax;
-#ifdef VITDEBUG			   
+			  }
+#ifdef VITDEBUG			  
 			    printf("true %d, pout[%d] = %lf, lvold = %lf, pmat = %lf, lvnew = %lf, mi = %d, ptr=%d\n", 
 				   tru, tru, pout[tru], lvold[tru], pmat[MI(kmax, tru, qm->nst)], lvnew[tru], MI(i, tru, d->nobs), ptr[MI(i, tru, d->nobs)]);
 #endif
@@ -482,13 +516,12 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
 		    printf("traceback for subject %d\n ", d->subject[i-1]);
 #endif
 		    /* Traceback for current individual */
-
 		    pmax(lvold, qm->nst, &kmax);
 #ifdef VITDEBUG
 		    printf("kmax = %d\n", kmax);
 #endif	  
 		    obs = i-1;
-		    fitted[obs] = kmax;
+		    fitted[obs] = (d->obstrue[obs] ? d->obs[obs]-1 : kmax);  /* if last obs censoring, then kmax=0 since pout all 0 for prev obs, wrong, should be 0,1,1,0. */
 		    while   ( (obs > 0) && (d->subject[obs] == d->subject[obs-1]) ) 
 			{
 			    fitted[obs-1] = ptr[MI(obs, fitted[obs], d->nobs)];
@@ -499,11 +532,31 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
 			}
 
 		    /* Add covariate effects on initp (expressed as p(cat) / p(baseline cat)) */
-		    AddCovs(i, d->nobs, qm->nst - 1, hm->nicovs, &hm->initp[1], &newinitp[1], 
-			    hm->icoveffect, d->cov, d->whichcovi, &totcovs, log, exp);
-		    relative2absolutep(newinitp, newinitp, qm->nst, 0);
-		    for (k = 0; k < qm->nst; ++k) 
-			lvold[k] = log(newinitp[k]);
+		    if (d->obstrue[i]) { 
+		      for (k = 0; k < qm->nst; ++k) 
+			lvold[k] = (k+1 == d->obs[i] ? 1 : R_NegInf);
+		    }
+		    else {
+		      GetCensored(d->obs[i], cm, &nc, &curr);
+		      /* initial observation is a censored state. No HMM here, so initprobs not needed */
+		      if (nc > 1) {
+			for (k = 0, j = 0; k < qm->nst; ++k) {
+			  if (k+1 == curr[j]) {
+			    lvold[k] = 1;
+			    ++j;
+			  }
+			  else lvold[k] = R_NegInf;
+			}
+		      } 
+		      else { 
+			/* use initprobs */
+			AddCovs(i, d->nobs, qm->nst - 1, hm->nicovs, &hm->initp[1], &newinitp[1], 
+				hm->icoveffect, d->cov, d->whichcovi, &totcovs, log, exp);
+			relative2absolutep(newinitp, newinitp, qm->nst, 0);
+			for (k = 0; k < qm->nst; ++k) 
+			  lvold[k] = log(newinitp[k]);
+		      }
+		    }
 		}
 	}
 }

@@ -1,3 +1,73 @@
+2007-11-20 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R: Don't give no-SEs warning when hessian=FALSE
+
+	* R/simul.R: Handle only one observation per subject. 
+
+	* R/outputs.R: New internal function intervaltrans.msm to
+	determine set of allowed transitions in an interval. 
+	
+	* DESCRIPTION: Version 0.7.5 released. 
+	
+2007-11-08 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R(qratio.se.msm): Bug fix for factor
+	covariates. Thanks to Peter Jepsen.
+	
+2007-11-05 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/boot.R (bootdata.trans.msm,bootdata.subject.msm), R/msm.R
+	(msm.form.data,msm.form.covdata): Handle factor covariates
+	properly when bootstrap refitting, by retaining the original
+	covariates (not the numeric contrasts) in the data.  Thanks to
+	Peter Jepsen.
+
+	* R/outputs.R: qmatrix.msm, ematrix.msm, sojourn.msm and
+	qratio.msm can now be called with ci="none", returning just the
+	matrix of estimates, with no CI.
+	
+2007-11-02 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/utils.R: MatrixExp now accepts a vector of t, in which case it
+	only needs to calculate the eigensystem once.
+
+2007-10-30 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/utils.R: Bug fix in ppexp. Thanks to Mike Murphy. 
+
+	* msm-manual: More explanation of censored states versus censored
+	event times. 
+	
+2007-10-25 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* src/hmm.c: New beta HMM outcome distribution. 
+
+	* src/lik.c: Ignore initprobs in HMMs if the true state is known
+	at the initial observation.
+	
+2007-10-24 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* src/lik.c: Handle censoring properly in Viterbi algorithm. 
+	
+2007-10-22 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/boot.R(bootdata.subject.msm): Bug fix, wrong covariate matrix
+	was being read.  Thanks to Peter Jepsen for the report.
+
+	* msm-manual.pdf: Correction of algebraic typos in Viterbi
+	algorithm.
+
+	* src/lik.c: Account for obstrue in Viterbi algorithm.
+
+	* R/outputs.R: Allow Viterbi algorithm to be used to impute
+	censored states in data with censored states but no HMM.
+
+2007-10-18 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R(prevalence.msm,plot.prevalence.msm): Account for
+	arguments supplied to prevalence.msm when doing the plot.  Thanks
+	to Peter Jepsen for the report. 
+
 2007-10-01 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* src/Makevars: CR endings removed to satisfy R CMD CHECK in R 2.6.0

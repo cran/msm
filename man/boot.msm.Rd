@@ -24,7 +24,9 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
   The bootstrap datasets are computed by resampling independent
   transitions between pairs of states (for non-hidden models without
   censoring), or independent patient series (for hidden models or
-  models with censoring).
+  models with censoring).  Therefore this approach doesn't work if,
+  for example, the data for a HMM consist of a series of observations
+  from just one individual. 
 
   Confidence intervals or standard errors for the corresponding
   statistic can be calculated by summarising the returned list of

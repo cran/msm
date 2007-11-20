@@ -38,39 +38,51 @@ deltamethod <- function(g,       # a formula or list of formulae (functions) giv
   }
 
 ### Matrix exponential
+### TODO: enable list of matrices to be returned for a vector of multipliers t 
 
 MatrixExp <- function(mat, t = 1, n = 20, k = 3, method="pade")
-  {
-      if (!is.matrix(mat) || (nrow(mat)!= ncol(mat))) stop("\"mat\" must be a square matrix")
-      n <- nrow(mat)
-      ev <- eigen(mat)
-      if (any ( duplicated(ev$values)  ) || is.complex(ev$values) ) {
-          if (method=="series") {
-              ## series approximation
-              ## adapted from mexp in Jim Lindsey's rmutil library
-              mat <- mat*t / 2^k
-              sum <- power <- diag(dim(mat)[2])
-              for (r in 1:n) {
-                  power <- mat %*% power / r
-                  sum <- sum + power
-              }
-              for (i in 1:k)
-                sum <- sum %*% sum
-              res <- sum
-          }
-          else if (method == "pade") {
-              ## C function adapted from JAGS by Martyn Plummer
-              res <- .C("MatrixExpPadeR", res=double(length(mat)), as.double(mat),
-                        as.integer(n), as.double(t))$res
-              res <- matrix(res, nrow=nrow(mat))
-          }
-          else stop("Method should be \"pade\" or \"series\"")
-      }
-      else
+{
+    if (!is.matrix(mat) || (nrow(mat)!= ncol(mat))) stop("\"mat\" must be a square matrix")
+    nr <- nrow(mat)
+    ev <- eigen(mat)
+    if (length(t) > 1) res <- array(dim=c(dim(mat), length(t)))
+    if (any ( duplicated(ev$values)  ) || is.complex(ev$values) ) {
+        for (i in seq(along=t)) { 
+            if (method=="series") {
+                ## series approximation
+                ## adapted from mexp in Jim Lindsey's rmutil x
+                matt <- mat*t[i] / 2^k
+                sum <- power <- diag(nr)
+                for (r in 1:n) {
+                    power <- matt %*% power / r
+                    sum <- sum + power
+                }
+                for (s in 1:k)
+                    sum <- sum %*% sum
+                resi <- sum
+            }
+            else if (method == "pade") {
+                ## C function adapted from JAGS by Martyn Plummer
+                resi <- .C("MatrixExpPadeR", res=double(length(mat)), as.double(mat),
+                          as.integer(nr), as.double(t[i]))$res
+                resi <- matrix(resi, nrow=nrow(mat))
+            }
+            else stop("Method should be \"pade\" or \"series\"")
+            if (length(t)==1) res <- resi
+            else res[,,i] <- resi
+        }
+    }
+    else {
         ## spectral decomposition
-        res <- ev$vectors %*% diag(exp(ev$values * t)) %*% solve(ev$vectors)
-      res
-  }
+        evinv <- solve(ev$vectors)
+        for (i in seq(along=t)) {            
+            resi <- ev$vectors %*% diag(exp(ev$values * t[i])) %*% evinv
+            if (length(t)==1) res <- resi
+            else res[,,i] <- resi
+        }
+    }
+    res
+}
 
 identity <- function(x)x
 
@@ -354,13 +366,13 @@ ppexp <- function(q, rate = 1, t = 0, lower.tail = TRUE, log.p = FALSE)
       if (is.unsorted(t)) stop("t should be in increasing order")
       q[q<0] <- 0
       ind <- rowSums(outer(q, t, ">="))
-      ret <- pexp(q - t[ind], rate[ind], log)
+      ret <- pexp(q - t[ind], rate[ind])
       mi <- min(length(t), max(ind))
       if (length(t) > 1) {
           dt <- t[-1] - t[-mi]
           pe <- pexp(dt, rate[-mi])
-          cp <- c(1, cumprod(pexp(dt, rate[-mi], lower.tail=FALSE)))
-          ret <- c(0, cumsum(cp[-length(cp)]*pe))[ind] + ret*cp[length(cp)]
+          cp <- c(1, cumprod(1 - pe))
+          ret <- c(0, cumsum(cp[-length(cp)]*pe))[ind] + ret*cp[ind]
       }
       if (!lower.tail) ret <- 1 - ret
       if (log.p) ret <- log(ret)

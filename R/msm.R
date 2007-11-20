@@ -24,7 +24,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                 econstraint = NULL, # constraints on equality of baseline misc probs
                 initprobs = NULL,  # initial state occupancy probabilities
                 est.initprobs = FALSE, # should these be estimated, starting from the given values?
-                initcovariates = NULL, # TODO if these are specified, then assume est.initprobs=TRUE, and initprobs gives initial values with these covs set to zero.
+                initcovariates = NULL, # If these are specified, then assume est.initprobs=TRUE, and initprobs gives initial values with these covs set to zero.
                 initcovinits = NULL,
                 death = FALSE,  # 'death' states, ie, entry time known exactly, but unknown transient state at previous instant
                 exacttimes = FALSE, # TRUE is shortcut for all obstype 2.
@@ -96,10 +96,11 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
         msm.check.model(msmdata$fromstate, msmdata$tostate, msmdata$obs, msmdata$subject, msmdata$obstype, qmodel$qmatrix, cmodel)
         msmdata <- msm.aggregate.data(msmdata)
         msmdata$subject <- msmdata$state <- msmdata$time <- numeric(0)
-        for (i in c("subject", "time", "state")) msmdata[[i]] <- msmdata.obs[[i]]
+        for (i in c("subject", "time", "state", "n")) msmdata[[i]] <- msmdata.obs[[i]]
         msmdata$obstype.obs <- msmdata.obs$obstype
-        msmdata$cov <- msmdata.obs$covmat
     }
+    msmdata$cov <- msmdata.obs$covmat.orig
+    msmdata$covlabels.orig <- msmdata.obs$covlabels.orig
 
 ### MODEL FOR COVARIATES ON INTENSITIES
     qcmodel <-
@@ -223,7 +224,8 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
         else {
             p$foundse <- FALSE
             p$covmat <- p$ci <- NULL
-            warning("Could not calculate asymptotic standard errors - Hessian is not positive definite. Optimisation has probably not converged to the maximum likelihood")
+            if (hessian)
+                warning("Could not calculate asymptotic standard errors - Hessian is not positive definite. Optimisation has probably not converged to the maximum likelihood")
         }
         p$params[p$hmmpars] <- msm.recalc.basep(p$params[p$hmmpars], hmodel$plabs, hmodel$parstate)
         p$params[p$hmmpars] <- msm.mnlogit.transform(p$params[p$hmmpars], hmodel$plabs, hmodel$parstate)
@@ -493,7 +495,8 @@ msm.form.data <- function(formula, subject=NULL, obstype=NULL, obstrue=NULL, cov
         icovdata <- msm.form.covdata(initcovariates, data, !firstobs, center)
     }
     ## List of which covariates are in which model
-    all.covlabels <- unique(c(covdata$covlabels, unlist(lapply(hcovdata, function(x)x$covlabels)), icovdata$covlabels))
+    all.covlabels <- unique(c(covdata$covlabels, unlist(lapply(hcovdata, function(x)x$covlabels)), icovdata$covlabels)) # factors as numeric contrasts
+    orig.covlabels <- unique(c(covdata$covlabels.orig, unlist(lapply(hcovdata, function(x)x$covlabels.orig)), icovdata$covlabels.orig)) # factors as single variables
     covdata$whichcov <- match(covdata$covlabels, all.covlabels)
     if(!is.null(hcovariates))
         for (i in seq(along=hcovdata))
@@ -520,33 +523,43 @@ msm.form.data <- function(formula, subject=NULL, obstype=NULL, obstrue=NULL, cov
     state <- subset(state, statetimerows.kept %in% final.rows)
     obstype <- subset(obstype, otrows.kept %in% final.rows)
     obstrue <- subset(obstrue, omrows.kept %in% final.rows)
-    covmat <- numeric()
+    covmat <- covmat.orig <- numeric()
     if (covdata$ncovs > 0) {
         covmat <- subset(covdata$covmat, covdata$covrows.kept %in% final.rows)
-        covdata$covmat <- NULL
+        covmat.orig <- subset(covdata$covmat.orig, covdata$covrows.kept %in% final.rows)
+        covdata$covmat <- covdata$covmat.orig <- NULL
     }
     for (i in seq(along=hcovariates)) {
         if (hcovdata[[i]]$ncovs > 0) {
             hcovdata[[i]]$covmat <- subset(hcovdata[[i]]$covmat, hcovdata[[i]]$covrows.kept %in% final.rows)
+            hcovdata[[i]]$covmat.orig <- subset(hcovdata[[i]]$covmat.orig, hcovdata[[i]]$covrows.kept %in% final.rows)
             covmat <- cbind(covmat, as.matrix(hcovdata[[i]]$covmat))
-            hcovdata[[i]]$covmat <- NULL
+            covmat.orig <- cbind(covmat.orig, as.matrix(hcovdata[[i]]$covmat.orig))
+            hcovdata[[i]]$covmat <- hcovdata[[i]]$covmat.orig <- NULL
         }
     }
     if (icovdata$ncovs > 0) {
         icovdata$covmat <- subset(icovdata$covmat, icovdata$covrows.kept %in% final.rows)
+        icovdata$covmat.orig <- subset(icovdata$covmat.orig, icovdata$covrows.kept %in% final.rows)
         covmat <- cbind(covmat, as.matrix(icovdata$covmat))
-        icovdata$covmat <- NULL
+        covmat.orig <- cbind(covmat.orig, as.matrix(icovdata$covmat.orig))
+        icovdata$covmat <- icovdata$covmat.orig <- NULL
     }
-    if (length(all.covlabels) > 0)
+    if (length(all.covlabels) > 0) {
         covmat <- as.data.frame(covmat, optional=TRUE)[all.covlabels]
+        covmat.orig <- as.data.frame(covmat.orig, optional=TRUE)[orig.covlabels]
+    }
     nobs <- length(final.rows)
     nmiss <- n - nobs
     plural <- if (nmiss==1) "" else "s"
     if (nmiss > 0) warning(nmiss, " record", plural, " dropped due to missing values")
     dat <- list(state=state, time=time, subject=subject, obstype=obstype, obstrue=obstrue,
-                nobs=nobs, npts=length(unique(subject)),
-                ncovs=length(all.covlabels), covlabels=all.covlabels,
-                covdata=covdata, misccovdata=misccovdata, hcovdata=hcovdata, icovdata=icovdata, covmat=covmat)
+                nobs=nobs, n=nobs, npts=length(unique(subject)),
+                ncovs=length(all.covlabels), covlabels=all.covlabels, covlabels.orig=orig.covlabels,
+                covdata=covdata, misccovdata=misccovdata, hcovdata=hcovdata, icovdata=icovdata,
+                covmat=covmat, # covariates including factors as 0/1 contrasts
+                covmat.orig=covmat.orig # covariates in which a factor is a single variable
+                )
     class(dat) <- "msmdata"
     dat
 }
@@ -737,7 +750,9 @@ msm.form.covdata <- function(covariates, data, ignore.obs, center=TRUE)
     covdata <- list(covlabels=covlabels, ncovs=ncovs, covmeans=covmeans,
                     covfactor=covfactor,
                     covfactorlevels=covfactorlevels,
-                    covmat=mm,
+                    covmat=mm, # data with factors as set of 0/1 contrasts, and centered.  (for model fitting)
+                    covmat.orig=mf2, # with factors kept as one variable, and not centered (for bootstrap refitting)
+                    covlabels.orig=colnames(mf2),
                     covrows.kept=covrows.kept)
     class(covdata) <- "msmcovdata"
     covdata
@@ -1102,35 +1117,35 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
 {
     do.what <- deriv
     p <- paramdata
-    allinits <- p$allinits;  plabs <- p$plabs
-    allinits[p$optpars] <- params
+    pars <- p$allinits;  plabs <- p$plabs
+    pars[p$optpars] <- params
     ## Untransform parameters optimized on log/logit scale
     for (lab in rownames(.msm.TRANSFORMS))
-        allinits[plabs==lab] <- get(.msm.TRANSFORMS[lab,"inv"])(allinits[plabs==lab])
+        pars[plabs==lab] <- get(.msm.TRANSFORMS[lab,"inv"])(pars[plabs==lab])
     ## Before replication, transform probs on log(pr/pbase scale) back to pr scale,
     ## so that econstraint applies to pr not log(pr/pbase). After, transform back.
-    allinits[p$hmmpars] <- msm.mninvlogit.transform(allinits[p$hmmpars], hmodel$plabs, hmodel$parstate)
+    pars[p$hmmpars] <- msm.mninvlogit.transform(pars[p$hmmpars], hmodel$plabs, hmodel$parstate)
     ## Replicate constrained parameters
     plabs <- plabs[!duplicated(abs(p$constr))][abs(p$constr)]
-    allinits <- allinits[!duplicated(abs(p$constr))][abs(p$constr)]*sign(p$constr)
-    allinits[p$hmmpars] <- msm.mnlogit.transform(allinits[p$hmmpars], hmodel$plabs, hmodel$parstate)
+    pars <- pars[!duplicated(abs(p$constr))][abs(p$constr)]*sign(p$constr)
+    pars[p$hmmpars] <- msm.mnlogit.transform(pars[p$hmmpars], hmodel$plabs, hmodel$parstate)
     ## In R, work with states / parameter indices / model indices 1, ... n. In C, work with 0, ... n-1
     msmdata$fromstate <- msmdata$fromstate - 1
     msmdata$tostate <- msmdata$tostate - 1
     msmdata$firstobs <- msmdata$firstobs - 1
     hmodel$models <- hmodel$models - 1
     hmodel$links <- hmodel$links - 1
-    allinits[plabs == "p"] <- exp(allinits[plabs == "p"])
-    initprobs <- c(1 - sum(allinits[plabs=="initp"]), allinits[plabs %in% c("initp","initp0")])
-    initprobs <- initprobs / initprobs[1]
-
+    pars[plabs == "p"] <- exp(pars[plabs == "p"])
+    initprobs <- c(1 - sum(pars[plabs=="initp"]), pars[plabs %in% c("initp","initp0")])
+    initprobs <- initprobs / initprobs[1] ## initprobs[1] documented as not allowed to be zero. 
+    
     lik <- .C("msmCEntry",
               as.integer(do.what),
               as.integer(as.vector(t(qmodel$imatrix))),
-              as.double(allinits[plabs=="qbase"]),
-              as.double(as.vector(t(matrix(allinits[plabs=="qcov"], nrow=qmodel$npars)))),
-              as.double(allinits[!(plabs %in% c("qbase", "qcov", "hcov","initp","initp0","initpcov"))]),
-              as.double(allinits[plabs=="hcov"]),
+              as.double(pars[plabs=="qbase"]),
+              as.double(as.vector(t(matrix(pars[plabs=="qcov"], nrow=qmodel$npars)))),
+              as.double(pars[!(plabs %in% c("qbase", "qcov", "hcov","initp","initp0","initpcov"))]),
+              as.double(pars[plabs=="hcov"]),
 
               ## data for non-HMM
               as.integer(msmdata$fromstate),
@@ -1160,7 +1175,7 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
               as.integer(hmodel$links),
               as.double(initprobs),
               as.integer(hmodel$nicovs),
-              as.double(allinits[plabs=="initpcov"]),
+              as.double(pars[plabs=="initpcov"]),
               as.integer(hmodel$whichcovi),
 
               ## various constants

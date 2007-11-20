@@ -17,7 +17,8 @@
                         truncnorm = c("mean", "sd", "lower", "upper"),
                         metruncnorm = c("mean", "sd", "lower", "upper", "sderr", "meanerr"),
                         meuniform = c("lower", "upper", "sderr", "meanerr"),
-                        nbinom = c("disp","prob")
+                        nbinom = c("disp","prob"),
+                        beta = c("shape1","shape2")
                         )
 
 ## TODO - beta, non-central beta, cauchy, chisq, noncentral chisq, F,
@@ -30,7 +31,7 @@
 .msm.LOCPARS <- c(categorical="p", identity=NA, uniform=NA, normal="mean", lognormal="meanlog",
                   exponential="rate", gamma="rate", weibull="scale",
                   poisson="rate", binomial="prob", truncnorm="mean",
-                  metruncnorm="meanerr", meuniform="meanerr", nbinom="prob")
+                  metruncnorm="meanerr", meuniform="meanerr", nbinom="prob", beta=NA)
 
 ### Link functions for generalised regressions.
 ### MUST BE KEPT IN SAME ORDER as LINKFNS in lik.c
@@ -46,7 +47,7 @@
 ### Defined ranges for parameters
 .msm.PARRANGES <- list(qbase=c(0, Inf), lower=c(-Inf,Inf), upper=c(-Inf, Inf),
                        mean=c(-Inf, Inf), sd=c(0, Inf),
-                       meanlog=c(-Inf,Inf), sdlog=c(0, Inf), rate=c(0, Inf), shape=c(0, Inf),
+                       meanlog=c(-Inf,Inf), sdlog=c(0, Inf), rate=c(0, Inf), shape=c(0, Inf), shape1=c(0,Inf), shape2=c(0,Inf),
                        prob=c(0, 1), meanerr=c(0, Inf), sderr=c(0, Inf), disp=c(0, Inf),
                        initp=c(0, 1), initpcov=c(-Inf,Inf)
                        )
