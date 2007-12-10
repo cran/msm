@@ -137,7 +137,7 @@ qtnorm <- function(p, mean=0, sd=1, lower=-Inf, upper=Inf, lower.tail=TRUE, log.
               interval <- c(-1, 1)
               while (h(interval[1])*h(interval[2]) >= 0)
                 interval <- interval + c(-1,1)*0.5*(interval[2]-interval[1])
-              ptmp[i] <- uniroot(h, interval)$root
+              ptmp[i] <- uniroot(h, interval, tol=.Machine$double.eps)$root
           }
           ret[ind] <- ptmp
       }
@@ -265,7 +265,7 @@ qmenorm <- function(p, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0, 
             interval <- c(-1, 1)
             while (h(interval[1])*h(interval[2]) >= 0)
               interval <- interval + c(-1,1)*0.5*(interval[2]-interval[1])
-            ptmp[i] <- uniroot(h, interval)$root
+            ptmp[i] <- uniroot(h, interval, tol=.Machine$double.eps)$root
         }
         ret[ind] <- ptmp
     }
@@ -319,7 +319,7 @@ qmeunif <- function(p, lower=0, upper=1, sderr=0, meanerr=0, lower.tail = TRUE, 
             interval <- c(-1, 1)
             while (h(interval[1])*h(interval[2]) >= 0)
               interval <- interval + c(-1,1)*0.5*(interval[2]-interval[1])
-            ptmp[i] <- uniroot(h, interval)$root
+            ptmp[i] <- uniroot(h, interval, tol=.Machine$double.eps)$root
         }
         ret[ind] <- ptmp
     }
@@ -401,7 +401,7 @@ qpexp <- function (p, rate = 1, t = 0, lower.tail = TRUE, log.p = FALSE)
               interval <- c(-1, 1)
               while (h(interval[1]) * h(interval[2]) >= 0) interval <- interval +
                 c(-1, 1) * 0.5 * (interval[2] - interval[1])
-              ptmp[i] <- uniroot(h, interval)$root
+              ptmp[i] <- uniroot(h, interval, tol=.Machine$double.eps)$root
           }
           ret[ind] <- ptmp
       }
