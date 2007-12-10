@@ -3,6 +3,16 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.7.6  (2007-12-10)
+-------------
+
+* Covariates on misclassification probabilities can now be specified
+  in simmulti.msm.   Simulation bug introduced in 0.7.5 fixed.
+
+* quantile functions (qtnorm,qmenorm,qmeunif,qpexp) made more robust
+  for small probabilities. 
+
+
 Version 0.7.5  (2007-11-20)
 -------------
 

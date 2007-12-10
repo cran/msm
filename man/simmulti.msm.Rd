@@ -8,7 +8,7 @@
 }
 \usage{
 simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
-ematrix=NULL, hmodel=NULL, hcovariates=NULL)
+ematrix=NULL, misccovariates=NULL, hmodel=NULL, hcovariates=NULL)
 }
 
 \arguments{
@@ -30,61 +30,67 @@ ematrix=NULL, hmodel=NULL, hcovariates=NULL)
     model with recovery is:
 
     \code{rbind(
-    c( 0, 0.1, 0.02 ),
-    c( 0.1, 0, 0.01 ),
-    c( 0, 0, 0 )
+      c( 0, 0.1, 0.02 ),
+      c( 0.1, 0, 0.01 ),
+      c( 0, 0, 0 )
     )}
+  
+}
 
-  }
- 
-  \item{covariates}{List of covariate effects on log transition
-    intensities. Each element is a vector of the effects of one
-    covariate on all the transition intensities. The intensities are ordered
-    by reading across rows of the intensity matrix, starting with the
-    first, counting the positive off-diagonal elements of the matrix.
+\item{covariates}{List of covariate effects on log transition
+  intensities. Each element is a vector of the effects of one
+  covariate on all the transition intensities. The intensities are ordered
+  by reading across rows of the intensity matrix, starting with the
+  first, counting the positive off-diagonal elements of the matrix.
 
-    For example, for a multi-state model with three transition
-    intensities, and two covariates \code{x} and \code{y} on each
-    intensity, 
-    
-    \code{covariates=list(x = c(-0.3,-0.3,-0.3), y=c(0.1, 0.1, 0.1))}
-  }
+  For example, for a multi-state model with three transition
+  intensities, and two covariates \code{x} and \code{y} on each
+  intensity, 
+  
+  \code{covariates=list(x = c(-0.3,-0.3,-0.3), y=c(0.1, 0.1, 0.1))}
+}
 
-  \item{death}{Vector of indices of the death states.  A death state is
-    an absorbing state whose time of entry is known exactly, but the
-    individual is assumed to be in an unknown transient state ("alive")
-    at the previous instant.  This is the usual situation for times of death in
-    chronic disease monitoring data.  For example, if you specify
-    \code{death = c(4, 5)} then states 4 and 5 are assumed to be death
-    states.
+\item{death}{Vector of indices of the death states.  A death state is
+  an absorbing state whose time of entry is known exactly, but the
+  individual is assumed to be in an unknown transient state ("alive")
+  at the previous instant.  This is the usual situation for times of death in
+  chronic disease monitoring data.  For example, if you specify
+  \code{death = c(4, 5)} then states 4 and 5 are assumed to be death
+  states.
 
-    \code{death = TRUE} indicates that the
-    final state is a death state, and \code{death = FALSE} (the default)
-    indicates that there is no death state. }
+  \code{death = TRUE} indicates that the
+  final state is a death state, and \code{death = FALSE} (the default)
+  indicates that there is no death state. }
 
-  \item{start}{A vector with the same number of elements as there are 
-	distinct subjects in the data, giving the states in which each
-	corresponding individual begins. Defaults to state 1 for each 
-	subject.}
+\item{start}{A vector with the same number of elements as there are 
+  distinct subjects in the data, giving the states in which each
+  corresponding individual begins. Defaults to state 1 for each 
+  subject.}
 
-  \item{ematrix}{An optional misclassification matrix for generating observed states
+\item{ematrix}{An optional misclassification matrix for generating observed states
   conditionally on the simulated true states. As defined in
   \code{\link{msm}}.}
 
-  \item{hmodel}{An optional hidden Markov model for generating observed
-    outcomes conditionally on the simulated true states. As defined in
-    \code{\link{msm}}.}
+\item{misccovariates}{Covariate effects on misclassification
+  probabilities via multinomial logistic regression. Linear effects
+  operate on the log of each probability relative to the probability of
+  classification in the correct state. In same format as
+  \code{covariates}.}
 
-  \item{hcovariates}{List of the same length as \code{hmodel}, defining any covariates
-    governing the hidden Markov outcome models.  Unlike in the
-    \code{msm} function, this should also define the values of the
-    covariate effects. Each element of the list is a named vector of the
-    initial values for each set of covariates for that state.  For
-    example, for a three-state hidden Markov model with two, one and no
-    covariates on the state 1, 2 and 3 outcome models respectively, 
+\item{hmodel}{An optional hidden Markov model for generating observed
+  outcomes conditionally on the simulated true states. As defined in
+  \code{\link{msm}}.}
 
-    \code{ hcovariates = list (c(acute=-8, age=0), c(acute=-8), NULL) }
-  }
+\item{hcovariates}{List of the same length as \code{hmodel}, defining any covariates
+  governing the hidden Markov outcome models.  Unlike in the
+  \code{msm} function, this should also define the values of the
+  covariate effects. Each element of the list is a named vector of the
+  initial values for each set of covariates for that state.  For
+  example, for a three-state hidden Markov model with two, one and no
+  covariates on the state 1, 2 and 3 outcome models respectively, 
+
+  \code{ hcovariates = list (c(acute=-8, age=0), c(acute=-8), NULL) }
+}
 
 }
 \value{A data frame with columns,

@@ -399,6 +399,16 @@ double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm,
     return (-2*lik); 
 }
 
+/* Likelihood for the non-hidden multi-state Markov model. Data of
+   form "subject, time, state, covariates" 
+
+   TODO to accompany derivsimple_subj for score residual diagnostic */
+
+double liksimple_subj(msmdata *d, qmodel *qm, qcmodel *qcm, 
+		      cmodel *cm, hmodel *hm)
+{
+}
+
 /* Find zero-based index of maximum element of a vector x */
 
 void pmax(double *x, int n, int *maxi)
@@ -643,6 +653,17 @@ void derivsimple(msmdata *d, qmodel *qm, qcmodel *qcm,
     for (p = 0; p < ndp+ndc; ++p) 
 	deriv[p] *= -2;
     Free(dcontrib); Free(dpmat); Free(pmat); Free(newintens); Free(x);
+}
+
+/* First derivatives of the likelihood for the non-hidden multi-state
+   Markov model. Data of form "subject, time, state, covariates" Need
+   this to return the derivative per individual for score residual
+   diagnostic. TODO 
+*/
+
+double derivsimple_subj(msmdata *d, qmodel *qm, qcmodel *qcm, 
+		      cmodel *cm, hmodel *hm)
+{
 }
 
 /* Derivative of log-likelihood. Not available for hidden models or
