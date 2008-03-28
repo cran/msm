@@ -19,4 +19,4 @@ absorbing.msm(x=NULL, qmatrix=NULL)
   A vector of the ordinal indices of the transient or absorbing states.  
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
-\keyword{}
+\keyword{models}

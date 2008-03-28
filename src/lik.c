@@ -399,16 +399,6 @@ double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm,
     return (-2*lik); 
 }
 
-/* Likelihood for the non-hidden multi-state Markov model. Data of
-   form "subject, time, state, covariates" 
-
-   TODO to accompany derivsimple_subj for score residual diagnostic */
-
-double liksimple_subj(msmdata *d, qmodel *qm, qcmodel *qcm, 
-		      cmodel *cm, hmodel *hm)
-{
-}
-
 /* Find zero-based index of maximum element of a vector x */
 
 void pmax(double *x, int n, int *maxi)
@@ -656,14 +646,64 @@ void derivsimple(msmdata *d, qmodel *qm, qcmodel *qcm,
 }
 
 /* First derivatives of the likelihood for the non-hidden multi-state
-   Markov model. Data of form "subject, time, state, covariates" Need
-   this to return the derivative per individual for score residual
-   diagnostic. TODO 
+   Markov model. Uses data of form "subject, time, state, covariates".
+   Returns derivatives by individual and parameter for use in the
+   score residual diagnostic.
 */
 
-double derivsimple_subj(msmdata *d, qmodel *qm, qcmodel *qcm, 
-		      cmodel *cm, hmodel *hm)
+void derivsimple_subj(msmdata *d, qmodel *qm, qcmodel *qcm, 
+			cmodel *cm, hmodel *hm, double *deriv)
 {
+    int pt, i, p, np=qm->npars, ndp=qm->ndpars, ndc=qcm->ndpars, totcovs=0;
+    double *dcontrib = Calloc(ndp+ndc, double);
+    double *dpmat = Calloc(qm->nst * qm->nst * (ndp+ndc), double); 
+    double *pmat = Calloc(qm->nst * qm->nst, double);
+    double *newintens = Calloc(np, double);
+    double *x = Calloc(qcm->ncovs[0], double);
+    double contrib=0, dt;
+    int from, to;
+    for (pt = 0;  pt < d->npts; ++pt){
+	{
+	    R_CheckUserInterrupt();
+	    if (d->firstobs[pt+1] > d->firstobs[pt] + 1) { /* individual has more than one observation? */ 
+		for (i = d->firstobs[pt]+1; i < d->firstobs[pt+1]; ++i) {
+		    for (p = 0; p < ndp+ndc; ++p) {
+			deriv[MI(pt,p,d->npts)] = 0;
+		    }
+		    GetCovData(i, d->covobs, d->whichcov, x, qcm->ncovs[0], d->nobs);
+		    AddCovs(i, d->nobs, np, qcm->ncovs, qm->intens, newintens,
+			    qcm->coveffect, d->covobs, d->whichcov, &totcovs, log, exp);
+		    dt = d->time[i] - d->time[i-1];
+		    from = fprec(d->obs[i-1] - 1, 0); /* convert state outcome to integer */
+		    to = fprec(d->obs[i] - 1, 0);
+		    Pmat(pmat, dt, newintens, qm->npars, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
+		    DPmat(dpmat, dt, x, newintens, qm->intens, qm->ivector, qm->nst, np, ndp, ndc,
+			  qm->constr, qcm->constr, qcm->wcov, (d->obstype[i] == OBS_EXACT));
+		    if (d->obstype[i] == OBS_DEATH) {
+			contrib = pijdeath(from, to, pmat, newintens, qm->ivector, qm->nst);
+			dpijdeath(from, to, x, dpmat, pmat, newintens, qm->intens, qm->ivector, 
+				  qm->nst, qm->constr, qcm->constr, ndp, ndc, qcm->ncovs[0], dcontrib);
+		    }
+		    else {
+			contrib = pmat[MI(from, to, qm->nst)];
+			for (p = 0; p < ndp+ndc; ++p)
+			    dcontrib[p] = dpmat[MI3(from, to, p, qm->nst, qm->nst)];		
+		    }
+/*  		    printf("pt=%d,obs=%d,from=%d,to=%d,dt=%4.3lf,contrib=%lf,",pt,i,from,to,dt,contrib); */
+		    for (p = 0; p < ndp+ndc; ++p) {
+/*  			printf("d%d = %4.3f,",p,dcontrib[p]); */
+			deriv[MI(pt,p,d->npts)] += dcontrib[p] / contrib; /* on loglik scale not -2*loglik */
+		    }
+/*  		    printf("\n"); */
+		}
+		for (p = 0; p < ndp+ndc; ++p)
+		    deriv[MI(pt,p,d->npts)] *= -2;
+	    }
+	    else for (p = 0; p < ndp+ndc; ++p)
+		deriv[MI(pt,p,d->npts)] = 0;
+	}
+    }
+    Free(dcontrib); Free(dpmat); Free(pmat); Free(newintens); Free(x);
 }
 
 /* Derivative of log-likelihood. Not available for hidden models or
@@ -674,6 +714,13 @@ void msmDLikelihood (msmdata *d, qmodel *qm, qcmodel *qcm,
 		     double *returned) 
 {
     derivsimple (d, qm, qcm, cm, hm, returned);
+}
+
+void msmDLikelihood_subj (msmdata *d, qmodel *qm, qcmodel *qcm, 
+		     cmodel *cm, hmodel *hm, 
+		     double *returned) 
+{
+    derivsimple_subj (d, qm, qcm, cm, hm, returned);
 }
 
 /* This function is called from R to provide an entry into C code for
@@ -693,6 +740,7 @@ void msmCEntry(
 	       int *tostate,    
 	       double *timelag,
 	       double *covvec,  /* vectorised matrix of covariate data (also used for HMMs) */
+	       double *covobsvec,  /* vectorised matrix of covariate data (by observation) used when calculating derivs by individual */
 	       int *whichcov,    /* which column in the covariate data each cov corresponds to */
 	       int *nocc,       /* Number of occurrences of each distinct combination */
 	       int *whicha,   /* indicator for the from, to, time lag, covs combination corresponding to the current obs */
@@ -743,35 +791,38 @@ void msmCEntry(
 	       double *returned   /* returned -2 log likelihood , Viterbi fitted values, or predicted values */
 	       )
 {
-    msmdata d; qmodel qm; qcmodel qcm; cmodel cm; hmodel hm; 
+  msmdata d; qmodel qm; qcmodel qcm; cmodel cm; hmodel hm; 
     
-    d.fromstate = fromstate;     d.tostate = tostate;     d.timelag = timelag;   
-    d.cov = covvec;  d.nocc = nocc;  d.whicha = whicha; d.obstype = obstype;  d.obstrue = obstrue; 
-    d.whichcov = whichcov;  d.whichcovh = whichcovh;  d.whichcovi=whichcovi;
-    d.subject = subjvec; d.time = timevec; d.obs = obsvec; d.firstobs = firstobs;
-    d.nobs = *nobs;  d.npts = *npts;
+  d.fromstate = fromstate;     d.tostate = tostate;     d.timelag = timelag;   
+  d.cov = covvec;  d.covobs = covobsvec;  d.nocc = nocc;  d.whicha = whicha; d.obstype = obstype;  d.obstrue = obstrue; 
+  d.whichcov = whichcov;  d.whichcovh = whichcovh;  d.whichcovi=whichcovi;
+  d.subject = subjvec; d.time = timevec; d.obs = obsvec; d.firstobs = firstobs;
+  d.nobs = *nobs;  d.npts = *npts;
 
-    qm.nst = *nst; qm.npars = *nintens; qm.ndpars = *ndintens; qm.ivector = qvector; qm.intens = intens; 
-    qm.analyticp = *analyticp; qm.iso = *iso; qm.perm = perm; qm.qperm = qperm; qm.constr = qconstraint;    
+  qm.nst = *nst; qm.npars = *nintens; qm.ndpars = *ndintens; qm.ivector = qvector; qm.intens = intens; 
+  qm.analyticp = *analyticp; qm.iso = *iso; qm.perm = perm; qm.qperm = qperm; qm.constr = qconstraint;    
 
-    qcm.ncovs = ncovs; qcm.coveffect = coveffect; qcm.constr = cconstraint; qcm.ndpars = *ndcovpars; qcm.wcov = whichcovd;
+  qcm.ncovs = ncovs; qcm.coveffect = coveffect; qcm.constr = cconstraint; qcm.ndpars = *ndcovpars; qcm.wcov = whichcovd;
 
-    cm.ncens = *ncens; cm.censor = censor; cm.censstates=censstates; cm.censstind=censstind;
+  cm.ncens = *ncens; cm.censor = censor; cm.censstates=censstates; cm.censstind=censstind;
 
-    hm.hidden = *hidden;  hm.models = hmodels;  hm.npars = hnpars;  hm.totpars = *htotpars;
-    hm.firstpar = hfirstpar;  hm.ncovs = hncovs;  hm.pars = hmmpars; 
-    hm.coveffect = hcoveffect;  hm.links = links; 
-    hm.initp = initprobs; hm.nicovs = nicovs; hm.icoveffect = icoveffect;
+  hm.hidden = *hidden;  hm.models = hmodels;  hm.npars = hnpars;  hm.totpars = *htotpars;
+  hm.firstpar = hfirstpar;  hm.ncovs = hncovs;  hm.pars = hmmpars; 
+  hm.coveffect = hcoveffect;  hm.links = links; 
+  hm.initp = initprobs; hm.nicovs = nicovs; hm.icoveffect = icoveffect;
 
-    if (*do_what == 0) {
-	msmLikelihood(&d, &qm, &qcm, &cm, &hm, returned);
-    }
+  if (*do_what == 0) {
+    msmLikelihood(&d, &qm, &qcm, &cm, &hm, returned);
+  }
 
-    else if (*do_what == 1) {
-	msmDLikelihood(&d, &qm, &qcm, &cm, &hm, returned);
-    }
+  else if (*do_what == 1) {
+    msmDLikelihood(&d, &qm, &qcm, &cm, &hm, returned);
+  }
 
-    else if (*do_what == 2) {
-	Viterbi(&d, &qm, &qcm, &cm, &hm, returned);
-    }
+  else if (*do_what == 2) {
+    Viterbi(&d, &qm, &qcm, &cm, &hm, returned);
+  }
+  else if (*do_what == 3) {
+    msmDLikelihood_subj(&d, &qm, &qcm, &cm, &hm, returned); /* derivative of loglik by subject. used for score residuals */
+  }
 }

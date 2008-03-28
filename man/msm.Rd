@@ -40,7 +40,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   \item{data}{Optional data frame in which to interpret the variables
     supplied in \code{formula}, \code{subject}, \code{covariates},
     \code{misccovariates}, \code{hcovariates}, \code{obstype} and 
-    \code{obsmisc}.}
+    \code{obstrue}.}
 
   \item{qmatrix}{Initial transition intensity matrix of the Markov
     chain.  If an instantaneous transition is not allowed  from state
@@ -164,7 +164,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     
     \describe{
       \item{1}{An observation of the process at an arbitrary time (a "snapshot"
-	of the process)}
+	of the process, or "panel-observed" data)}
       \item{2}{An exact transition time, with the state at the previous
 	observation retained until the current observation.}
       \item{3}{An exact transition time, but the state at the instant before
@@ -575,6 +575,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     \code{se} = corresponding standard errors.
   }
   \item{minus2loglik}{Minus twice the maximised log-likelihood.}
+  \item{deriv}{Derivatives of the minus twice log-likelihood at its maximum.}
   \item{estimates}{Vector of untransformed maximum likelihood estimates
     returned from \code{\link{optim}}.  Transition intensities are on
     the log scale and misclassification probabilities are given as log
@@ -583,6 +584,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     with intensities and probabilities on their natural scales.}
   \item{fixedpars}{Indices of \code{estimates} which were fixed during
     the maximum likelihood estimation.}
+  \item{center}{Indicator for whether the estimation was performed with
+    covariates centered on their means in the data.}
   \item{covmat}{Covariance matrix corresponding to \code{estimates}.}
   \item{ci}{Matrix of confidence intervals corresponding to \code{estimates.t}}
   \item{opt}{Return value from \code{\link{optim}} or \code{\link{nlm}},
@@ -725,19 +728,19 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 ### Heart transplant data
 ### For further details and background to this example, see
 ### the PDF manual in the doc directory. 
-data(heart)
-print(heart[1:10,])
+data(cav)
+print(cav[1:10,])
 twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166),
 c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
-statetable.msm(state, PTNUM, data=heart)
-crudeinits.msm(state ~ years, PTNUM, data=heart, qmatrix=twoway4.q)
-heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, 
+statetable.msm(state, PTNUM, data=cav)
+crudeinits.msm(state ~ years, PTNUM, data=cav, qmatrix=twoway4.q)
+cav.msm <- msm( state ~ years, subject=PTNUM, data = cav, 
                  qmatrix = twoway4.q, death = 4,
                  control = list ( trace = 2, REPORT = 1 )  )
-heart.msm
-qmatrix.msm(heart.msm)
-pmatrix.msm(heart.msm, t=10)
-sojourn.msm(heart.msm)
+cav.msm
+qmatrix.msm(cav.msm)
+pmatrix.msm(cav.msm, t=10)
+sojourn.msm(cav.msm)
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{models}

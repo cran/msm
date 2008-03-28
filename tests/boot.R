@@ -31,11 +31,11 @@ if (developer.local) {
   p.list <- boot.msm(misc.msm, function(x)pmatrix.msm(x, t=1), 3)
 
   ### models with censoring 
-  heart.cens <- heart
-  heart.cens$state[heart$state==4][1:50] <- 99
+  cav.cens <- cav
+  cav.cens$state[cav$state==4][1:50] <- 99
   twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166), c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
-  heartcens.msm <- msm(state ~ years, subject=PTNUM, data=heart.cens, qmatrix=twoway4.q, censor=99, fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS")
-  p.list <- boot.msm(heartcens.msm, B=3)
+  cavcens.msm <- msm(state ~ years, subject=PTNUM, data=cav.cens, qmatrix=twoway4.q, censor=99, fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS")
+  p.list <- boot.msm(cavcens.msm, B=3)
 }
 
 

@@ -126,7 +126,8 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
                          ematrix = NULL,# misclassification matrix
                          misccovariates = NULL, # covariates on misclassification probabilities 
                          hmodel = NULL,  # hidden Markov model formula
-                         hcovariates = NULL   # covariate effects on hidden Markov model response distribution
+                         hcovariates = NULL,   # covariate effects on hidden Markov model response distribution
+                         censor.states = NULL
                          )
 {
 
@@ -151,9 +152,11 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
         warning("Data contain duplicated observation times for a subject - removing duplicates.")
         data <- data[!duplicated(data[,c("subject", "time")]), ]
     }
-    subject <- data[,"subject"]; time <- data[,"time"]
+    subject <- data[,"subject"]; time <- data[,"time"];
+    cens <- if (any(colnames(data)=="cens")) data[,"cens"] else rep(0, length(subject))
     msm.check.times(time, subject)
     times <- split(time, subject)
+    cens <- split(cens, subject)
     n <- length(unique(subject))
 
 ### Covariates on intensities
@@ -188,6 +191,10 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
     }
     else hcovs <- hcovnames <- NULL
 
+### Extra variables to return
+    extravars <- setdiff(names(data), unique(c("subject","time", "cens", covnames, misccovnames, hcovnames)))
+    extradat <- if(length(extravars)>0) split(data[,extravars,drop=FALSE], subject) else NULL
+
 ### Starting states
     if (missing(start)) start <- rep(1, n)
     else if (length(start) != n)
@@ -220,13 +227,14 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
     {
         sim.mod <- sim.msm(qmatrix, max(times[[pt]]), covs[[pt]], beta, times[[pt]], start[pt], min(times[[pt]]))
         obsd <- getobs.msm(sim.mod, times[[pt]], death)
-        keep.data <- rbind(keep.data,
-                           cbind(subj[[pt]][obsd$keep], obsd$time, obsd$state,
-                                 covs[[pt]][obsd$keep,,drop=FALSE],
-                                 misccovs[[pt]][obsd$keep,,drop=FALSE],
-                                 hcovs[[pt]][obsd$keep,,drop=FALSE]))
-    }
-    colnames(keep.data) <- c("subject","time","state",union(union(covnames,misccovnames),hcovnames))
+        pt.data <- cbind(subj[[pt]][obsd$keep], obsd$time, obsd$state, cens[[pt]][obsd$keep])
+        if (!is.null(covnames)) pt.data <- cbind(pt.data, covs[[pt]][obsd$keep,,drop=FALSE])
+        if (!is.null(misccovnames)) pt.data <- cbind(pt.data, misccovs[[pt]][obsd$keep,,drop=FALSE])
+        if (!is.null(hcovnames)) pt.data <- cbind(pt.data, hcovs[[pt]][obsd$keep,,drop=FALSE])
+        if (!is.null(extravars)) pt.data <- cbind(pt.data, extradat[[pt]][obsd$keep,,drop=FALSE])
+        keep.data <- rbind(keep.data, pt.data)
+      }
+    colnames(keep.data) <- c("subject","time","state","cens",union(union(covnames,misccovnames),hcovnames),extravars)
     keep.data <- as.data.frame(keep.data)
 
 ### Simulate some misclassification or a HMM conditionally on the underlying state
@@ -237,6 +245,16 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
     }
     else if (!is.null(hmodel))
         keep.data <- cbind(keep.data, obs=simhidden.msm(keep.data$state, hmodel, nstates, hcovariates, keep.data[,hcovnames,drop=FALSE]))
+
+### Replace state at censor times by censoring indicators
+    censor <- unique(keep.data$cens[keep.data$cens != 0])
+    if (is.null(censor.states)) censor.states <- 1:(nstates-1)
+    if (!is.null(keep.data$obs))
+      keep.data$obs <- ifelse(keep.data$cens > 0 & keep.data$state %in% censor.states, keep.data$cens, keep.data$obs)
+    else
+      keep.data$state <- ifelse(keep.data$cens > 0 & keep.data$state %in% censor.states, keep.data$cens, keep.data$state)
+    keep.data$cens <- NULL
+    
     attr(keep.data, "keep") <- obsd$keep
     keep.data
 }
@@ -250,15 +268,15 @@ simmisc.msm <- function(state, ematrix, beta, misccovs)
     if (is.null(ematrix))
         warning("No misclassification matrix given, assuming no misclassification")
     else {
-        if (any(ematrix) < 0) stop("Not all elements of ematrix are > 0")
-        if (any(ematrix) > 1) stop("Not all elements of ematrix are < 1")
+        if (any(ematrix < 0)) stop("Not all elements of ematrix are > 0")
+        if (any(ematrix > 1)) stop("Not all elements of ematrix are < 1")
         if (nrow(ematrix) != ncol(ematrix)) stop("Number of rows and columns of ematrix are not equal")
         nstates <- nrow(ematrix)
         ematrix <- msm.fixdiag.ematrix(ematrix)
         ostate <- state
         beta.states <- t(row(ematrix))[t(ematrix) > 0 & !(row(ematrix)==col(ematrix))]
         for (i in 1:nstates)
-            if (any(state[state==i])) {
+          if (any(state==i)) {
                 n <- length(state[state==i])
                 if (!is.null(beta)) { # covariates on misclassification probabilities 
                     X <- as.matrix(misccovs[state==i,])

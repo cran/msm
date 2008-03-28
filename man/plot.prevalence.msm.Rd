@@ -12,7 +12,9 @@
 plot.prevalence.msm(x, mintime=NULL, maxtime=NULL, timezero=NULL,
                     initstates=NULL, interp=c("start","midpoint"),
                     covariates="mean", misccovariates="mean",
-                    piecewise.times=NULL, piecewise.covariates=NULL, ...)
+                    piecewise.times=NULL, piecewise.covariates=NULL,
+                    xlab="Times",ylab="Prevalence (\%)", lwd=1, 
+                    ...)
 }
 \arguments{
   \item{x}{A fitted multi-state model produced by \code{\link{msm}}.}
@@ -42,10 +44,11 @@ plot.prevalence.msm(x, mintime=NULL, maxtime=NULL, timezero=NULL,
   \item{piecewise.covariates}{Covariates on which the piecewise-constant
     intensities depend. See \code{\link{pmatrix.piecewise.msm}} for how
     to specify this.}
+  \item{xlab}{x axis label.}
+  \item{ylab}{y axis label.}
+  \item{lwd}{Line width. See \code{\link{par}}.}  
   \item{...}{Further arguments to be passed to the generic \code{\link{plot}}
     function.}
-}
-\value{
 }
 \details{
   See \code{\link{prevalence.msm}} for details of the assumptions

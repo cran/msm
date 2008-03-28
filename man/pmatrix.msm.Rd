@@ -84,4 +84,4 @@ returns a list with
   \code{\link{qmatrix.msm}},  \code{\link{pmatrix.piecewise.msm}}, \code{\link{boot.msm}}
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}.}
-\keyword{}
+\keyword{models}

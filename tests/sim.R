@@ -8,15 +8,17 @@ library(msm)
 
 if (developer.local)  { 
 
+  source("../msm/R/simul.R")
     nsubj <- 50; nobspt <- 6
     sim.df <- data.frame(subject = rep(1:nsubj, each=nobspt), time = seq(0, 20, length=nobspt), 
                          x = rnorm(nsubj*nobspt), y = rnorm(nsubj*nobspt)* 5 + 2 )
     (three.q <- msm:::msm.fixdiag.qmatrix(rbind(c(0, exp(-3), exp(-6)), c(0, 0, exp(-3)), c(0, 0, 0))))
+#    (three.q <- msm.fixdiag.qmatrix(rbind(c(0, exp(-3), exp(-6)), c(0, 0, exp(-3)), c(0, 0, 0))))
     
-    set.seed(22061976)
-    sim2.df <- simmulti.msm(sim.df[,1:2], qmatrix=three.q)
-    set.seed(22061976)
-    sim2.df <- simmulti.msm(sim.df, qmatrix=three.q)  # Only retains covariates if there are covariates in the simulated model
+  set.seed(22061976)
+
+  sim2.df <- simmulti.msm(sim.df[,1:2], qmatrix=three.q)
+    sim2.df <- simmulti.msm(sim.df, qmatrix=three.q) # Retains all extra variables in data since 0.8
 
     print(crudeinits.msm(state ~ time, subject, qmatrix = rbind(c(0,1,1),c(0,0,1),c(0,0,0)), data=sim2.df))
     sim.mod <- msm(state ~ time, subject=subject, data=sim2.df,
@@ -32,6 +34,7 @@ if (developer.local)  {
                          y = rep(sample(c(0,1), nsubj, replace=TRUE), each=nobspt)
                          )
     (three.q <- msm:::msm.fixdiag.qmatrix(rbind(c(0, exp(-3), exp(-6)), c(0, 0, exp(-3)), c(0, 0, 0))))
+#    (three.q <- msm.fixdiag.qmatrix(rbind(c(0, exp(-3), exp(-6)), c(0, 0, exp(-3)), c(0, 0, 0))))
     set.seed(22061976)
     sim3.df <- simmulti.msm(sim.df, qmatrix=three.q, covariates=list(x = c(-1, 1, 0), y = c(2, 0, -2)))
 

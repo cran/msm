@@ -2,7 +2,7 @@
 ### CHECK THESE against misc.R.
 source("local.R")
 library(msm)
-data(heart)
+data(cav)
 
 ## Plain misc model using hmmCat
 
@@ -10,7 +10,7 @@ oneway4.q <- rbind(c(0, 0.148, 0, 0.0171), c(0, 0, 0.202, 0.081), c(0, 0, 0, 0.1
 rownames(oneway4.q) <- colnames(oneway4.q) <- c("Well","Mild","Severe","Death")
 ematrix <- rbind(c(0, 0.1, 0, 0),c(0.1, 0, 0.1, 0),c(0, 0.1, 0, 0),c(0, 0, 0, 0))
 
-miscnew.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+miscnew.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                 qmatrix = oneway4.q, death = 4, fixedpars=TRUE,
                 hmodel=list(
                   hmmCat(prob=c(0.9, 0.1, 0, 0)),
@@ -20,7 +20,7 @@ miscnew.msm <- msm(state ~ years, subject = PTNUM, data = heart,
 stopifnot(isTRUE(all.equal(4296.9155995778, miscnew.msm$minus2loglik, tol=1e-06)))
 
 if (developer.local) {
-    system.time(miscnew.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+    system.time(miscnew.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                                    qmatrix = oneway4.q, death = 4,
                                    hmodel=list(
                                      hmmCat(prob=c(0.9, 0.1, 0, 0)),
@@ -34,7 +34,7 @@ if (developer.local) {
 
 ## Covs on misc probs, new way, with hmodel
 
-misccovnew.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+misccovnew.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                       qmatrix = oneway4.q, death = 4, fixedpars=TRUE,
                       hmodel=list(
                         hmmCat(prob=c(0.9, 0.1, 0, 0)),
@@ -46,7 +46,7 @@ misccovnew.msm <- msm(state ~ years, subject = PTNUM, data = heart,
 stopifnot(isTRUE(all.equal(4304.90609473048, misccovnew.msm$minus2loglik, tol=1e-06)))
 
 if (developer.local) {
-    system.time(misccovnew.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+    system.time(misccovnew.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                                       qmatrix = oneway4.q, death = 4, fixedpars=FALSE,
                                       hmodel=list(
                                         hmmCat(prob=c(0.9, 0.1, 0, 0)),
@@ -131,7 +131,7 @@ if (developer.local) {
 
 ## Covariate initial values defaulting to 0
 
-misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                 qmatrix = oneway4.q, death = 4, fixedpars=TRUE,
                 hmodel=list(
                   hmmCat(prob=c(0.9, 0.1, 0, 0)),
@@ -144,7 +144,7 @@ stopifnot(isTRUE(all.equal(4296.9155995778, misc.msm$minus2loglik, tol=1e-06)))
 
 ## Covs on misc probs, new way, with ematrix
 ## Don't allow, since hcovariates doesn't logically correspond to ematrix.
-try ( misccov.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+try ( misccov.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                          qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=1:17,
                          hcovariates=list(~dage + sex, ~dage + sex, ~dage + sex, ~1),
                          hcovinits = list(c(0.01,0.013), c(0.01,0.013,0.01,0.013), c(0.01,0.013), NULL),
@@ -152,7 +152,7 @@ try ( misccov.msm <- msm(state ~ years, subject = PTNUM, data = heart,
 
 ## initprobs
 
-misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                 qmatrix = oneway4.q, death = 4, fixedpars=TRUE,
                 initprobs=c(0.7, 0.1, 0.1, 0.1),
                 hmodel=list(
@@ -166,16 +166,16 @@ stopifnot(isTRUE(all.equal(4725.9078185031, misc.msm$minus2loglik, tol=1e-06)))
 
 ## Does misc model with no misc reduce to simple
 twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166), c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
-miscnew.msm <- msm(state ~ years, subject = PTNUM, data = heart, qmatrix = twoway4.q,
+miscnew.msm <- msm(state ~ years, subject = PTNUM, data = cav, qmatrix = twoway4.q,
                    hmodel=list(hmmCat(prob=c(1, 0, 0, 0)), hmmCat(prob=c(0, 1, 0, 0)), hmmCat(prob=c(0, 0, 1, 0)), hmmIdent()),
                    death = 4, fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4908.81676837903, miscnew.msm$minus2loglik, tol=1e-06)))
-miscnew.msm <- msm(state ~ years, subject = PTNUM, data = heart, qmatrix = twoway4.q, death = 4, fixedpars=TRUE)
+miscnew.msm <- msm(state ~ years, subject = PTNUM, data = cav, qmatrix = twoway4.q, death = 4, fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4908.81676837903, miscnew.msm$minus2loglik, tol=1e-06)))
 
 ### Estimating initprobs
 if (developer.local)
-  miscnew.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+  miscnew.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                      qmatrix = oneway4.q, death = 4,
                      hmodel=list(
                        hmmCat(prob=c(0.9, 0.1, 0, 0)),

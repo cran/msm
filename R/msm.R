@@ -98,6 +98,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
         msmdata$subject <- msmdata$state <- msmdata$time <- numeric(0)
         for (i in c("subject", "time", "state", "n")) msmdata[[i]] <- msmdata.obs[[i]]
         msmdata$obstype.obs <- msmdata.obs$obstype
+        msmdata$firstobs <- msmdata.obs$firstobs
     }
     msmdata$cov <- msmdata.obs$covmat.orig
     msmdata$covlabels.orig <- msmdata.obs$covlabels.orig
@@ -498,9 +499,13 @@ msm.form.data <- function(formula, subject=NULL, obstype=NULL, obstrue=NULL, cov
     all.covlabels <- unique(c(covdata$covlabels, unlist(lapply(hcovdata, function(x)x$covlabels)), icovdata$covlabels)) # factors as numeric contrasts
     orig.covlabels <- unique(c(covdata$covlabels.orig, unlist(lapply(hcovdata, function(x)x$covlabels.orig)), icovdata$covlabels.orig)) # factors as single variables
     covdata$whichcov <- match(covdata$covlabels, all.covlabels)
-    if(!is.null(hcovariates))
-        for (i in seq(along=hcovdata))
+    covdata$whichcov.orig <- match(covdata$covlabels.orig, orig.covlabels)
+    if(!is.null(hcovariates)) {
+        for (i in seq(along=hcovdata)){
             hcovdata[[i]]$whichcov <- match(hcovdata[[i]]$covlabels, all.covlabels)
+            hcovdata[[i]]$whichcov.orig <- match(hcovdata[[i]]$covlabels.orig, orig.covlabels)
+        }
+    }
     if (!is.null(initcovariates))
         icovdata$whichcov <- match(icovdata$covlabels, all.covlabels)
 
@@ -555,6 +560,7 @@ msm.form.data <- function(formula, subject=NULL, obstype=NULL, obstrue=NULL, cov
     if (nmiss > 0) warning(nmiss, " record", plural, " dropped due to missing values")
     dat <- list(state=state, time=time, subject=subject, obstype=obstype, obstrue=obstrue,
                 nobs=nobs, n=nobs, npts=length(unique(subject)),
+                firstobs = c(1, which(subject[2:n] != subject[1:(n-1)]) + 1, n+1),
                 ncovs=length(all.covlabels), covlabels=all.covlabels, covlabels.orig=orig.covlabels,
                 covdata=covdata, misccovdata=misccovdata, hcovdata=hcovdata, icovdata=icovdata,
                 covmat=covmat, # covariates including factors as 0/1 contrasts
@@ -633,7 +639,7 @@ msm.obs.to.fromto <- function(dat)
     obs <- seq(n)[!firstsubj]
     datf <- list(fromstate=fromstate, tostate=tostate, timelag=timelag, subject=subject, obstype=obstype,
                  time=dat$time, obs=obs, firstsubj=firstsubj, npts=dat$npts, ncovs=dat$ncovs, covlabels=dat$covlabels,
-                 obstype.obs=dat$obstype, # need to keep this, e.g. for bootstrap resampling. 
+                 obstype.obs=dat$obstype, # need to keep this, e.g. for bootstrap resampling.
                  covdata=dat$covdata, hcovdata=dat$hcovdata)
     if (datf$ncovs > 0) {
         ## match time-dependent covariates with the start of the transition
@@ -1151,7 +1157,8 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
               as.integer(msmdata$fromstate),
               as.integer(msmdata$tostate),
               as.double(msmdata$timelag),
-              as.double(unlist(msmdata$covmat)),
+              as.double(unlist(msmdata$covmat)), # covariate matrix by unique transition (non-HMM) or by obs (HMM/cens)
+              as.double(unlist(msmdata$cov)), # covariate matrix by observation (non-HMM and calculating derivs by individual)
               as.integer(msmdata$covdata$whichcov), # this is really part of the model
               as.integer(msmdata$nocc),
               as.integer(msmdata$whicha),
@@ -1201,17 +1208,26 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
               as.integer(qcmodel$constr),
               as.integer(qcmodel$whichdcov),
 
-              returned = double(if (deriv)  qmodel$ndpars + qcmodel$ndpars  else 1),
+              returned = double(if (deriv==1) qmodel$ndpars + qcmodel$ndpars
+              else if (deriv==3) msmdata$npts*(qmodel$ndpars + qcmodel$ndpars)
+              else 1),
               ## so that Inf values are allowed for parameters denoting truncation points of truncated distributions
               NAOK = TRUE
 #              ,
 #              PACKAGE = "msm"
               )
     ## transform derivatives wrt Q to derivatives wrt log Q
-    if (deriv) {
+    if (deriv==1) {
         lik$returned[1:qmodel$ndpars] <-
             if (length(params)==0) lik$returned[1:qmodel$ndpars]*exp(p$allinits[!duplicated(p$constr)][1:qmodel$ndpars])
             else lik$returned[1:qmodel$ndpars]*exp(params[1:qmodel$ndpars])
+    }
+    ## subject-specific derivatives, to use for score residuals
+    else if (deriv==3) {
+        lik$returned <- matrix(lik$returned, nrow=msmdata$npts)
+        lik$returned[,1:qmodel$ndpars] <-
+            if (length(params)==0) lik$returned[,1:qmodel$ndpars]*rep(exp(p$allinits[!duplicated(p$constr)][1:qmodel$ndpars]), each=msmdata$npts)
+            else lik$returned[,1:qmodel$ndpars]*rep(exp(params[1:qmodel$ndpars]), each=msmdata$npts)
     }
     lik$returned
 }
@@ -1225,6 +1241,22 @@ deriv.msm <- function(params, ...)
 {
     likderiv.msm(params, deriv=1, ...)
 }
+
+scoreresid.msm <- function(x, plot=FALSE){
+    if (x$hmodel$hidden | (x$cmodel$ncens > 0))
+        stop("Score residuals not implemented for hidden Markov models or models with censored states")
+    derivs <- likderiv.msm(x$paramdata$opt$par, deriv=3, x$data, x$qmodel, x$qcmodel, x$cmodel, x$hmodel, x$paramdata)
+    cov <- solve(0.5*x$opt$hessian)
+    sres <- colSums(t(derivs) * cov %*% t(derivs))
+    names(sres) <- unique(x$data$subject)
+    if (plot) {
+        plot(sres, type="n")
+        text(seq(along=sres), sres, names(sres))
+    }
+    sres
+}
+
+## Convert vector of MLEs into matrices 
 
 msm.form.output <- function(whichp, model, cmodel, p)
 {
@@ -1267,6 +1299,8 @@ msm.form.output <- function(whichp, model, cmodel, p)
          MatricesU=MatricesU  # corresponding matrices of standard errors
          )
 }
+
+## Format hidden Markov model estimates and CIs 
 
 msm.form.houtput <- function(hmodel, p)
 {

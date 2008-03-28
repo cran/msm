@@ -6,26 +6,26 @@ library(msm)
 
 if (developer.local) {
 
-data(heart)
+data(cav)
 
 twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166), c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
 
 ## Base heart, death
-heart.msm <- msm(state ~ years, subject=PTNUM, data = heart, 
+cav.msm <- msm(state ~ years, subject=PTNUM, data = cav, 
                  qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE, deriv.test=TRUE)
-stopifnot(heart.msm$error < 1e-03)
+stopifnot(cav.msm$error < 1e-03)
 
-## Base heart, no death.
-heart.msm <- msm( state ~ years, subject=PTNUM, data = heart,
+## Base cav, no death.
+cav.msm <- msm( state ~ years, subject=PTNUM, data = cav,
                  qmatrix = twoway4.q, death = FALSE, fixedpars=FALSE, deriv.test=TRUE)
-heart.msm
-stopifnot(heart.msm$error < 1e-03)
+cav.msm
+stopifnot(cav.msm$error < 1e-03)
 
-## Base heart with qconstraint, no death.
-heart.msm <- msm( state ~ years, subject=PTNUM, data = heart, qconstraint = c(1,1,2,2,2,3,3),
+## Base cav with qconstraint, no death.
+cav.msm <- msm( state ~ years, subject=PTNUM, data = cav, qconstraint = c(1,1,2,2,2,3,3),
                  qmatrix = twoway4.q, death = FALSE, fixedpars=FALSE, deriv.test=TRUE)
-stopifnot(heart.msm$error < 1e-03)
-heart.msm 
+stopifnot(cav.msm$error < 1e-03)
+cav.msm 
 
 ## Psor with no covs
 data(psor)

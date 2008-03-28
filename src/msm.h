@@ -33,6 +33,7 @@ struct msmdata {
     int *tostate;
     double *timelag;
     double *cov;
+    double *covobs;
     int *whichcov;
     int *nocc;
     int *whicha;

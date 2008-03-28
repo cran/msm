@@ -8,7 +8,8 @@
 }
 \usage{
 simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
-ematrix=NULL, misccovariates=NULL, hmodel=NULL, hcovariates=NULL)
+             ematrix=NULL, misccovariates=NULL, hmodel=NULL, hcovariates=NULL,
+             censor.states=NULL)
 }
 
 \arguments{
@@ -17,9 +18,14 @@ ematrix=NULL, misccovariates=NULL, hmodel=NULL, hcovariates=NULL)
     representing observation times.  The optional column named \code{subject},
     corresponds to subject identification numbers. If not given, all
     observations are assumed to be on the same individual. Observation
-    times should be sorted within individuals. Other named
-    columns of the data frame represent any covariates.
-  }
+    times should be sorted within individuals.  The optional column
+    named \code{cens} indicates the times at which simulated states
+    should be censored. If \code{cens==0} then the state is not
+    censored, and if \code{cens==k}, say, then all simulated states at that
+    time which are in the set \code{censor.states} are replaced by
+    \code{k}. 
+    Other named columns of the data frame represent any covariates.
+x  }
   
   \item{qmatrix}{
     The transition intensity matrix of the
@@ -91,7 +97,9 @@ ematrix=NULL, misccovariates=NULL, hmodel=NULL, hcovariates=NULL)
 
   \code{ hcovariates = list (c(acute=-8, age=0), c(acute=-8), NULL) }
 }
-
+\item{censor.states}{Set of simulated states which should be replaced by a
+  censoring indicator at censoring times.  By default this is all
+  transient states (representing alive, with unknown state).}
 }
 \value{A data frame with columns,
   \item{subject}{Subject identification indicators}

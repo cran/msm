@@ -102,4 +102,4 @@ totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean",
   \code{\link{sojourn.msm}}, \code{\link{pmatrix.msm}}, \code{\link{integrate}}, \code{\link{boot.msm}}.
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
-\keyword{}
+\keyword{models}

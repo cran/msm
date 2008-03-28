@@ -38,7 +38,7 @@ deltamethod <- function(g,       # a formula or list of formulae (functions) giv
   }
 
 ### Matrix exponential
-### TODO: enable list of matrices to be returned for a vector of multipliers t 
+### If a vector of multipliers t is supplied then a list of matrices is returned.
 
 MatrixExp <- function(mat, t = 1, n = 20, k = 3, method="pade")
 {
@@ -155,8 +155,8 @@ rtnorm <- function (n, mean = 0, sd = 1, lower = -Inf, upper = Inf) {
     sd <- rep(sd, length=n)
     lower <- rep(lower, length=n)
     upper <- rep(upper, length=n)
-    lower <- qnorm(pnorm(lower, mean, sd)) ## Algorithm works on mean 0, sd 1 scale
-    upper <- qnorm(pnorm(upper, mean, sd))
+    lower <- (lower - mean) / sd ## Algorithm works on mean 0, sd 1 scale
+    upper <- (upper - mean) / sd
     ind <- seq(length=n)
     ret <- numeric(n)
     ## Different algorithms depending on where upper/lower limits lie.
@@ -168,7 +168,7 @@ rtnorm <- function (n, mean = 0, sd = 1, lower = -Inf, upper = Inf) {
                           (lower == -Inf & upper > 0) |
                           (is.finite(lower) & is.finite(upper) & (lower < 0) & (upper > 0) & (upper-lower > sqrt(2*pi)))
                           ),
-                         0, # standard "simulate from normal and reject if outside limits" method. Use if bounds are wide.
+                         0, # standard "simulate from normal and reject if outside limits" method. Use if bounds are wide.  FIXME HSOULD BE 
                          ifelse(
                                 (lower >= 0 & (upper > lower + 2*sqrt(exp(1)) /
                                  (lower + sqrt(lower^2 + 4)) * exp((lower*2 - lower*sqrt(lower^2 + 4)) / 4))),
@@ -177,6 +177,8 @@ rtnorm <- function (n, mean = 0, sd = 1, lower = -Inf, upper = Inf) {
                                        (-upper + sqrt(upper^2 + 4)) * exp((upper*2 - -upper*sqrt(upper^2 + 4)) / 4)),
                                        2, # rejection sampling with exponential proposal. Use if upper << mean.
                                        3)))) # rejection sampling with uniform proposal. Use if bounds are narrow and central.
+
+    
     ind.nan <- ind[alg==-1]; ind.no <- ind[alg==0]; ind.expl <- ind[alg==1]; ind.expu <- ind[alg==2]; ind.u <- ind[alg==3]
     ret[ind.nan] <- NaN
     while (length(ind.no) > 0) {

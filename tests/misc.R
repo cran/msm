@@ -4,20 +4,20 @@ source("local.R")
 
 library(msm)
 # library(msm, lib.loc="../../lib/sun/0.7.5")
-data(heart)
+data(cav)
 oneway4.q <- rbind(c(0, 0.148, 0, 0.0171), c(0, 0, 0.202, 0.081), c(0, 0, 0, 0.126), c(0, 0, 0, 0))
 rownames(oneway4.q) <- colnames(oneway4.q) <- c("Well","Mild","Severe","Death")
 ematrix <- rbind(c(0, 0.1, 0, 0),c(0.1, 0, 0.1, 0),c(0, 0.1, 0, 0),c(0, 0, 0, 0))
 
 ## Plain misc model with no covs
 
-misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                 qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=TRUE)
 misc.msm
 stopifnot(isTRUE(all.equal(4296.9155995778, misc.msm$minus2loglik, tol=1e-06)))
 
 if (developer.local) {
-    system.time(misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+    system.time(misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                                 qmatrix = oneway4.q, ematrix=ematrix, death = 4, # fixedpars=1:5,
                                 control = list(trace=1, REPORT=1), method="BFGS"))
     stopifnot(isTRUE(all.equal(3951.82919869367, misc.msm$minus2loglik, tol=1e-06)))
@@ -26,25 +26,25 @@ if (developer.local) {
 
 ## Does misc model with no misc reduce to simple
 twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166), c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
-nomisc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+nomisc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                 qmatrix = twoway4.q, ematrix=matrix(0, nrow=4, ncol=4), death = 4, fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4908.81676837903, nomisc.msm$minus2loglik, tol=1e-06)))
-simple.msm <- msm(state ~ years, subject = PTNUM, data = heart, qmatrix = twoway4.q, death = 4, fixedpars=TRUE)
+simple.msm <- msm(state ~ years, subject = PTNUM, data = cav, qmatrix = twoway4.q, death = 4, fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4908.81676837903, simple.msm$minus2loglik, tol=1e-06)))
 
 ## Covs on transition rates
-misccov.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+misccov.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                 qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars = TRUE,
                 control = list(trace=1, REPORT=1), method="BFGS",
                 covariates = ~ sex, covinits=list(sex=rep(0.1, 5)))
 stopifnot(isTRUE(all.equal(4299.35653620144, misccov.msm$minus2loglik, tol=1e-06)))
 
 ## Covs on misc probs, old way.
-misccov.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+misccov.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                    qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=TRUE,
                    misccovariates = ~dage + sex, misccovinits = list(dage=c(0.01,0.02,0.03,0.04), sex=c(-0.013,-0.014,-0.015,-0.016)),
                    control = list(trace=1, REPORT=1), method="BFGS")
-misccov.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+misccov.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                    qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=TRUE,
                    misccovariates = ~dage + sex, misccovinits = list(dage=c(0.01,0.02,0.03,0.04), sex=c(-0.013,-0.014,-0.015,-0.016)),
                    control = list(trace=1, REPORT=1), method="BFGS")
@@ -52,7 +52,7 @@ misccov.msm <- msm(state ~ years, subject = PTNUM, data = heart,
 stopifnot(isTRUE(all.equal(4304.90609473048, misccov.msm$minus2loglik, tol=1e-06)))
 
 if (developer.local) {
-    system.time(misccov.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+    system.time(misccov.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                                    qmatrix = oneway4.q, ematrix=ematrix, death = 4,
                                    misccovariates = ~dage + sex, # fixedpars=c(1:5,11),
                                    control = list(trace=1, REPORT=1), method="BFGS"))
@@ -62,7 +62,7 @@ if (developer.local) {
 }
 
 ## Covs on both
-misccovboth.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+misccovboth.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                        qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=TRUE,
                        control = list(trace=1, REPORT=1), method="BFGS",
                        covariates = ~ sex, covinits=list(sex=rep(0.1, 5)),
@@ -72,7 +72,7 @@ misccovboth.msm <- msm(state ~ years, subject = PTNUM, data = heart,
 stopifnot(isTRUE(all.equal(4307.35065423690, misccovboth.msm$minus2loglik, tol=1e-06)))
 
 if (developer.local) {
-    system.time(misccovboth.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+    system.time(misccovboth.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                                        qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=FALSE,
                                        control = list(trace=1, REPORT=1), method="BFGS",
                                        covariates = ~ sex, covinits=list(sex=rep(0.1, 5)),
@@ -181,7 +181,7 @@ if (developer.local) {
 
 if (developer.local) {
     ## Baseline intens constraints
-    misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+    misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                     qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=4:7,
                     qconstraint = c(1, 2, 1, 2, 3),
                     control = list(trace=1, REPORT=1), method="BFGS")
@@ -191,7 +191,7 @@ if (developer.local) {
 
     ## Baseline misc constraints
     ematrix2 <- rbind(c(0, 0.1, 0, 0),c(0.1, 0, 0.11, 0),c(0, 0.11, 0, 0),c(0, 0, 0, 0))
-    misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+    misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                     qmatrix = oneway4.q, ematrix=ematrix2, death = 4, fixedpars=1:5,
                     econstraint = c(1, 1, 2, 2),
                     control = list(trace=1, REPORT=1), method="BFGS")
@@ -202,7 +202,7 @@ if (developer.local) {
     ## intens covariate constraints
     ## Give replicated inits for replicated cov effs, as that's consistent with constraints on q, e and h.
 
-    misc.msm <- msm(state ~ years, subject = PTNUM, data = heart, fixedpars=c(1:5, 9:12),
+    misc.msm <- msm(state ~ years, subject = PTNUM, data = cav, fixedpars=c(1:5, 9:12),
                     qmatrix = oneway4.q, ematrix=ematrix, death = 4,
                     control = list(trace=1, REPORT=1), method="BFGS",
                     covariates = ~ sex, covinits=list(sex=c(0, 0, 0.1, 0, 0)),
@@ -212,7 +212,7 @@ if (developer.local) {
     stopifnot(isTRUE(all.equal(-0.17619654476216, q$estimates[1,1], tol=1e-06)))
 
     ## misc covariate constraints.
-    misccov.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+    misccov.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                        qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=c(1:5),
                        misccovariates = ~dage + sex,
                        misccovinits = list(dage=c(0.01,0.01,0.001,0.001), sex=c(0.0131,0.0132,0.0133,0.0134)),
@@ -225,7 +225,7 @@ if (developer.local) {
     stopifnot(isTRUE(all.equal(0.992813688955682, e$estimates[1,1], tol=1e-06)))
 
     ## fixedpars for misc covariates.  Parameters are ordered within covariate, within parameter, within state.
-    misccov.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+    misccov.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                        qmatrix = oneway4.q, ematrix=ematrix, death = 4,
                        misccovariates = ~dage + sex,
                        misccovinits = list(dage=c(0.01,0.02,0.03,0.04), sex=c(-0.013,-0.014,-0.015,-0.016)),
@@ -252,31 +252,31 @@ if (developer.local) {
 }
 
 ## exact times
-misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                 qmatrix = oneway4.q, ematrix=ematrix, death = 4, exacttimes=TRUE, fixedpars=TRUE,
                 control = list(trace=1, REPORT=1), method="BFGS") # should warn about redundant death argument
 stopifnot(isTRUE(all.equal(4864.14764195147, misc.msm$minus2loglik, tol=1e-06)))
 
-misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                 qmatrix = oneway4.q, ematrix=ematrix, exacttimes=TRUE, fixedpars=TRUE,
                 control = list(trace=1, REPORT=1), method="BFGS")
 stopifnot(isTRUE(all.equal(4864.14764195147, misc.msm$minus2loglik, tol=1e-06)))
 
 ## exact times specified using an obstype vector
-misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
-                qmatrix = oneway4.q, ematrix=ematrix, obstype=rep(2, nrow(heart)), fixedpars=TRUE,
+misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
+                qmatrix = oneway4.q, ematrix=ematrix, obstype=rep(2, nrow(cav)), fixedpars=TRUE,
                 control = list(trace=1, REPORT=1), method="BFGS")
 stopifnot(isTRUE(all.equal(4864.14764195147, misc.msm$minus2loglik, tol=1e-06)))
 
 ## initprobs
-misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                 qmatrix = oneway4.q, ematrix=ematrix, death = 4, initprobs=c(0.7, 0.1, 0.1, 0.1), fixedpars=TRUE,
                 control = list(trace=1, REPORT=1), method="BFGS")
 stopifnot(isTRUE(all.equal(4725.9078185031, misc.msm$minus2loglik, tol=1e-06)))
 
 ## initprobs in Viterbi : bug fix for 0.6.1
 if (developer.local) {
-    miscinitp.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+    miscinitp.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                     qmatrix = oneway4.q, ematrix=ematrix, death = 4, initprobs=c(0.6, 0.4, 0, 0),
                     control = list(trace=1, REPORT=1), method="BFGS")
     if(interactive()) save(miscinitp.msm, file="~/msm/devel/models/miscinitp.msm.rda")
@@ -288,53 +288,53 @@ if (developer.local) {
 ## Censored states
 ## Different in 0.4 or less, censored states are not subject to misclassification in >= 0.4.1
 
-heart.cens <- heart
-heart.cens$state[heart$state==4][1:50] <- 99
-heart.cens2 <- heart
-heart.cens2$state[heart$state==4][1:50] <- 99
-heart.cens2$state[heart$state==4][51:100] <- 999
-heart.cens3 <- heart
-ns <- c(heart$state[2:nrow(heart)], 0)
-heart.cens3$state[heart$state==4][1:50] <- 99
-heart.cens3$state[ns==4][1:50] <- 999
+cav.cens <- cav
+cav.cens$state[cav$state==4][1:50] <- 99
+cav.cens2 <- cav
+cav.cens2$state[cav$state==4][1:50] <- 99
+cav.cens2$state[cav$state==4][51:100] <- 999
+cav.cens3 <- cav
+ns <- c(cav$state[2:nrow(cav)], 0)
+cav.cens3$state[cav$state==4][1:50] <- 99
+cav.cens3$state[ns==4][1:50] <- 999
 
-misc.msm <- msm(state ~ years, subject = PTNUM, data = heart.cens,
+misc.msm <- msm(state ~ years, subject = PTNUM, data = cav.cens,
                 qmatrix = oneway4.q, ematrix=ematrix, death=TRUE, censor=99, fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4025.42265024404, misc.msm$minus2loglik, tol=1e-06)))
 
 ## Two types of censoring
-misc.msm <- msm(state ~ years, subject=PTNUM, data=heart.cens2, qmatrix=oneway4.q, ematrix=ematrix, censor=c(99, 999), death=4, censor.states=list(c(1,2,3), c(2,3)), fixedpars=TRUE)
+misc.msm <- msm(state ~ years, subject=PTNUM, data=cav.cens2, qmatrix=oneway4.q, ematrix=ematrix, censor=c(99, 999), death=4, censor.states=list(c(1,2,3), c(2,3)), fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(3822.04540210944, misc.msm$minus2loglik, tol=1e-06)))
 
 ## Does misc model with no misc reduce to simple, with censoring
 
 twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166), c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
-misc.msm <- msm(state ~ years, subject = PTNUM, data = heart.cens,
+misc.msm <- msm(state ~ years, subject = PTNUM, data = cav.cens,
                 qmatrix = twoway4.q, ematrix=matrix(0, nrow=4, ncol=4), censor=99, death=TRUE, fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4759.28151596975, misc.msm$minus2loglik, tol=1e-06)))
 
-simple.msm <- msm(state ~ years, subject = PTNUM, data = heart.cens, qmatrix = twoway4.q, death=TRUE, censor=99, fixedpars=TRUE)
+simple.msm <- msm(state ~ years, subject = PTNUM, data = cav.cens, qmatrix = twoway4.q, death=TRUE, censor=99, fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4759.28151596975, simple.msm$minus2loglik, tol=1e-06)))
 
-misc.msm <- msm(state ~ years, subject = PTNUM, data = heart.cens,
+misc.msm <- msm(state ~ years, subject = PTNUM, data = cav.cens,
                 qmatrix = twoway4.q, ematrix=matrix(0, nrow=4, ncol=4), censor=99, fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4724.26606344485, misc.msm$minus2loglik, tol=1e-06)))
 
-simple.msm <- msm(state ~ years, subject = PTNUM, data = heart.cens, qmatrix = twoway4.q, censor=99, fixedpars=TRUE)
+simple.msm <- msm(state ~ years, subject = PTNUM, data = cav.cens, qmatrix = twoway4.q, censor=99, fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4724.26606344485, simple.msm$minus2loglik, tol=1e-06)))
 
 
 ## Viterbi with non-HMM model
 twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166), c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
-heart.msm <- msm(state ~ years, subject=PTNUM, data = heart, qmatrix = twoway4.q, fixedpars=TRUE)
-vit <- viterbi.msm(heart.msm)[1:50,] # no error, returns observed states.
+cav.msm <- msm(state ~ years, subject=PTNUM, data = cav, qmatrix = twoway4.q, fixedpars=TRUE)
+vit <- viterbi.msm(cav.msm)[1:50,] # no error, returns observed states.
 stopifnot(all.equal(vit$observed, vit$fitted))
 
 
 #### Estimating initprobs
 
 if (developer.local)
-  misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+  misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                   qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=FALSE, initprobs=rep(0.25, 4), est.initprobs=TRUE,
                   control = list(trace=1, REPORT=1), method="BFGS")
 ### just converges to 1,0,0,0
@@ -395,20 +395,20 @@ if (developer.local) {
                                         #summary(multinom(start ~ xstart))  # regress true known start state on covs.
 
 ### Allow some observations to be observed without error. (first observation)
-## heart$firstobs <- as.numeric(c(TRUE, heart$PTNUM[2:nrow(heart)] != heart$PTNUM[1:(nrow(heart)-1)]))
-misc.msm <- msm(state ~ years, subject = PTNUM, data = heart, obstrue=firstobs,
+## cav$firstobs <- as.numeric(c(TRUE, cav$PTNUM[2:nrow(cav)] != cav$PTNUM[1:(nrow(cav)-1)]))
+misc.msm <- msm(state ~ years, subject = PTNUM, data = cav, obstrue=firstobs,
                 qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=TRUE)
 stopifnot(all.equal(misc.msm$minus2loglik, 4165.84711809003))
 ### test against dummy covariate hack
-misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                 qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=TRUE, center=FALSE,
                 misccovariates=~firstobs, misccovinits = list(firstobs=rep(-1e+06,4)))
 stopifnot(all.equal(misc.msm$minus2loglik, 4165.84711809003))
 
 ### ignore default initprobs if first obs is true state 2 
-heart2 <- heart
-heart2$state[heart2$firstobs==1] <- 2
-misc.msm <- msm(state ~ years, subject = PTNUM, data = heart2, obstrue=firstobs,
+cav2 <- cav
+cav2$state[cav2$firstobs==1] <- 2
+misc.msm <- msm(state ~ years, subject = PTNUM, data = cav2, obstrue=firstobs,
                 qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=TRUE)
 misc.msm
 
