@@ -13,15 +13,20 @@ image.msm,
 MatrixExp,
 msm,
 logLik.msm,
+lrtest.msm,
 odds.msm,
+pearson.msm,
 persp.msm,
 plot.msm,
+plotprog.msm,
 plot.prevalence.msm,
+plot.survfit.msm,
 pmatrix.msm,
 pmatrix.piecewise.msm,
 prevalence.msm,
 qmatrix.msm,
 qratio.msm,
+scoreresid.msm,
 sim.msm,
 simmulti.msm,
 sojourn.msm,
@@ -70,6 +75,8 @@ importFrom(graphics, contour)
 importFrom(graphics, image)
 importFrom(stats, coef)
 importFrom(mvtnorm, rmvnorm)
+importFrom(survival, Surv)
+importFrom(survival, survfit)
 
 S3method(print, msm)
 S3method(summary, msm)
@@ -82,3 +89,4 @@ S3method(logLik, msm)
 S3method(print, hmodel)
 S3method(print, hmmdist)
 S3method(print, msm.est)
+S3method(print, pearson.msm)

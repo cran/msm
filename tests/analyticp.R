@@ -205,16 +205,16 @@ sim2.df <- simmulti.msm(sim.df[,1:2], qmatrix=five.q)
 
 
 ### APPLICATIONS 
-## one-way heart misc
+## one-way cav misc
 ## Takes 34% of the time using new method. 
 oneway4.q <- rbind(c(0, 0.148, 0, 0.0171), c(0, 0, 0.202, 0.081), c(0, 0, 0, 0.126), c(0, 0, 0, 0))
 rownames(oneway4.q) <- colnames(oneway4.q) <- c("Well","Mild","Severe","Death")
 ematrix <- rbind(c(0, 0.1, 0, 0),c(0.1, 0, 0.1, 0),c(0, 0.1, 0, 0),c(0, 0, 0, 0))
-system.time(misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+system.time(misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                 qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=FALSE, analyticp=FALSE,
                 control = list(trace=1, REPORT=1), method="BFGS"))
 misc.msm
-system.time(misc.msm <- msm(state ~ years, subject = PTNUM, data = heart,
+system.time(misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                 qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=FALSE, analyticp=TRUE,
                 control = list(trace=1, REPORT=1), method="BFGS"))
 misc.msm

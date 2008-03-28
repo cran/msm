@@ -35,12 +35,10 @@
   screens with frequency depending on the state of the aneurysm.
   Severe aneurysms are repaired by surgery.
 }
-
 \source{
   The Chichester, U.K. randomised controlled trial of screening for
   abdominal aortic aneurysms by ultrasonography.
 }
-
 \references{
   Jackson, C.H., Sharples, L.D., Thompson, S.G. and Duffy, S.W. and
   Couto, E.  Multi-state Markov models for disease progression with
@@ -52,5 +50,4 @@
     and implications for screening policy}
   Journal of Medical Screening 9(1):40--42
 }
-
 \keyword{datasets}

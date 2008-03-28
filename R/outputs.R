@@ -88,7 +88,9 @@ print.summary.msm <- function(x,...)
     invisible()
 }
 
-plot.msm <- function(x, from=NULL, to=NULL, range=NULL, covariates="mean", legend.pos=NULL, ...)
+### Estimated survival probability from each state 
+
+plot.msm <- function(x, from=NULL, to=NULL, range=NULL, covariates="mean", legend.pos=NULL, xlab="Time", ylab="Fitted survival probability", lwd=1,...)
 {
     if (!inherits(x, "msm")) stop("expected x to be a msm model")
     if (is.null(from))
@@ -104,9 +106,8 @@ plot.msm <- function(x, from=NULL, to=NULL, range=NULL, covariates="mean", legen
         if (!is.numeric(to)) stop("to must be numeric")
         if (! (to %in% absorbing.msm(x) ) ) stop("to must be an absorbing state")
     }
-    if (is.null(range)) {
+    if (is.null(range))
         rg <- range(x$data$time)
-    }
     else {
         if (!is.numeric(range) || length(range)!= 2) stop("range must be a numeric vector of two elements")
         rg <- range
@@ -117,21 +118,55 @@ plot.msm <- function(x, from=NULL, to=NULL, range=NULL, covariates="mean", legen
     cols <- rainbow(length(from))
     for (t in times)
         pr <- c(pr, pmatrix.msm(x, t, covariates)[from[1], to])
-    plot(times, 1 - pr, type="l", xlab="Time", ylab="Fitted survival probability",
+    plot(times, 1 - pr, type="l", xlab=xlab, ylab=ylab, lwd=lwd,
          ylim=c(0,1), lty = 1, col=cols[1],...)
     lt <- 2
     for (st in from[-1]){
         pr <- numeric()
         for (t in times)
             pr <- c(pr, pmatrix.msm(x, t, covariates)[st, to])
-        lines(times, 1 - pr, type="l", lty = lt, col=cols[lt],...)
+        lines(times, 1 - pr, type="l", lty = lt, lwd=lwd, col=cols[lt],...)
         lt <- lt+1
     }
     if (!is.numeric(legend.pos) || length(legend.pos) != 2)
         legend.pos <- c(max(times) - 15*timediff, 1)
-    legend(legend.pos[1], legend.pos[2], legend=paste("From state",from), lty = seq(lt-1), col=cols, lwd=2)
+    legend(legend.pos[1], legend.pos[2], legend=paste("From state",from), lty = seq(lt-1), col=cols, lwd=lwd)
     invisible()
 }
+
+### Plot KM estimate of time to first occurrence of each state
+
+plotprog.msm <- function(formula, subject, data, legend.pos=NULL, xlab="Time", ylab="1 - incidence probability", lwd=1, ...) {
+    data <- na.omit(data)
+    mf <- model.frame(formula, data=data)
+    state <- mf[,1]
+    time <- mf[,2]
+    if (!is.null(data))
+        subject <- eval(substitute(subject), as.list(data), parent.frame())
+    subject <- match(subject, unique(subject))
+    rg <- range(time)
+    plot(0, xlim=rg, ylim=c(0,1), type="n", xlab=xlab, ylab=ylab, lwd=lwd, ...)
+    states <- sort(unique(state))[-1]
+    cols <- rainbow(length(states))
+    for (i in states) {
+        dat <- cbind(subject, time, state)
+        st <- as.data.frame(
+                            do.call("rbind", by(dat, subject, function(x)
+                                            {
+                                                c(anystate = if(any(x[,"state"]>=i)) 1 else 0, 
+                                                  mintime = if(any(x[,"state"]>=i)) min(x[x[,"state"] >= i, "time"]) else max(x[,"time"]))
+                                            }
+                                                ))) # slow 
+        lines(survfit(Surv(st$mintime,st$anystate)),col=cols[i-1],lty=i-1, lwd=lwd,...)
+    }
+    timediff <- (rg[2] - rg[1]) / 50
+    if (!is.numeric(legend.pos) || length(legend.pos) != 2)
+        legend.pos <- c(max(time) - 25*timediff, 1)
+    legend(legend.pos[1], legend.pos[2], lty=states-1, lwd=lwd, col=cols,
+           legend=paste("To state", states, c(rep("or greater", length(states)-1), "")))
+    invisible()
+}
+
 
 ### Likelihood surface plots
 
@@ -812,10 +847,30 @@ coef.msm <- function(object, ...)
 logLik.msm <- function(object, ...)
 {
     if (!inherits(object, "msm")) stop("expected object to be a msm model")
-    val <- 0.5 * object$minus2loglik
-    attr(val, "df") <- length(object$estimates) - length(object$fixedpars)
+    val <- - 0.5 * object$minus2loglik
+    attr(val, "df") <- object$paramdata$nopt
     class(val) <- "logLik"
     val
+}
+
+### Likelihood ratio test between two or more models
+
+lrtest.msm <- function(...){
+    mods <- list(...)
+    if (length(mods) < 2) stop("Expected 2 or more models as arguments")
+    lx <- logLik(mods[[1]])
+    res <- matrix(nrow=length(mods)-1, ncol=3)
+    colnames(res) <- c("-2 log LR","df","p")
+    rownames(res) <- sapply(as.list(match.call())[-(1:2)], deparse)
+    for (i in 2:length(mods)) {
+        if (!inherits(mods[[i]], "msm"))
+            stop("Expected argument",i,"to be a msm object")
+        ly <- logLik(mods[[i]])
+        lr <- as.numeric(-2 * (lx - ly))
+        df <- attr(ly,"df") - attr(lx,"df")    
+        res[i-1,] <- c(lr, df, 1 - pchisq(lr, df))
+    }
+    res
 }
 
 ## Estimate total length of stay in a given state.
@@ -890,7 +945,7 @@ absorbing.msm <- function(x=NULL, qmatrix=NULL)
 ## transitions in an interval.  Handles transitions between observed
 ## states in misclassification models
 
-intervaltrans.msm <- function(x=NULL, qmatrix=NULL, ematrix=NULL, exclude.absabs=FALSE) {
+intervaltrans.msm <- function(x=NULL, qmatrix=NULL, ematrix=NULL, exclude.absabs=FALSE, censor=FALSE) {
     if (!is.null(x)) {
         if (!inherits(x, "msm")) stop("expected x to be a msm model")
         qmatrix <- qmatrix.msm(x, ci="none")
@@ -907,10 +962,22 @@ intervaltrans.msm <- function(x=NULL, qmatrix=NULL, ematrix=NULL, exclude.absabs
     if (!is.null(ematrix))
         P <- t(ematrix) %*% P %*% ematrix # > 0 iff P(obs state=s | prev obs state = r) > 0 
     ## P(obs state = s | obs prev = r)  =  Sum_ij  P(obsst = s | truest = j) P(truest = j | trueprev = i) P(trueprev = i | obsprev = r)
-    ##  Sum_ij   Ejs Pij Eir    =  Eir Pij Ejs 
-    at <- cbind(row(P)[P>0], col(P)[P>0])
+    ##  Sum_ij   Ejs Pij Eir    =  Eir Pij Ejs
+    gt0 <- abs(P) > .Machine$double.eps ^ 0.5
+    at <- cbind(row(P)[gt0], col(P)[gt0])
     if (exclude.absabs)
         at <- at[!(at[,1] %in% abs & at[,2] %in% abs),]
+    if (censor && x$cmodel$ncens > 0) { # consider censoring as separate state
+        atcens.all <- numeric()
+        for (i in 1:x$cmodel$ncens) {
+            truestates <- x$cmodel$states[x$cmodel$index[i] : (x$cmodel$index[i+1] - 1)]
+            atcens <- at[at[,2] %in% truestates,]
+            atcens[,2] <- 99
+            atcens <- unique(atcens)
+            atcens.all <- rbind(atcens.all, atcens)
+        }
+        at <- rbind(at, atcens.all)
+    }
     at[order(at[,1],at[,2]),]
 }
 
@@ -1059,7 +1126,7 @@ prevalence.msm <- function(x,
                            cl = 0.95,
                            B = 1000,
                            interp=c("start","midpoint"),
-                           plot = FALSE
+                           plot = FALSE, ...
                            )
 {
     ## Estimate observed state occupancies in the data at a series of times
@@ -1075,13 +1142,13 @@ prevalence.msm <- function(x,
     names(res) <- c("Observed", "Expected", "Observed percentages", "Expected percentages")
     if (plot) plot.prevalence.msm(x, mintime=min(times), maxtime=max(times), timezero=timezero, initstates=initstates,
                                   interp=interp, covariates=covariates, misccovariates=misccovariates,
-                                  piecewise.times=piecewise.times, piecewise.covariates=piecewise.covariates)
+                                  piecewise.times=piecewise.times, piecewise.covariates=piecewise.covariates, ...)
     res
 }
 
 plot.prevalence.msm <- function(x, mintime=NULL, maxtime=NULL, timezero=NULL, initstates=NULL,
                                 interp=c("start","midpoint"), covariates="mean", misccovariates="mean",
-                                piecewise.times=NULL, piecewise.covariates=NULL, ...){
+                                piecewise.times=NULL, piecewise.covariates=NULL, xlab="Times",ylab="Prevalence (%)", lwd=1, ...){
     time <- x$data$time
     if (is.null(mintime)) mintime <- min(time)
     if (is.null(maxtime)) maxtime <- max(time)
@@ -1095,10 +1162,71 @@ plot.prevalence.msm <- function(x, mintime=NULL, maxtime=NULL, timezero=NULL, in
     nrows <- if (floor(sqrt(S))^2 < S && S <= floor(sqrt(S))*ceiling(sqrt(S))) floor(sqrt(S)) else ceiling(sqrt(S))
     par(mfrow=c(nrows, ncols))
     for (i in states) {
-        plot(t, obs$obsperc[,i], type="l", lty=1, ylim=c(0, 100), xlab="Times", ylab="Prevalence (%)",
+        plot(t, obs$obsperc[,i], type="l", lty=1, ylim=c(0, 100), xlab=xlab, ylab=ylab, lwd=lwd, 
              main=rownames(x$qmodel$qmatrix)[i],...)
-        lines(t, expec[,i], lty=2)
+        lines(t, expec[,i], lty=2, lwd=lwd)
     }
+    invisible()
+}
+
+### Empirical versus fitted survival curve 
+
+plot.survfit.msm <- function(x, from=1, to=NULL, range=NULL, covariates="mean", interp=c("start","midpoint"), ci=c("none","normal","bootstrap"), B=100,
+                             legend.pos=NULL, xlab="Time", ylab="Survival probability", lwd=1, ...) {
+    if (!inherits(x, "msm")) stop("expected x to be a msm model")
+    if (is.null(to))
+        to <- max(absorbing.msm(x))
+    else {
+        if (!is.numeric(to)) stop("to must be numeric")
+        if (! (to %in% absorbing.msm(x) ) ) stop("to must be an absorbing state")
+    }
+    if (is.null(range))
+        rg <- range(x$data$time)
+    else {
+        if (!is.numeric(range) || length(range)!= 2) stop("range must be a numeric vector of two elements")
+        rg <- range
+    }
+    interp <- match.arg(interp)
+    ci <- match.arg(ci)
+    timediff <- (rg[2] - rg[1]) / 50
+    times <- seq(rg[1], rg[2], timediff)
+    pr <- lower <- upper <- numeric()
+    for (t in times) {
+        P <- pmatrix.msm(x, t, covariates, ci=ci, B=B)
+        if (ci != "none") { 
+            pr <- c(pr, P$estimates[from, to])
+            lower <- c(lower, P$L[from, to])
+            upper <- c(upper, P$U[from, to])
+        }
+        else pr <- c(pr, P[from, to])
+    }
+    plot(times, 1 - pr, type="l", xlab=xlab, ylab=ylab, lwd=lwd,
+         ylim=c(0,1), lty = 1, col="red",...)
+    if (ci != "none") {
+        lines(times, 1 - lower, lty=3, col="red", lwd=lwd)
+        lines(times, 1 - upper, lty=3, col="red", lwd=lwd)
+    }
+    dat <- as.data.frame(x$data[c("subject", "time", "state")])
+    st <- as.data.frame(
+                        do.call("rbind", by(dat, dat$subject, function(x)
+                                        {
+                                            dind <- which(x[,"state"] == to)
+                                            if(any(x[,"state"]==to))
+                                                mintime <- if(interp=="start") min(x[dind, "time"]) else 0.5 * (x[dind, "time"] + x[dind-1, "time"])
+                                            else mintime <- max(x[,"time"])
+                                            c(anystate = as.numeric(any(x[,"state"]==to)), mintime = mintime)
+                                        }
+                                            ))) # slow 
+    lines(survfit(Surv(st$mintime,st$anystate)),col="blue",lty=2, lwd=lwd,...)
+    timediff <- (rg[2] - rg[1]) / 50
+    if (!is.numeric(legend.pos) || length(legend.pos) != 2)
+        legend.pos <- c(max(x$data$time) - 25*timediff, 1)
+    if (ci=="none")
+        legend(legend.pos[1], legend.pos[2], lty=c(1,2), lwd=lwd, col=c("red","blue"),
+               legend=c("Fitted","Empirical"))
+    else legend(legend.pos[1], legend.pos[2], lty=c(1,3,2), lwd=lwd, col=c("red","red","blue"),
+                legend=c("Fitted","Fitted (confidence interval)", "Empirical"))
+
     invisible()
 }
 
@@ -1236,6 +1364,7 @@ viterbi.msm <- function(x)
                   as.integer(x$data$tostate),
                   as.double(x$data$timelag),
                   as.double(unlist(x$data$covmat)),
+                  as.double(unlist(x$data$cov)),
                   as.integer(x$data$covdata$whichcov), # this is really part of the model
                   as.integer(x$data$nocc),
                   as.integer(x$data$whicha),

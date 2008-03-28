@@ -3,9 +3,9 @@
 \alias{viterbi.msm}
 
 \description{
-  For a fitted hidden Markov model, the Viterbi
-  algorithm recursively constructs the path with the
-  highest probability through the underlying states.
+  For a fitted hidden Markov model, or a model with censored state
+  observations, the Viterbi algorithm recursively constructs the path
+  with the highest probability through the underlying states.
 }
 
 \usage{
@@ -24,8 +24,8 @@ viterbi.msm(x)
     \code{observed} = corresponding observed states
 
     \code{fitted} = corresponding fitted states found by Viterbi
-    recursion. If the model is not a hidden Markov model, this is just
-    the observed states. 
+    recursion. If the model is not a hidden Markov model and there are
+    no censored state observations, this is just the observed states. 
 }
 \seealso{
   \code{\link{msm}}

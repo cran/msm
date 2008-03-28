@@ -3,6 +3,37 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.8  (2008-03-28)
+-------------
+
+* New function "pearson.msm" implementing the Pearson-type
+  goodness-of-fit test for multi-state models fitted to panel data
+  (Aguirre-Hernandez and Farewell, Statistics in Medicine 2002; 
+   Titman and Sharples, Statistics in Medicine 2007).
+
+* New function "scoreresid.msm" to compute and plot score residuals
+  for detecting influential subjects.
+
+* New function "plot.prog.msm" to plot Kaplan-Meier estimates of time
+  to first occurrence of each state.
+
+* New function "plot.survfit.msm" to plot Kaplan-Meier estimate of
+  survival probabilty compared with the fitted survival probability from
+  a model.
+
+* New convenience function "lrtest.msm" for comparing a set of models
+  with likelihood ratio tests.
+
+* logLik method returns the log-likelihood, not the minus
+  log-likelihood, for consistency with methods in other
+  packages. Thanks to Jay Rotella.
+
+* msm now depends on the "survival" package. 
+
+* Data "heart" renamed to "cav" to avoid clashing with the dataset in
+  the "survival" package.
+
+
 Version 0.7.6  (2007-12-10)
 -------------
 
@@ -29,7 +60,7 @@ Version 0.7.5  (2007-11-20)
 * Bug fixes involving factor covariates in bootstrapping and
   qratio.msm. Thanks to Peter Jepsen.
 
-* New beta outcome distribution for hidden Markov models
+* New beta outcome distribution for hidden Markov models.
 
 
 Version 0.7.4  (2007-10-01)

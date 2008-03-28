@@ -105,4 +105,4 @@ pmatrix.piecewise.msm(x, 0, 15, times, covariates)
 }
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
-\keyword{}
+\keyword{models}

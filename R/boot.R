@@ -157,11 +157,17 @@ expected.ci.msm <- function(x,
 ### Not user visible: only support a limited set of statistics based on Q matrix and E matrix.
 
 normboot.msm <- function(x, stat, B=100) {
-    sim <- rmvnorm(B, x$estimates, x$covmat)
+    ## simulate from vector of unreplicated parameters, to avoid numerical problems with rmvnorm when lots of correlations are 1 
+    sim <- rmvnorm(B, x$opt$par, solve(0.5 * x$opt$hessian))
+    params <- matrix(nrow=B, ncol=x$paramdata$npars)  # replicate constrained parameters.
+    params[,x$paramdata$optpars] <- sim 
+    params[,x$paramdata$hmmpars] <- msm.mninvlogit.transform(x$paramdata$params[x$paramdata$hmmpars], x$hmodel$plabs, x$hmodel$parstate)
+    params <- params[, !duplicated(abs(x$paramdata$constr))][, abs(x$paramdata$constr)]*rep(sign(x$paramdata$constr), each=B)
+
     sim.stat <- vector(B, mode="list")
     for (i in 1:B) {
         x.rep <- x
-        x.rep$paramdata$params <- sim[i,]
+        x.rep$paramdata$params <- params[i,]
         output <- msm.form.output("intens", x.rep$qmodel, x.rep$qcmodel, x.rep$paramdata)
         x.rep$Qmatrices <- output$Matrices
         if (x$emodel$misc) {

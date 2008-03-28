@@ -12,7 +12,7 @@
 prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="mean",
                misccovariates="mean", piecewise.times=NULL, piecewise.covariates=NULL,
 	       ci=c("none","normal","bootstrap"), cl=0.95, B=1000,
-               interp=c("start","midpoint"), plot=FALSE)
+               interp=c("start","midpoint"), plot=FALSE, ...)
 }
 \arguments{
   \item{x}{A fitted multi-state model produced by \code{\link{msm}}.}
@@ -69,10 +69,13 @@ prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="mean",
   If \code{interp="midpoint"} then if \eqn{t <= (t_{r-1} + t_r) / 2},
      the midpoint of \eqn{t_{r-1}} and \eqn{t_r}, the state at \eqn{t}
      is assumed to be \eqn{S_{r-1}}, otherwise \eqn{S_{r}}. This is
-     generally more reasonable for ``progressive" models. 
+     generally more reasonable for "progressive" models. 
    }  	    
 
-  \item{plot}{Generate a plot of observed against expected prevalences. See \code{\link{plot.prevalence.msm}}}
+   \item{plot}{Generate a plot of observed against expected
+     prevalences. See \code{\link{plot.prevalence.msm}}}
+
+   \item{...}{Further arguments to pass to \code{\link{plot.prevalence.msm}}.}
 }
 \value{
   A list of matrices, with components:

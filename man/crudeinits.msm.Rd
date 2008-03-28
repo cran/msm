@@ -65,11 +65,11 @@ crudeinits.msm(formula, subject, qmatrix, data=NULL, censor=NULL, censor.states=
   \code{\link{statetable.msm}}
 }
 \examples{
-data(heart)
+data(cav)
 twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166),
 c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
-statetable.msm(state, PTNUM, data=heart)
-crudeinits.msm(state ~ years, PTNUM, data=heart, qmatrix=twoway4.q)
+statetable.msm(state, PTNUM, data=cav)
+crudeinits.msm(state ~ years, PTNUM, data=cav, qmatrix=twoway4.q)
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
-\keyword{}
+\keyword{models}

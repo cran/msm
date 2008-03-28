@@ -1,3 +1,57 @@
+2008-03-28 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* DESCRIPTION: Version 0.8 released.
+	
+2008-03-18 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/pearson.R: New file for the Pearson-type goodness-of-fit test.
+
+	* data/heart.txt: Data "heart" renamed to "cav". 
+
+	* R/simul.R: any() bugs in simmisc.msm for simulating
+	misclassification models fixed
+	
+2008-03-11 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: logLik.msm degrees of freedom corrected for models
+	with parameter constraints.
+
+	* R/outputs.R: New function "plot.survfit.msm" to plot
+	  Kaplan-Meier estimate of survival probabilty compared with the
+	  fitted survival probability from a model.
+
+	* R/outputs.R: Allow customisable axis titles and line widths in
+	all plot functions.
+
+2008-03-03 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: New function "plot.prog.msm" to plot Kaplan-Meier
+	estimates of time to first occurrence of each state.  Added
+	"survfit" and "Surv" imports from the "survival" package.
+
+	* R/outputs.R: New likelihood ratio test function
+	"lrtest.msm". 
+	
+2008-03-03 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: logLik method returns the log-likelihood, not the
+	minus log-likelihood. Thanks to Jay Rotella for the report.
+
+2008-02-27 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/utils.R: Transformation bug fixed which caused rtnorm to hang
+	for extreme means. Thanks to Björn Bornkamp.
+
+2008-02-18 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/boot.R: Simulate normal CIs using unreplicated parameters, so
+	that they work with the new release of mvtnorm.  Thanks to Peter
+	Jepsen for the report.
+
+2007-12-12 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R,src/lik.c: Score residuals implemented. 
+	
 2007-12-10 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* R/utils.R: Quantile functions: uniroot() convergence tolerance

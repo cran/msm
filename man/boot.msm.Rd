@@ -2,7 +2,7 @@
 \alias{boot.msm}
 \title{Bootstrap resampling for multi-state models}
 \description{
-  Draw a number of bootstrap resamples, refit a msm model to the
+  Draw a number of bootstrap resamples, refit a \code{\link{msm}} model to the
   resamples, and calculate statistics on the refitted models.
 }
 \usage{
@@ -30,17 +30,28 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
 
   Confidence intervals or standard errors for the corresponding
   statistic can be calculated by summarising the returned list of
-  \code{B} replicated outputs.  This is currently implemented for the
-  transition probability matrix and total length of stay, see
-  \code{\link{pmatrix.msm}}, \code{\link{totlos.msm}}.  At the moment,
-  for other outputs, users will have to write their own code to
+  \code{B} replicated outputs.  This is currently implemented for most
+  the output functions \code{\link{qmatrix.msm}}, \code{\link{ematrix.msm}},
+  \code{\link{qratio.msm}},  
+  \code{\link{pmatrix.msm}},   \code{\link{pmatrix.piecewise.msm}},
+  \code{\link{totlos.msm}} and \code{\link{prevalence.msm}}.
+  For other outputs, users will have to write their own code to
   summarise the output of \code{\link{boot.msm}}.
 
   Most of \pkg{msm}'s output functions present confidence intervals
   based on asymptotic standard errors calculated from the
   Hessian. These are expected to be underestimates of the true standard
-  errors (Cramer-Rao lower bound).  Bootstrapping may give a more
-  accurate estimate of the uncertainty.   
+  errors (Cramer-Rao lower bound).  Some of these functions use a
+  further approximation, the delta method (see
+  \code{\link{deltamethod}}) to obtain standard errors of transformed
+  parameters. Bootstrapping should give a more
+  accurate estimate of the uncertainty.
+
+  An alternative method which is faster than bootstrapping but more
+  accurate than the delta method, is to draw a sample from the
+  asymptotic multivariate normal distribution implied by the
+  maximum likelihood estimates (and covariance matrix), and summarise
+  the transformed bootstrapping.  See \code{\link{pmatrix.msm}}
   
   All objects used in the original call to \code{\link{msm}} which
   produced \code{x}, such as the \code{qmatrix}, should be in the
@@ -92,4 +103,4 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
 }
 }
 \author{C.H.Jackson <chris.jackson@mrc-bsu.cam.ac.uk>}
-\keyword{}
+\keyword{models}

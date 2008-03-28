@@ -71,4 +71,4 @@ plot(x, pexp(x, 0.1), type="l") ## standard exponential distribution
 lines(x, ppexp(x, rate, t), type="l", lty=2)  ## distribution with piecewise constant rate
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
-\keyword{}
+\keyword{distribution}

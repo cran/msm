@@ -95,8 +95,10 @@ msm.form.hcmodel <- function(hmodel, hcovdata, hcovinits, hconstraint)
                     coveffstate=coveffstate, ncoveffs=length(coveffect))
       hmodel <- c(hmodel, hcmod)
       hmodel$plabs[hmodel$plabs=="hcov"] <- paste("hcov.",covlabels,sep="")
-      whichcovh <- lapply(hcovdata, function(x) x$whichcov)
+      whichcovh <- lapply(hcovdata, function(x) x$whichcov) # factor contrasts as separate covariates
       hmodel$whichcovh <- unlist(rep(whichcovh, tapply(ncovs2>0, hmodel$parstate, sum)))
+      whichcovh.orig <- lapply(hcovdata, function(x) x$whichcov.orig) # factors considered as one variable 
+      hmodel$whichcovh.orig <- unlist(rep(whichcovh.orig, tapply(ncovs2>0, hmodel$parstate, sum)))
       class(hmodel) <- "hmodel"
       hmodel
   }

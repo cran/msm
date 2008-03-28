@@ -50,4 +50,4 @@ covariates="mean", misccovariates="mean", hazard.scale=1, \dots)
   \code{\link{msm}},\code{\link{prevalence.msm}}, \code{\link{hazard.msm}}
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
-\keyword{}
+\keyword{models}

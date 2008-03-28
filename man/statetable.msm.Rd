@@ -27,11 +27,11 @@ statetable.msm(state, subject, data=NULL)
 }
 \examples{
 ## Heart transplant data
-data(heart)
+data(cav)
 
 ## 148 deaths from state 1, 48 from state 2 and 55 from state 3.
-statetable.msm(state, PTNUM, data=heart)
+statetable.msm(state, PTNUM, data=cav)
 
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
-\keyword{}
+\keyword{models}

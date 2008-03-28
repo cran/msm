@@ -8,12 +8,13 @@
   as not entering an absorbing state.
 }
 \usage{
-\method{plot}{msm}(x, from, to, range, covariates, legend.pos, ...)
+\method{plot}{msm}(x, from, to, range, covariates, legend.pos, xlab="Time",
+                   ylab="Fitted survival probability", lwd=1, ...)
 }
 \arguments{
 
   \item{x}{Output from \code{\link{msm}}, representing a fitted
-    multi-state model object}
+    multi-state model object.}
 
   \item{from}{States from which to consider survival. Defaults to
     the complete set of transient states. }
@@ -45,8 +46,13 @@
 
   \item{legend.pos}{Vector of the \eqn{x} and \eqn{y} position,
     respectively, of the legend.}
+
+  \item{xlab}{x axis label.}
+  \item{ylab}{y axis label.}
+  \item{lwd}{Line width. See \code{\link{par}}.}
   
-  \item{...}{Other arguments to the generic \code{plot} function}
+  \item{...}{Other arguments to be passed to the generic
+    \code{\link{plot}} and \code{\link{lines}} functions.}
 }
 \seealso{
   \code{\link{msm}}

@@ -137,4 +137,4 @@ lines(x, dtnorm(x, 70, 10, 60, 80), type="l")       ## truncated Normal
 lines(x, dmenorm(x, 70, 10, 60, 80, sderr=3), type="l")
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
-\keyword{}
+\keyword{distribution}

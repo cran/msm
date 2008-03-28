@@ -14,7 +14,7 @@
   \item{...}{(unused) further arguments passed to or from other methods.}
 }
 \value{
-  The minus log-likelihood of the model represented by
+  The log-likelihood of the model represented by
   'object' evaluated at the maximum likelihood estimates.
 }
 \seealso{
