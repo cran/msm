@@ -136,7 +136,7 @@ plot.msm <- function(x, from=NULL, to=NULL, range=NULL, covariates="mean", legen
 
 ### Plot KM estimate of time to first occurrence of each state
 
-plotprog.msm <- function(formula, subject, data, legend.pos=NULL, xlab="Time", ylab="1 - incidence probability", lwd=1, ...) {
+plotprog.msm <- function(formula, subject, data, legend.pos=NULL, xlab="Time", ylab="1 - incidence probability", lwd=1, xlim=NULL, ...) {
     data <- na.omit(data)
     mf <- model.frame(formula, data=data)
     state <- mf[,1]
@@ -145,7 +145,8 @@ plotprog.msm <- function(formula, subject, data, legend.pos=NULL, xlab="Time", y
         subject <- eval(substitute(subject), as.list(data), parent.frame())
     subject <- match(subject, unique(subject))
     rg <- range(time)
-    plot(0, xlim=rg, ylim=c(0,1), type="n", xlab=xlab, ylab=ylab, lwd=lwd, ...)
+    if (is.null(xlim)) xlim=rg
+    plot(0, xlim=xlim, ylim=c(0,1), type="n", xlab=xlab, ylab=ylab, lwd=lwd, ...)
     states <- sort(unique(state))[-1]
     cols <- rainbow(length(states))
     for (i in states) {
@@ -874,9 +875,10 @@ lrtest.msm <- function(...){
 }
 
 ## Estimate total length of stay in a given state.
-## TODO: non-homogeneous models.
+## TODO: non-homogeneous models, using pmatrix.piecewise.msm. 
+## currently fixes covariates at their values at the start of the interval to be forecasted. 
 
-totlos.msm <- function(x, start=1, fromt=0, tot=Inf, covariates="mean",
+totlos.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean",
                        ci=c("none","normal","bootstrap"), # calculate a confidence interval
                        cl = 0.95, # width of symmetric confidence interval
                        B = 1000, # number of bootstrap replicates
@@ -884,23 +886,30 @@ totlos.msm <- function(x, start=1, fromt=0, tot=Inf, covariates="mean",
 {
     if (!inherits(x, "msm")) stop("expected x to be a msm model")
     if (! start %in% 1 : x$qmodel$nstates) stop("start should be a state in 1, ..., ", x$qmodel$nstates)
+    if (is.null(end)) end <- 1 : x$qmodel$nstates
+    if (! all(end %in% 1 : x$qmodel$nstates)) stop("end should be a set of states in 1, ..., ", x$qmodel$nstates)
     if (!is.numeric(fromt) || !is.numeric(tot) || length(fromt) != 1 || length(tot) != 1 || fromt < 0 || tot < 0)
         stop("fromt and tot must be single non-negative numbers")
     if (fromt > tot) stop("tot must be greater than fromt")
     if (length(absorbing.msm(x)) == 0)
-        if (tot==Inf) stop("Must specify a finite end time for a model with no absorbing state")
-    tr <- transient.msm(x)
-    totlos <- numeric(length(tr))
-    for (j in seq(along=tr)){
+        if (tot==Inf) stop("Must specify a finite end time for a model with no absorbing state")    
+    tr <- seq(length=x$qmodel$nstates) # transient.msm(x)
+    totlos <- numeric(length(end))
+    if (tot==Inf) {
+        totlos[end %in% absorbing.msm(x)] <- Inf # set by hand or else integrate() will fail
+        rem <- seq(along=end)[!(end %in% absorbing.msm(x))]
+    }
+    else rem <- seq(along=end)
+    for (j in rem){
         f <- function(time) {
             y <- numeric(length(time))
             for (i in seq(along=y))
-                y[i] <- pmatrix.msm(x, time[i], covariates)[start,tr[j]]
+                y[i] <- pmatrix.msm(x, time[i], covariates)[start,end[j]]
             y
         }
         totlos[j] <- integrate(f, fromt, tot, ...)$value
     }
-    names(totlos) <- rownames(x$qmodel$qmatrix)[tr]
+    names(totlos) <- rownames(x$qmodel$qmatrix)[end]
     ci <- match.arg(ci)
     t.ci <- switch(ci,
                    bootstrap = totlos.ci.msm(x=x, start=start, fromt=fromt, tot=tot, covariates=covariates, cl=cl, B=B),
@@ -1148,7 +1157,8 @@ prevalence.msm <- function(x,
 
 plot.prevalence.msm <- function(x, mintime=NULL, maxtime=NULL, timezero=NULL, initstates=NULL,
                                 interp=c("start","midpoint"), covariates="mean", misccovariates="mean",
-                                piecewise.times=NULL, piecewise.covariates=NULL, xlab="Times",ylab="Prevalence (%)", lwd=1, ...){
+                                piecewise.times=NULL, piecewise.covariates=NULL, xlab="Times",ylab="Prevalence (%)",
+                                lwd=1, legend.pos=NULL,...){
     time <- x$data$time
     if (is.null(mintime)) mintime <- min(time)
     if (is.null(maxtime)) maxtime <- max(time)
@@ -1166,6 +1176,9 @@ plot.prevalence.msm <- function(x, mintime=NULL, maxtime=NULL, timezero=NULL, in
              main=rownames(x$qmodel$qmatrix)[i],...)
         lines(t, expec[,i], lty=2, lwd=lwd)
     }
+    if (!is.numeric(legend.pos) || length(legend.pos) != 2)
+        legend.pos <- c(0.4*maxtime, 40)
+    legend(x=legend.pos[1], y=legend.pos[2], legend=c("Observed","Expected"), lty=1:2, lwd=lwd)
     invisible()
 }
 
@@ -1425,4 +1438,18 @@ viterbi.msm <- function(x)
                time = x$data$time,
                observed = x$data$state,
                fitted = fitted)
+}
+
+scoreresid.msm <- function(x, plot=FALSE){
+    if (x$hmodel$hidden | (x$cmodel$ncens > 0))
+        stop("Score residuals not implemented for hidden Markov models or models with censored states")
+    derivs <- likderiv.msm(x$paramdata$opt$par, deriv=3, x$data, x$qmodel, x$qcmodel, x$cmodel, x$hmodel, x$paramdata)
+    cov <- solve(0.5*x$opt$hessian)
+    sres <- colSums(t(derivs) * cov %*% t(derivs))
+    names(sres) <- unique(x$data$subject)
+    if (plot) {
+        plot(sres, type="n")
+        text(seq(along=sres), sres, names(sres))
+    }
+    sres
 }

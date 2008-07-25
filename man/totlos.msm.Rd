@@ -2,12 +2,12 @@
 \alias{totlos.msm}
 \title{Total length of stay}
 \description{
-  Estimate the expected total length of stay in each transient state,
+  Estimate the expected total length of stay in each set of states,
   for a given period of evolution of a multi-state model. This assumes that the
   transition rates do not change with time. 
 }
 \usage{
-totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean",
+totlos.msm(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean",
            ci=c("none","normal","bootstrap"), cl=0.95, B=1000, ...)
 }
 \arguments{
@@ -16,6 +16,8 @@ totlos.msm(x, start=1, fromt=0, tot=Inf, covariates="mean",
   
   \item{start}{State at the beginning of the period.}
 
+  \item{end}{States to forecast the total length of stay in. Defaults to all states.}
+  
   \item{fromt}{Time from which to estimate total length of
     stay. Defaults to 0, the beginning of the process.}
   

@@ -7,7 +7,7 @@
 }
 \usage{
 plotprog.msm(formula, subject, data, legend.pos=NULL, xlab="Time",
-                   ylab="1 - incidence probability", lwd=1, ...)
+                   ylab="1 - incidence probability", lwd=1, xlim=NULL, ...)
 }
 \arguments{
   \item{formula}{A formula giving the vectors containing the observed
@@ -29,9 +29,10 @@ plotprog.msm(formula, subject, data, legend.pos=NULL, xlab="Time",
   \item{xlab}{x axis label.}
   \item{ylab}{y axis label.}
   \item{lwd}{Line width. See \code{\link{par}}.}
+  \item{xlim}{x axis limits, e.g. c(0,10) for an axis ranging from 0 to 10. Default is the range of observation times.}
   
   \item{...}{Other arguments to be passed to the
-    \code{\link{plot.survfit}} and \code{\link{lines.survfit}} functions.}
+    \code{\link[survival]{plot.survfit}} and \code{\link[survival]{lines.survfit}} functions.}
 }
 \details{
   If the data represent observations of the process at arbitrary times, then
@@ -40,5 +41,5 @@ plotprog.msm(formula, subject, data, legend.pos=NULL, xlab="Time",
   probabilities plotted by \code{\link{plotprog.msm}} will be
   overestimates. 
 }
-\seealso{\code{\link{survfit}}, \code{\link{plot.survfit}}} 
+\seealso{\code{\link[survival]{survfit}}, \code{\link[survival]{plot.survfit}}} 
 \keyword{models}

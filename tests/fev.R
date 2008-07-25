@@ -177,7 +177,7 @@ if (developer.local) {
     tot <- totlos.msm(fev1.msm)
     stopifnot(isTRUE(all.equal(c(1420.72075298143, 1113.04493977146), as.numeric(tot), tol=1e-06)))
 
-    stopifnot(isTRUE(all.equal(25798.9454570137, as.numeric(logLik.msm(fev1.msm)), tol=1e-06)))
+    stopifnot(isTRUE(all.equal(-25798.9454570137, as.numeric(logLik.msm(fev1.msm)), tol=1e-06)))
 
 
 ### example of Viterbi algorithm in the PDF manual

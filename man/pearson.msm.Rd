@@ -105,12 +105,14 @@ pearson.msm(x, transitions=NULL, timegroups=3, intervalgroups=3,
     be systematically different from other observation times. }
   
   \item{maxtimes}{A vector of length \code{x$data$n}, or a common
-    scalar, giving an upper bound for each next scheduled observation
+    scalar, giving an upper bound for the next scheduled observation
     time.  Used in the multiple imputation when times to death are known exactly. 
     If a value greater than \code{maxtimes} is simulated, then the next
     scheduled observation is taken as censored.   This should be
     supplied, if known.  If not supplied, this is taken to be the
-    maximum interval occurring in the data, plus one time unit. 
+    maximum interval occurring in the data, plus one time unit.
+    For observations which are not exact death times, this should be
+    the time since the previous observation. 
   }
 }
 \value{

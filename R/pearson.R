@@ -8,10 +8,11 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
                         maxtimes=NULL # upper limit for imputed next observation times
                         ) {
 
+    dat <- x$data
     ## Error handling    
     if (!inherits(x, "msm")) stop("expected \"x\" t to be a msm model")
     if (x$hmodel$hidden && !x$emodel$misc) stop("only HMMs handled are misclassification models specified using \"ematrix\"")
-    if (any(x$data$obstype==2)) stop("exact transition times are not supported, only panel-observed data")
+    if (any(dat$obstype==2)) stop("exact transition times are not supported, only panel-observed data")
     if (!is.null(transitions) && !is.numeric(transitions)) stop("expected \"transitions\" to be numeric")
     if (!is.numeric(timegroups) || length(timegroups) != 1) stop ("expected \"timegroups\" to be a single number")
     if (!is.numeric(intervalgroups) || length(intervalgroups) != 1) stop ("expected \"intervalgroups\" to be a single number")
@@ -21,19 +22,20 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
     
     ## Label various constants 
     nst <- x$qmodel$nstates
-    exact.death <- any(x$data$obstype == 3)
+    exact.death <- any(dat$obstype == 3)
     dstates <- if (exact.death) absorbing.msm(x) else NULL
     ndstates <- if (exact.death) transient.msm(x) else 1:nst
     nndstates <- length(ndstates)
 
     ## Add a few useful variables to the data
     obstypename <- if (x$hmodel$hidden || x$cmodel$ncens > 0) "obstype" else "obstype.obs"
-    od <- as.data.frame(x$data[c("subject","time","state",obstypename)])
-    od$cov <- x$data$cov
+    od <- as.data.frame(dat[c("subject","time","state",obstypename)])
+    od$cov <- dat$cov.orig
     od$state <- factor(od$state, levels=sort(unique(od$state)))
-    n <- x$data$n
+    n <- dat$n
     od$ind <- 1:n # index into original data (useful if any rows of od are dropped)
     od$prevstate <- factor(c(NA,od$state[1:(n-1)]),  levels=1:nndstates)
+    od$prevtime <- c(NA, od$time[1:(n-1)])
     od$firstobs <- rep(tapply(1:n,od$subject,min)[as.character(unique(od$subject))],
                     table(od$subject)[as.character(unique(od$subject))])
     od$obsno <- 1:n - od$firstobs + 1
@@ -95,10 +97,10 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
     ## Determine unique Q matrices determined by covariate combinations
     ncovs <- x$qcmodel$ncovs
     if (ncovs>0) {
-        uniq <- unique(od$cov[x$data$covdata$whichcov.orig])
+        uniq <- unique(od$cov[dat$covdata$whichcov.orig])
         nouniq <- dim(uniq)[1]
         pastedu <- do.call("paste",uniq)
-        pastedc <- do.call("paste",od$cov[x$data$covdata$whichcov.orig])
+        pastedc <- do.call("paste",od$cov[dat$covdata$whichcov.orig])
         qmatindex <- match(pastedc,pastedu)
         qmat <- array(0,dim=c(nst,nst,nouniq))
         for (i in 1:nouniq)
@@ -156,7 +158,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
         deathindex <- which(md$obtype==1)
         for (i in 1:ndeath) {
             mintime <- md$timeinterval[deathindex[i]]
-            centime <- md$maxtimes[deathindex[i]] - md$time[deathindex[i]] + mintime
+            centime <- md$maxtimes[deathindex[i]] # - md$time[deathindex[i]] + mintime
             tg <- md$timegroup[deathindex[i]]
             ## returns list of times, whether would have ended in censoring, and time category.
             st <- sampletimes(mintime, centime, empiricaldist[,tg,empiricaldist["time",tg,]>0], N, tg, intervalq)            
@@ -238,7 +240,8 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
             else
                 prob[cbind(rep(1:nst,ndeath),rep(deathindex,each=nst))] <-
                     pmi[cbind(rep(md$prevstate[deathindex],each=nst),rep(1:nst,ndeath),rep(imputation[,i,"timeqmatindex"],each=nst))]
-            md$intervalgroup[deathindex] <- factor(imputation[,i,"intervalgroup"], labels=levels(md$intervalgroup[deathindex]))
+
+            md$intervalgroup[deathindex] <- factor(imputation[,i,"intervalgroup"], labels=levels(md$intervalgroup[deathindex])[sort(unique(imputation[,i,"intervalgroup"]))])
 
             md$cens[deathindex] <- as.numeric(imputation[,i,"cens"]) # factor levels 0/1
 
@@ -309,9 +312,9 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
 
     ## Simulated observation times to use as sampling frame for bootstrapped data
     if (!is.null(imputation)) {
-      imp.times <- matrix(rep(x$data$time, N), nrow=length(x$data$time), ncol=N)
-      prevtime <- imp.times[which(x$data$state %in% dstates) - 1,]
-      imp.times[x$data$state %in% dstates, ] <- prevtime + imputation[,,"times"]
+      imp.times <- matrix(rep(dat$time, N), nrow=length(dat$time), ncol=N)
+      prevtime <- imp.times[which(dat$state %in% dstates) - 1,]
+      imp.times[dat$state %in% dstates, ] <- prevtime + imputation[,,"times"]
     }
     else imp.times <- NULL
     
@@ -394,16 +397,20 @@ qcut <- function(x, n, qu=NULL, eps=1e-06, digits=2, drop.unused.levels=FALSE) {
 ### Simulate data from fitted model with same observation scheme 
 
 boot.param.msm <- function(x){
-    sim.df <- as.data.frame(x$data[c("subject","time","cens")])
-    sim.df$obstrue <- x$data$obstrue # NULL if not HMM
-    sim.df$obstype <- if (!is.null(x$data$obstype.obs)) x$data$obstype.obs else x$data$obstype
+    dat <- x$data
+    sim.df <- as.data.frame(dat[c("subject","time","cens")])
+    sim.df$obstrue <- dat$obstrue # NULL if not HMM
+    sim.df$obstype <- if (!is.null(dat$obstype.obs)) dat$obstype.obs else dat$obstype
+    sim.df$pci.imp <- dat$pci.imp
     if (x$qcmodel$ncovs > 0) {
-        sim.df <- cbind(sim.df, x$data$cov[,x$qcmodel$covlabels,drop=FALSE])
+        sim.df <- cbind(sim.df, dat$cov[,x$qcmodel$covlabels,drop=FALSE])
+        sim.df <- cbind(sim.df, dat$cov.orig[,x$qcmodel$covlabels.orig,drop=FALSE])
         cov.effs <- lapply(x$Qmatrices, function(y)t(y)[t(x$qmodel$imatrix)==1])[x$qcmodel$covlabels]
     }
     else cov.effs <- NULL
     if (x$ecmodel$ncovs > 0) {
-        sim.df <- cbind(sim.df, x$data$cov[,setdiff(x$ecmodel$covlabels,x$qcmodel$covlabels),drop=FALSE])
+        sim.df <- cbind(sim.df, dat$cov[,setdiff(x$ecmodel$covlabels,x$qcmodel$covlabels),drop=FALSE])
+        sim.df <- cbind(sim.df, dat$cov.orig[,setdiff(x$ecmodel$covlabels.orig,x$qcmodel$covlabels.orig),drop=FALSE])
         misccov.effs <- lapply(x$Ematrices, function(y)t(y)[t(x$emodel$imatrix)==1])[x$ecmodel$covlabels]
     }
     else misccov.effs <- NULL
@@ -418,30 +425,31 @@ boot.param.msm <- function(x){
 
 
 pearson.boot.msm <- function(x, imp.times=NULL, transitions=NULL, timegroups=4, intervalgroups=4, covgroups=4, groups=NULL, B=500, df){
-    bootstat <- numeric(B)
-    x$call$formula <- if (x$emodel$misc) substitute(obs ~ time) else substitute(state ~ time)
-    x$call$qmatrix <- qmatrix.msm(x,ci="none") # put MLE in inits.
-    x$call$hessian <- x$call$death <- FALSE
-    x$call$obstype <- NULL
-    x$call$subject <- substitute(subject)
-    i <- 1
-    while (i <= B) {
-        if (!is.null(imp.times))
-            x$data$time <- imp.times[,sample(ncol(imp.times), size=1)]  # resample one of the imputed sets of observation times
-        x$data$cens <- ifelse(x$data$state %in% 1:x$qmodel$nstates, 0, x$data$state) # 0 if not censored, cens indicator if censored, so that censoring is retained in simulated data
-        boot.df <- boot.param.msm(x)
-        x$call$data <- substitute(boot.df)
-        refit.msm <- try(eval(x$call))        
-        if (inherits(refit.msm, "msm")) {
-            p <- pearson.msm(refit.msm, transitions=transitions, timegroups=timegroups,
-                             intervalgroups=intervalgroups, covgroups=covgroups, groups=groups, boot=FALSE)
-            bootstat[i] <- p$test$stat
-            i <- i + 1
-        }
+  bootstat <- numeric(B)
+  x$call$formula <- if (x$emodel$misc) substitute(obs ~ time) else substitute(state ~ time)
+  x$call$qmatrix <- qmatrix.msm(x,ci="none") # put MLE in inits.
+  x$call$hessian <- x$call$death <- FALSE
+  x$call$obstype <- NULL
+  x$call$subject <- substitute(subject)
+  i <- 1
+  while (i <= B) {
+    if (!is.null(imp.times))
+     x$data$time <- imp.times[,sample(ncol(imp.times), size=1)]  # resample one of the imputed sets of observation times
+    x$data$cens <- ifelse(x$data$state %in% 1:x$qmodel$nstates, 0, x$data$state) # 0 if not censored, cens indicator if censored, so that censoring is retained in simulated data
+    boot.df <- boot.param.msm(x)
+    boot.df <- boot.df[!boot.df$pci.imp,]
+    x$call$data <- substitute(boot.df)
+    refit.msm <- try(eval(x$call))        
+    if (inherits(refit.msm, "msm")) {
+      p <- pearson.msm(refit.msm, transitions=transitions, timegroups=timegroups,
+                       intervalgroups=intervalgroups, covgroups=covgroups, groups=groups, boot=FALSE)
+      bootstat[i] <- p$test$stat
+      i <- i + 1
     }
-    bootstat
+  }
+  bootstat
 }
-    
+
 ### Work out empirical distribution of sampling times for each observation (or time since initiation) group:
     
 empiricaldists  <-  function(timeinterval, state, obgroup, obgroups, ndstates) {

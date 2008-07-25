@@ -13,7 +13,7 @@ plot.prevalence.msm(x, mintime=NULL, maxtime=NULL, timezero=NULL,
                     initstates=NULL, interp=c("start","midpoint"),
                     covariates="mean", misccovariates="mean",
                     piecewise.times=NULL, piecewise.covariates=NULL,
-                    xlab="Times",ylab="Prevalence (\%)", lwd=1, 
+                    xlab="Times",ylab="Prevalence (\%)", lwd=1, legend.pos=NULL,
                     ...)
 }
 \arguments{
@@ -47,12 +47,17 @@ plot.prevalence.msm(x, mintime=NULL, maxtime=NULL, timezero=NULL,
   \item{xlab}{x axis label.}
   \item{ylab}{y axis label.}
   \item{lwd}{Line width. See \code{\link{par}}.}  
+  \item{legend.pos}{Vector of the \eqn{x} and \eqn{y} position,
+    respectively, of the legend.}
   \item{...}{Further arguments to be passed to the generic \code{\link{plot}}
     function.}
 }
 \details{
   See \code{\link{prevalence.msm}} for details of the assumptions
   underlying this method.
+
+  Observed prevalences are plotted with a solid line, and expected
+  prevalences with a dotted line.
 }
 \references{
   Gentleman, R.C., Lawless, J.F., Lindsey, J.C. and Yan, P.  Multi-state

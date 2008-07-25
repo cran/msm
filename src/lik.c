@@ -135,9 +135,9 @@ void GetCensored (double obs, cmodel *cm, int *nc, double **states)
 
 /*
   Calculate p (obs curr | true i) for hidden Markov models 
-  If no censoring (nc==1), and observation is not necessarily of the true state (!obstrue), 
-  then this is just the HMM outcome model. 
-  For censored outcomes, there is no misclassification / HMM outcome model. 
+  If observation is not necessarily of the true state (!obstrue), 
+  then this is just the HMM outcome probability (summed over censor set if necessary) 
+  If obstrue, this observation is not misclassified. 
   e.g. censor set 1,2,3,    state set 1,2,3,4, 
   pout =   if i in curr 1, else 0 
 */
@@ -147,8 +147,10 @@ void GetOutcomeProb(double *pout, double *curr, int nc, double *newpars, hmodel 
     int i, j;
     for (i=0; i<qm->nst; ++i) {
 	pout[i] = 0;
-	if (nc == 1 && !obstrue)
-	    pout[i] = (HMODELS[hm->models[i]])(curr[0], &(newpars[hm->firstpar[i]]));
+	if (!obstrue) {
+	    for (j=0; j<nc; ++j)
+		pout[i] += (HMODELS[hm->models[i]])(curr[j], &(newpars[hm->firstpar[i]]));
+	}
 	else { 
 	    for (j=0; j<nc; ++j) 
 		if ((int) curr[j] == i+1) 
@@ -319,8 +321,9 @@ void update_likcensor(int obsno, double *prev, double *curr, int np, int nc,
 		    newp[i] += cump[j] * contrib;
 		    
 		}
-		else 
+		else {
 		    newp[i] += cump[j] * pmat[MI((int) prev[j]-1, (int) curr[i]-1, qm->nst)];
+		}
 	    }
 	}
     normalize(newp, cump, nc, lweight); 
@@ -375,13 +378,13 @@ double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm,
     for (i=0; i < d->nobs; ++i)
 	{
 	    R_CheckUserInterrupt();
-	    if ((i==0) || (d->whicha[i] != d->whicha[i-1])) {
-		/* we have a new timelag/covariates combination. Recalculate the 
+	    if ((i==0) || (d->whicha[i] != d->whicha[i-1]) || (d->obstype[i] != d->obstype[i-1])) {
+		/* we have a new timelag/covariates/obstype combination. Recalculate the 
 		   P matrix for this */
 		AddCovs(i, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens,
 			qcm->coveffect, d->cov, d->whichcov, &totcovs,
 			log, exp);
-		Pmat(pmat, d->timelag[i], newintens, qm->npars, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
+		Pmat(pmat, d->timelag[i], newintens, qm->npars, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, i==37);
 	    }
 	    if (d->obstype[i] == OBS_DEATH)
 		contrib = pijdeath(d->fromstate[i], d->tostate[i], pmat, newintens, qm->ivector, qm->nst);
@@ -389,7 +392,7 @@ double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm,
 		contrib = pmat[MI(d->fromstate[i], d->tostate[i], qm->nst)];
 	    lik += d->nocc[i] * log(contrib);
 #ifdef DEBUG
-	    printf("obs %d, from %d, to %d, time %lf, ", i, d->fromstate[i], d->tostate[i], d->timelag[i]);
+	    printf("obs %d, from %d, to %d, time %lf, obstype %d, ", i, d->fromstate[i], d->tostate[i], d->timelag[i], d->obstype[i]);
 	    for (j = 0; j < qcm->ncovs[0]; ++j)
 		printf("cov%d %lf, ", j, d->cov[MI(i, d->whichcov[j]-1, d->nobs)]);
 	    printf("nocc %d, con %lf, lik %lf\n", d->nocc[i], log(contrib), lik);
@@ -616,8 +619,8 @@ void derivsimple(msmdata *d, qmodel *qm, qcmodel *qcm,
     for (i=0; i < d->nobs; ++i)
 	{
 	    R_CheckUserInterrupt();
-	    if ((i==0) || (d->whicha[i] != d->whicha[i-1])) {
-		/* we have a new timelag/covariates combination. Recalculate the 
+	    if ((i==0) || (d->whicha[i] != d->whicha[i-1]) || (d->obstype[i] != d->obstype[i-1])) {
+		/* we have a new timelag/covariates/obstype combination. Recalculate the 
 		   P matrix and its derivatives for this */
 		GetCovData(i, d->cov, d->whichcov, x, qcm->ncovs[0], d->nobs);
 		AddCovs(i, d->nobs, np, qcm->ncovs, qm->intens, newintens,

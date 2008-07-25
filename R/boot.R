@@ -4,24 +4,25 @@
 ### censored.
 
 bootdata.trans.msm <- function(x) {
-    subj.num <- match(x$data$subject, unique(x$data$subject))
+    dat <- if (!is.null(x$data.orig)) x$data.orig else x$data
+    subj.num <- match(dat$subject, unique(dat$subject))
     nextsubj <- c(subj.num[2:length(subj.num)], Inf)
     lastsubj <- subj.num != nextsubj
     inds <- sample(which(!lastsubj), replace=TRUE)
-    data.boot <- as.data.frame(matrix(nrow=length(inds)*2, ncol=length(x$data$covlabels.orig) + 4))
+    data.boot <- as.data.frame(matrix(nrow=length(inds)*2, ncol=length(dat$covlabels.orig) + 4))
     state.name <- deparse(as.list(x$call$formula)[[2]])
     time.name <- deparse(as.list(x$call$formula)[[3]])
-    colnames(data.boot) <- c("subject.name", time.name, state.name, "obstype.name", x$data$covlabels.orig)
-    data.boot[,state.name] <- as.vector(rbind(x$data$state[inds], x$data$state[inds+1]))
+    colnames(data.boot) <- c("subject.name", time.name, state.name, "obstype.name", dat$covlabels.orig)
+    data.boot[,state.name] <- as.vector(rbind(dat$state[inds], dat$state[inds+1]))
                                         # in the bootstrap data, label each transition as being from a different subject
     data.boot[,"subject.name"] <- rep(seq(along=inds), each=2)
-    data.boot[,time.name] <- as.vector(rbind(x$data$time[inds], x$data$time[inds+1]))
-    data.boot[,"obstype.name"] <- as.vector(rbind(x$data$obstype.obs[inds], x$data$obstype.obs[inds+1]))
-    for (j in x$data$covlabels.orig) {
+    data.boot[,time.name] <- as.vector(rbind(dat$time[inds], dat$time[inds+1]))
+    data.boot[,"obstype.name"] <- as.vector(rbind(dat$obstype.obs[inds], dat$obstype.obs[inds+1]))
+    for (j in dat$covlabels.orig) {
         frominds <- seq(1, 2*length(inds)-1, 2)
-        data.boot[frominds, j] <- data.boot[frominds+1,j] <- x$data$cov[inds, j]
-        if (x$data$covdata$covfactor[j])
-            data.boot[,j] <- factor(data.boot[,j], labels=levels(x$data$cov[,j]))
+        data.boot[frominds, j] <- data.boot[frominds+1,j] <- dat$cov.orig[inds, j]
+        if (dat$covdata$covfactor[j])
+            data.boot[,j] <- factor(data.boot[,j], labels=levels(dat$cov.orig[,j]))
     }
     colnames(data.boot) <- gsub("factor\\((.+)\\)", "\\1", colnames(data.boot))
     data.boot
@@ -33,7 +34,8 @@ bootdata.trans.msm <- function(x) {
 ### independent.
 
 bootdata.subject.msm <- function(x) {
-    subj.num <- match(x$data$subject, unique(x$data$subject))
+    dat <- if (!is.null(x$data.orig)) x$data.orig else x$data
+    subj.num <- match(dat$subject, unique(dat$subject))
     subjs <- sample(unique(subj.num), replace=TRUE)
     inds <- new.subj <- NULL
     for (i in seq(along=subjs)) {
@@ -41,19 +43,20 @@ bootdata.subject.msm <- function(x) {
         inds <- c(inds, subj.inds)
         new.subj <- c(new.subj, rep(i, length(subj.inds)))
     }
-    data.boot <- as.data.frame(matrix(nrow=length(inds), ncol=length(x$data$covlabels.orig) + 5))
+    data.boot <- as.data.frame(matrix(nrow=length(inds), ncol=length(dat$covlabels.orig) + 5))
     state.name <- deparse(as.list(x$call$formula)[[2]])
     time.name <- deparse(as.list(x$call$formula)[[3]])
-    colnames(data.boot) <- c("subject.name", time.name, state.name, "obstype.name", "obstrue.name", x$data$covlabels.orig)
+    colnames(data.boot) <- c("subject.name", time.name, state.name, "obstype.name", "obstrue.name", dat$covlabels.orig)
     data.boot[,"subject.name"] <- new.subj
-    data.boot[,time.name] <- x$data$time[inds]
-    data.boot[,state.name] <- x$data$state[inds]
-    data.boot[,"obstype.name"] <- x$data$obstype[inds]
-    data.boot[,"obstrue.name"] <- x$data$obstrue[inds]
-    for (j in x$data$covlabels.orig) {
-        data.boot[, j] <- x$data$cov[inds, j]
-        if (x$data$covdata$covfactor[j])
-            data.boot[,j] <- factor(data.boot[,j], labels=levels(x$data$cov[,j]))
+    data.boot[,time.name] <- dat$time[inds]
+    data.boot[,state.name] <- dat$state[inds]
+    data.boot[,"obstype.name"] <- dat$obstype[inds]
+    data.boot[,"obstrue.name"] <- dat$obstrue[inds]
+    for (j in dat$covlabels.orig) {
+        data.boot[, j] <- dat$cov.orig[inds, j]
+        if (dat$covdata$covfactor[j]){
+          data.boot[,j] <- factor(data.boot[,j], labels=levels(dat$cov.orig[,j]))
+        }
     }
     colnames(data.boot) <- gsub("factor\\((.+)\\)", "\\1", colnames(data.boot))
     data.boot
@@ -158,8 +161,9 @@ expected.ci.msm <- function(x,
 
 normboot.msm <- function(x, stat, B=100) {
     ## simulate from vector of unreplicated parameters, to avoid numerical problems with rmvnorm when lots of correlations are 1 
-    sim <- rmvnorm(B, x$opt$par, solve(0.5 * x$opt$hessian))
-    params <- matrix(nrow=B, ncol=x$paramdata$npars)  # replicate constrained parameters.
+  if (!x$foundse) stop("Asymptotic standard errors not available in fitted model")
+  sim <- rmvnorm(B, x$opt$par, solve(0.5 * x$opt$hessian))
+  params <- matrix(nrow=B, ncol=x$paramdata$npars)  # replicate constrained parameters.
     params[,x$paramdata$optpars] <- sim 
     params[,x$paramdata$hmmpars] <- msm.mninvlogit.transform(x$paramdata$params[x$paramdata$hmmpars], x$hmodel$plabs, x$hmodel$parstate)
     params <- params[, !duplicated(abs(x$paramdata$constr))][, abs(x$paramdata$constr)]*rep(sign(x$paramdata$constr), each=B)

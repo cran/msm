@@ -412,10 +412,10 @@ void Pmat(Matrix pmat, double t, vector intens, int nintens, ivector qvector, in
     FillQmatrix(qvector, intens, qmat, nstates);
     if (exacttimes) { 
 	for (i=0; i<nstates; ++i) {
-	    pii = exp(t * qmat[MI(i, i, nstates)] );
-	    for (j=0; j<nstates; ++j) {
-		pmat[MI(i, j, nstates)] = ( i==j  ?  pii  : pii * qmat[MI(i, j, nstates)] );
-	    }
+	  pii = exp(t * qmat[MI(i, i, nstates)] );
+	  for (j=0; j<nstates; ++j) {
+	    pmat[MI(i, j, nstates)] = ( i==j  ?  pii  : pii * qmat[MI(i, j, nstates)] );
+	  }
 	}
     }
     else {
