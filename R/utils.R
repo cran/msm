@@ -84,8 +84,6 @@ MatrixExp <- function(mat, t = 1, n = 20, k = 3, method="pade")
     res
 }
 
-identity <- function(x)x
-
 ### Truncated normal distribution
 
 dtnorm <- function(x, mean=0, sd=1, lower=-Inf, upper=Inf, log=FALSE)
@@ -436,3 +434,8 @@ rpexp <- function(n=1, rate=1, t=0)
       }
       ret
   }
+
+## TODO remove this when enough people have upgraded to R 2.7.0, which
+## has this in base.
+
+identity <- function(x)x

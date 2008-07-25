@@ -8,7 +8,6 @@ library(msm)
 
 if (developer.local)  { 
 
-  source("../msm/R/simul.R")
     nsubj <- 50; nobspt <- 6
     sim.df <- data.frame(subject = rep(1:nsubj, each=nobspt), time = seq(0, 20, length=nobspt), 
                          x = rnorm(nsubj*nobspt), y = rnorm(nsubj*nobspt)* 5 + 2 )

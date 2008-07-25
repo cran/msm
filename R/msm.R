@@ -30,13 +30,13 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                 exacttimes = FALSE, # TRUE is shortcut for all obstype 2.
                 censor = NULL,
                 censor.states = NULL,
+                pci = NULL,
                 cl = 0.95, # width of confidence intervals
                 fixedpars = NULL, # specify which parameters to fix. TRUE for all parameters
                 center = TRUE, # center covariates at their means
                 opt.method = c("optim","nlm"),
                 hessian = TRUE,
                 use.deriv = FALSE,
-                deriv.test=FALSE,
                 analyticp = TRUE,
                 ... # options to optim or nlm
                 )
@@ -83,7 +83,18 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
     msmdata.obs <- msm.form.data(formula, subject, obstype, obstrue, covariates, data,
                                  hcovariates, misccovariates, initcovariates,
                                  qmodel, emodel, hmodel, cmodel, dmodel, exacttimes, center)
-
+### EXPAND DATA AND MODEL FOR TIME DEPENDENT INTENSITIES 
+    if (!is.null(pci)) { 
+        tdmodel <- msm.pci(pci, msmdata.obs, qmodel, cmodel, center)
+        if (is.null(tdmodel)) # supplied cut points not in range of data 
+            pci <- NULL
+        else { 
+            cmodel <- tdmodel$cmodel
+            msmdata.obs.orig <- msmdata.obs
+            names(msmdata.obs.orig)[names(msmdata.obs.orig) %in% c("covmat","covmat.orig")] <- c("cov","cov.orig") # used in bootstrap
+            msmdata.obs <- tdmodel$dat
+        }
+    }
     if (hmodel$hidden || (cmodel$ncens > 0)) {
         msmdata <- msm.aggregate.hmmdata(msmdata.obs)
         msmdata$fromstate <- msmdata$tostate <- msmdata$timelag <- numeric(0)
@@ -100,12 +111,17 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
         msmdata$obstype.obs <- msmdata.obs$obstype
         msmdata$firstobs <- msmdata.obs$firstobs
     }
-    msmdata$cov <- msmdata.obs$covmat.orig
+    if (is.null(pci)) {
+      msmdata.obs.orig <- NULL
+      msmdata$pci.imp <- rep(0, msmdata$nobs)
+    }
+    msmdata$cov <- msmdata.obs$covmat
+    msmdata$cov.orig <- msmdata.obs$covmat.orig
     msmdata$covlabels.orig <- msmdata.obs$covlabels.orig
-
+    
 ### MODEL FOR COVARIATES ON INTENSITIES
     qcmodel <-
-        if (!is.null(covariates))
+        if (msmdata$covdata$ncovs > 0)
             msm.form.covmodel(msmdata$covdata, constraint, qmodel$npars, covinits)
         else {
             if (!is.null(constraint)) warning("constraint specified but no covariates")
@@ -150,24 +166,6 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
 
 ### FORM LIST OF INITIAL PARAMETERS, MATCHING PROVIDED INITS WITH SPECIFIED MODEL, FIXING SOME PARS IF REQUIRED
     p <- msm.form.params(qmodel, qcmodel, emodel, hmodel, fixedpars, est.initprobs)
-
-    if (deriv.test) {
-        ## Validate the new code for analytic derivatives against numeric derivatives
-        likwrap <- function(x, ...){
-            pars <- list(unlist(list(...)))
-            do.call("lik.msm", c(pars, x))
-        }
-        myenv <- new.env()
-        assign("x", list(msmdata, qmodel, qcmodel, cmodel, hmodel, p), env = myenv)
-        for (i in 1:p$nopt)
-            assign(paste("p", i, sep=""), p$inits[i], env = myenv)
-        pvec <- paste("p",1:p$nopt,sep="")
-        foo <- numericDeriv(as.call(lapply(as.list(c("likwrap", "x", pvec)), as.name)), pvec, myenv)
-        an.d <- deriv.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p)
-        num.d <- attr(foo,"gradient")
-        error <- max(abs((an.d - num.d)/num.d))
-        return (list(analytic.deriv=an.d, numeric.deriv=num.d, error=error))
-    }
 
 ### CALCULATE LIKELIHOOD AT INITIAL VALUES...
     if (p$fixed) {
@@ -291,6 +289,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                        opt = p$opt,
                        foundse = p$foundse,
                        data = msmdata,
+                       data.orig = msmdata.obs.orig, # before any pci imputation, NULL if no pci
                        qmodel = qmodel,
                        emodel = emodel,
                        qcmodel = qcmodel,
@@ -748,7 +747,7 @@ msm.form.covdata <- function(covariates, data, ignore.obs, center=TRUE)
     covrows.kept <- (1:n)[! ((1:n) %in% droprows)]
     covfactor <- sapply(mf2, is.factor)
     covfactorlevels <- lapply(mf2, levels)
-                                        # for consistency with version 0.7 and earlier, don't include imputed last obs when calculating covariate means
+    ## for consistency with version 0.7 and earlier, don't include imputed last obs when calculating covariate means
     covmeans <- apply(na.omit(model.matrix(covariates, data=data)), 2, mean, na.rm=TRUE)[-1]
     ## centre the covariates about their means if requested
     if (center && ncovs > 0) mm <- sweep(mm, 2, covmeans)
@@ -816,6 +815,7 @@ msm.form.covmodel <- function(covdata,
 {
     ncovs <- covdata$ncovs
     covlabels <- covdata$covlabels
+    covlabels.orig <- covdata$covlabels.orig
     covfactor <- covdata$covfactor
     if (is.null(constraint)) {
         constraint <- rep(list(1:nmatrix), ncovs)
@@ -891,7 +891,8 @@ msm.form.covmodel <- function(covdata,
          ncovs=ncovs,
          constr=constr,
          whichdcov=whichdcov,
-         covlabels=covlabels,
+         covlabels=covlabels, # factors as separate contrasts
+         covlabels.orig=covlabels.orig, # factors as one variable
          inits = inits,
          covmeans=covdata$covmeans
          )
@@ -1242,20 +1243,6 @@ deriv.msm <- function(params, ...)
     likderiv.msm(params, deriv=1, ...)
 }
 
-scoreresid.msm <- function(x, plot=FALSE){
-    if (x$hmodel$hidden | (x$cmodel$ncens > 0))
-        stop("Score residuals not implemented for hidden Markov models or models with censored states")
-    derivs <- likderiv.msm(x$paramdata$opt$par, deriv=3, x$data, x$qmodel, x$qcmodel, x$cmodel, x$hmodel, x$paramdata)
-    cov <- solve(0.5*x$opt$hessian)
-    sres <- colSums(t(derivs) * cov %*% t(derivs))
-    names(sres) <- unique(x$data$subject)
-    if (plot) {
-        plot(sres, type="n")
-        text(seq(along=sres), sres, names(sres))
-    }
-    sres
-}
-
 ## Convert vector of MLEs into matrices 
 
 msm.form.output <- function(whichp, model, cmodel, p)
@@ -1402,6 +1389,114 @@ crudeinits.msm <- function(formula, subject, qmatrix, data=NULL, censor=NULL, ce
     colnames(estmat) <- colnames(qmatrix)
     estmat
 }
+
+### Construct a model with time-dependent transition intensities. 
+### Form a new dataset with censored states and extra covariate, and
+### form a new censor model, given change times in tcut
+
+msm.pci <- function(tcut, dat, qmodel, cmodel, center)
+{
+    if (!is.numeric(tcut)) stop("Expected \"tcut\" to be a numeric vector of change points")
+    old <- as.data.frame(dat[c("subject","time","state","obstype","obstrue")])
+    if (dat$ncovs > 0)
+        old[c("covmat","covmat.orig")] <- dat[c("covmat","covmat.orig")]
+    ## new dataset
+    ntcut <- length(tcut)
+    nextra <- ntcut*dat$npts
+    extra <- data.frame(subject = rep(unique(dat$subject), each=ntcut),
+                        time = rep(tcut, dat$npts),
+                        state = rep(NA, nextra),
+                        obstype = rep(1, nextra),
+                        obstrue = rep(TRUE, nextra),
+                        pci.imp = 1
+                        )
+    old$pci.imp <- 0
+    if (dat$ncovs > 0){
+        extra$covmat <- as.data.frame(matrix(NA, nrow=nextra, ncol=ncol(old$covmat)))
+        extra$covmat.orig <- as.data.frame(matrix(NA, nrow=nextra, ncol=ncol(old$covmat.orig)))
+        rownames(old$covmat.orig) <- rownames(old$covmat) <- 1:nrow(old) 
+        rownames(extra$covmat.orig) <- rownames(extra$covmat) <- nrow(old) + 1:nrow(extra) # get rid of dup / null rownames errors
+    }
+    ## merge new and old observations 
+    new <- rbind(old, extra)
+    new <- new[order(new$subject, new$time),]
+    label <- if (cmodel$ncens > 0) max(cmodel$censor)*2 else qmodel$nstates + 1 
+    new$state[is.na(new$state)] <- label
+    ## Only keep cutpoints within range of each patient's followup
+    mintime <- tapply(old$time, old$subject, min)[as.character(unique(old$subject))]
+    maxtime <- tapply(old$time, old$subject, max)[as.character(unique(old$subject))]
+    nobspt <- as.numeric(table(new$subject)[as.character(unique(new$subject))])
+    new <- new[new$time >= rep(mintime, nobspt) & new$time <= rep(maxtime, nobspt), ]
+    ## Carry last value forward for other covariates
+    if (dat$ncovs > 0) {
+        eind <- which(is.na(new$covmat[,1]))
+        while(length(eind) > 0){
+            new$covmat[eind,] <- new$covmat[eind - 1,]
+            new$covmat.orig[eind,] <- new$covmat.orig[eind - 1,]
+            eind <- which(is.na(new$covmat[,1]))
+        }
+    }
+    
+    ## constants in dataset
+    new <- as.list(new)
+    new$nobs <- new$n <- n <- length(new$state)
+    new$npts <- dat$npts
+    new$firstobs <- c(1, which(new$subject[2:n] != new$subject[1:(n-1)]) + 1, n+1)
+    new$ncovs <- dat$ncovs + ntcut
+
+    ## Check range of cut points
+    if (any(tcut < min(dat$time)))
+      warning("Time cut point", if (sum(tcut < min(dat$time)) > 1) "s " else " ",
+                paste(tcut[tcut<min(dat$time)],collapse=","),
+                " less than minimum observed time of ",min(dat$time))
+    if (any(tcut > max(dat$time)))
+        warning("Time cut point", if (sum(tcut > max(dat$time)) > 1) "s " else " ",
+                paste(tcut[tcut>max(dat$time)],collapse=","),
+                " greater than maximum observed time of ",max(dat$time))
+    tcut <- tcut[tcut > min(dat$time) & tcut < max(dat$time)]
+    ntcut <- length(tcut)
+    if (ntcut==0) 
+        res <- NULL # no cut points in range of data, continue with no time-dependent model
+    else {
+        ## Insert new covariate in data representing time period
+        tcovlabel <- "timeperiod"
+        while (tcovlabel %in% dat$covlabels)
+            tcovlabel <- paste(tcovlabel, ".1", sep="")
+        tcov <- factor(cut(new$time, c(-Inf,tcut,Inf), right=FALSE))
+        levs <- levels(tcov)
+        levels(tcov) <- gsub(" ","", levs) # get rid of spaces in e.g. [10, Inf) levels 
+        assign(tcovlabel, tcov)
+        mm <- model.matrix(as.formula(paste("~", tcovlabel)))[,-1,drop=FALSE]
+        new$covmat <- cbind(new$covmat, mm)
+        new$covmat.orig <- cbind(new$covmat.orig, timeperiod=tcov)
+        covmeans <- colMeans(new$covmat)
+        if (center) new$covmat <- sweep(new$covmat, 2, covmeans)
+        
+        ## new censoring model 
+        cmodel$ncens <- cmodel$ncens + 1
+        cmodel$censor <- c(cmodel$censor, label)
+        cmodel$states <- c(cmodel$states, 1:qmodel$nstates)
+        cmodel$index <- if (is.null(cmodel$index)) 1 else cmodel$index
+        cmodel$index <- c(cmodel$index, length(cmodel$states) + 1)
+
+        ## new auxiliary information about covariates
+        for (i in c("covdata","misccovdata","hcovdata","icovdata")) new[[i]] <- dat[[i]]
+        new$covlabels <- c(dat$covlabels, colnames(mm))
+        new$covlabels.orig <- c(dat$covlabels.orig, tcovlabel)
+        new$covdata$covlabels <- c(dat$covdata$covlabels, colnames(mm))
+        new$covdata$ncovs <- dat$covdata$ncovs + ntcut
+        new$covdata$covmeans <- c(dat$covdata$covmeans, covmeans)
+        new$covdata$covfactor <- c(dat$covdata$covfactor, timeperiod=TRUE)
+        new$covdata$covfactorlevels <- c(dat$covdata$covfactorlevels, list(timeperiod=levels(tcov)))
+        new$covdata$covlabels.orig <- c(dat$covdata$covlabels.orig, tcovlabel)
+        new$covdata$whichcov <- match(new$covdata$covlabels, new$covlabels)
+        new$covdata$whichcov.orig <- match(new$covdata$covlabels.orig, new$covlabels.orig)
+
+        res <- list(dat=new, cmodel=cmodel)
+    }
+    res
+}
+
 
 ### Unload shared library when package is detached with unloadNamespace("msm")
 .onUnload <- function(libpath) { library.dynam.unload("msm", libpath) }

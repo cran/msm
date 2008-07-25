@@ -1,3 +1,42 @@
+2008-07-25 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
+
+	* R/pearson.R: Bug fix, maxtimes was producing negative censoring
+	times.
+
+	* DESCRIPTION: Version 0.8.1 released. 
+	
+2008-07-23 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
+
+	* R/msm.R: New option "pci" to msm, which automatically constructs
+	a model with piecewise-constant transition intensities which
+	change at the supplied times.
+
+	* R/boot.R: Give an informative error in normal theory CIs when
+	SEs not available from fitted model. 
+	
+2008-07-22 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
+
+	* src/lik.c (GetOutcomeProb): HMM now applies to censored
+	outcomes, unless obstrue = 1.  Thanks to Norm Good for the
+	suggestion.
+ 	
+2008-04-15 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R: deriv.test argument to msm removed. 
+	
+	* src/lik.c: Bug fix in liksimple/derivsimple - the P matrix was
+	not being recalculated when the obstype changed between 1 and 2.
+	Thanks to Peter Jepsen for uncovering this.
+
+2008-03-31 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: totlos.msm now computes total length of stay for
+	all states, not just transient states. New argument "end" added.
+
+	* R/outputs.R: xlim argument added to plotprog.msm. 
+
+	* R/outputs.R: legend added to plot.prevalence.msm. 
+	
 2008-03-28 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* DESCRIPTION: Version 0.8 released.
@@ -25,7 +64,7 @@
 
 2008-03-03 Chris Jackson   <chris.jackson@mrc-bsu.cam.ac.uk>
 
-	* R/outputs.R: New function "plot.prog.msm" to plot Kaplan-Meier
+	* R/outputs.R: New function "plotprog.msm" to plot Kaplan-Meier
 	estimates of time to first occurrence of each state.  Added
 	"survfit" and "Surv" imports from the "survival" package.
 

@@ -17,10 +17,10 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
       hcovariates = NULL, hcovinits = NULL, hconstraint = NULL,
       qconstraint=NULL, econstraint=NULL, initprobs = NULL,
       est.initprobs=FALSE, initcovariates = NULL, initcovinits = NULL, 
-      death = FALSE, exacttimes = FALSE, censor=NULL,
-      censor.states=NULL, cl = 0.95, fixedpars = NULL, center=TRUE,
+      death = FALSE, exacttimes = FALSE, censor=NULL, 
+      censor.states=NULL, pci=NULL, cl = 0.95, fixedpars = NULL, center=TRUE,
       opt.method=c("optim","nlm"), hessian=TRUE, use.deriv=FALSE,
-      deriv.test=FALSE, analyticp=TRUE, ... )
+      analyticp=TRUE, ... )
 }
 \arguments{
   \item{formula}{ A formula giving the vectors containing the observed
@@ -191,7 +191,12 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   numerics (1 or 0) specifying which observations (\code{TRUE}, 1) are
   observations of the underlying state without error, and which
   (\code{FALSE}, 0) are realisations of a hidden Markov model. Only
-  used in misclassification or hidden Markov models. }
+  used in misclassification or hidden Markov models.
+
+  In HMMs where there are also censored states, \code{obstrue} should be
+  set to 1 for observed states which are \emph{censored} but not
+  \emph{misclassified}.
+  }
     
   \item{covariates}{Formula representing the covariates on the
   transition intensities via a log-linear model. For example,
@@ -452,6 +457,43 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     state 4. 
   }
 
+  \item{pci}{Model for piecewise-constant intensities.  Vector of cut
+     points defining the times, since the start of the process, at 
+     which intensities change.  For example 
+
+     \code{pci = c(5, 10)} 
+
+     specifies that the intensity changes at time points 5 and 10.
+     This will automatically construct a model with a categorical
+     (factor) covariate called \code{timeperiod}, with levels \code{"timeperiod[-Inf,5)"},
+     \code{"timeperiod[5,10)"} and \code{"timeperiod[10,Inf)"}, where
+     the first
+     level is the baseline.  This covariate defines the time period in
+     which the observation was made.  Initial values and
+     constraints on covariate effects are specified the same way as for
+     a model with a covariate of this name, for example,
+
+     \code{covinits = list("timeperiod[5,10)"=c(0.1,0.1),
+                           "timeperiod[10,Inf)"=c(0.1,0.1))}
+
+     Internally, this works by inserting censored observations in the
+     data at times when the intensity changes but the state is not
+     observed.  
+
+     If the supplied times are outside the range of the time variable in
+     the data, \code{pci} is ignored and a time-homogeneous model is
+     fitted. 
+     
+     This facility does not support interactions between time and
+     other covariates.  Such models need to be specified by hand, using 
+     a state variable with censored observations inserted.
+     Note that the \code{data} component of the \code{msm} object
+     returned from a call to \code{msm} with \code{pci} supplied contains the
+     states with inserted censored observations and time period
+     indicators.  These can be used to construct such models.
+
+     }
+
   \item{exacttimes}{By default, the transitions of the Markov process
     are assumed to take place at unknown occasions in between the
     observation times.  If \code{exacttimes} is
@@ -488,7 +530,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
   \item{center}{If \code{TRUE} (the default) then covariates are centered at
     their means during the maximum likelihood estimation. This usually
-    improves convergence. }
+    improves stability of the numerical optimisation. }
 
   \item{opt.method}{Quoted name of the R function to perform
     minimisation of the minus twice log likelihood.  Either "optim" or
@@ -504,10 +546,6 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     that the default for \code{\link{optim}} is a Nelder-Mead method
     which cannot use derivatives. However, these derivatives, if
     supplied, are always used to calculate the Hessian. }
-  
-  \item{deriv.test}{If \code{TRUE}, then analytic and numeric derivatives are
-    computed and compared at the initial values, and no optimisation is
-    performed.}
 
   \item{analyticp}{By default, the likelihood for certain simpler 3, 4
     and 5 state models is calculated using an analytic expression for

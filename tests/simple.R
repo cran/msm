@@ -334,10 +334,10 @@ stopifnot(isTRUE(all.equal(c(1,2,3), as.numeric(transient.msm(psor.msm)), tol=1e
 stopifnot(isTRUE(all.equal(4, as.numeric(absorbing.msm(psor.msm)), tol=1e-06)))
 
 tot <- totlos.msm(psor.msm)
-stopifnot(isTRUE(all.equal(c(10.4834733848813, 6.12107442888416, 3.91804478713086), as.numeric(tot), tol=1e-04)))
+stopifnot(isTRUE(all.equal(c(10.4834733848813, 6.12107442888416, 3.91804478713086, Inf), as.numeric(tot), tol=1e-04)))
 tot <- totlos.msm(psor.msm, fromt=1, tot=30)
-stopifnot(isTRUE(all.equal(c(8.93029895281672, 5.30015645647272, 3.16781869820008), as.numeric(tot), tol=1e-04)))
-tot <- totlos.msm(psor.msm, start=2, fromt=10, tot=30)
+stopifnot(isTRUE(all.equal(c(8.93029895281672, 5.30015645647272, 3.16781869820008), as.numeric(tot[1:3]), tol=1e-04)))
+tot <- totlos.msm(psor.msm, start=2, fromt=10, tot=30, end=1:3)
 stopifnot(isTRUE(all.equal(c(0, 1.14933919741426, 1.50453194710682), as.numeric(tot), tol=1e-04)))
 
 stopifnot(isTRUE(all.equal(-557.449730608585, as.numeric(logLik.msm(psor.msm)), tol=1e-04)))

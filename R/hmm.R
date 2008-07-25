@@ -245,7 +245,7 @@ print.hmodel <- function(x, ...)
                   if (ci) pars <- cbind(pars, matrix(x$ci[x$parstate==i ,], ncol=2))
                   dimnames(pars) <- list(x$plabs[x$parstate==i], cols)
               }
-              if (any(x$ncovs[x$parstate==i]) > 0){
+              if (any(x$ncovs[x$parstate==i] > 0)){
                   coveffs <- as.matrix(x$coveffect[x$coveffstate==i])
                   if (ci) coveffs <- cbind(coveffs, matrix(x$covci[x$coveffstate==i,], ncol=2))
                   rownames(coveffs) <- x$covlabels[x$coveffstate==i]
