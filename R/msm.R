@@ -113,7 +113,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
     }
     if (is.null(pci)) {
       msmdata.obs.orig <- NULL
-      msmdata$pci.imp <- rep(0, msmdata$nobs)
+      msmdata$pci.imp <- rep(0, msmdata$n)
     }
     msmdata$cov <- msmdata.obs$covmat
     msmdata$cov.orig <- msmdata.obs$covmat.orig
@@ -354,8 +354,7 @@ msm.form.qmodel <- function(qmatrix, qconstraint=NULL, exacttimes=FALSE, gen.ini
         qmatrix <- crudeinits.msm(formula, subject, qmatrix, data, censor, censor.states)
     msm.check.qmatrix(qmatrix)
     nstates <- dim(qmatrix)[1]
-    diag(qmatrix) <- 0
-    diag(qmatrix) <- - rowSums(qmatrix)
+    qmatrix <- msm.fixdiag.qmatrix(qmatrix)
     if (is.null(rownames(qmatrix)))
         rownames(qmatrix) <- colnames(qmatrix) <- paste("State", seq(nstates))
     else if (is.null(colnames(qmatrix))) colnames(qmatrix) <- rownames(qmatrix)

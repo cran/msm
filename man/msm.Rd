@@ -345,7 +345,12 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     \code{qconstraint = c(1,2,3,3)}
 
     constrains the third and fourth intensities to be equal, in a model
-    with four allowed instantaneous transitions. 
+    with four allowed instantaneous transitions.   When there are
+    covariates on the intensities and \code{center=TRUE} (the default),
+    \code{qconstraint} is applied to the intensities with covariates
+    taking the values of the means in the data.  When \code{center=FALSE},
+    \code{qconstraint} is applied to the intensities with covariates set
+    to zero. 
   }
 
   \item{econstraint}{A similar vector of indicators specifying which
@@ -403,13 +408,13 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     \code{initcovinits} is not specified, all covariate effects are
     initialised to zero.}
 
-  \item{death}{Vector of indices of the death states.  A death state is
-    an absorbing state whose time of entry is known exactly, but the
+  \item{death}{Vector of indices of exactly-observed "death" states.
+    These are absorbing states whose time of entry is known exactly, but the
     individual is assumed to be in an unknown transient state ("alive")
     at the previous instant.  This is the usual situation for times of death in
     chronic disease monitoring data.  For example, if you specify
-    \code{death = c(4, 5)} then states 4 and 5 are assumed to be death
-    states.
+    \code{death = c(4, 5)} then states 4 and 5 are assumed to be
+    exactly-observed death states.
 
     \code{death = TRUE} indicates that the final state is a death state,
     and \code{death = FALSE} (the default) indicates that there is no
@@ -482,7 +487,13 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
      If the supplied times are outside the range of the time variable in
      the data, \code{pci} is ignored and a time-homogeneous model is
-     fitted. 
+     fitted.
+
+     After fitting a time-inhomogeneous model \code{\link{qmatrix.msm}}
+     can be used to obtain the fitted intensity matrices for each time
+     period, for example,
+
+     \code{qmatrix.msm(example.msm, covariates=list(timeperiod="[5,Inf)"))}
      
      This facility does not support interactions between time and
      other covariates.  Such models need to be specified by hand, using 

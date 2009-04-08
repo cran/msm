@@ -307,7 +307,9 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
     n.zerofrom <- sum(apply(obstable, 1:4, function(u)tapply(u, trans$from, sum)) [ table(trans$from) > 1 , , , ,] == 0) 
     df.upper <- prod(dim(obstable)[1:4])*n.indep.trans - n.zerofrom
     df.lower <- df.upper - length(x$opt$par)
-    test <- data.frame(stat=stat, df.lower=df.lower, p.lower = if (exact.death && is.null(next.obstime)) NA else 1-pchisq(stat, df.lower),
+    test <- data.frame(stat=stat,
+                       df.lower = if (exact.death && is.null(next.obstime)) NA else df.lower,
+                       p.lower = if (exact.death && is.null(next.obstime)) NA else 1-pchisq(stat, df.lower),
                        df.upper=df.upper, p.upper=1-pchisq(stat, df.upper)); rownames(test) <- ""
 
     ## Simulated observation times to use as sampling frame for bootstrapped data

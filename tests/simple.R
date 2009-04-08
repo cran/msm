@@ -559,4 +559,8 @@ cav.msm <- msm( state ~ years, subject=PTNUM, data = cav.dp, qmatrix = twoway4.q
                  method="BFGS", control=list(trace=5, REPORT=1))
 stopifnot(isTRUE(all.equal(4906.74189711688, cav.msm$minus2loglik, tol=1e-06)))
 
+
+
+
 cat("simple.R: ALL TESTS PASSED\n")
+
