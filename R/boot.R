@@ -161,9 +161,9 @@ expected.ci.msm <- function(x,
 
 normboot.msm <- function(x, stat, B=100) {
     ## simulate from vector of unreplicated parameters, to avoid numerical problems with rmvnorm when lots of correlations are 1 
-  if (!x$foundse) stop("Asymptotic standard errors not available in fitted model")
-  sim <- rmvnorm(B, x$opt$par, solve(0.5 * x$opt$hessian))
-  params <- matrix(nrow=B, ncol=x$paramdata$npars)  # replicate constrained parameters.
+    if (!x$foundse) stop("Asymptotic standard errors not available in fitted model")
+    sim <- rmvnorm(B, x$opt$par, solve(0.5 * x$opt$hessian))
+    params <- matrix(nrow=B, ncol=x$paramdata$npars)  # replicate constrained parameters.
     params[,x$paramdata$optpars] <- sim 
     params[,x$paramdata$hmmpars] <- msm.mninvlogit.transform(x$paramdata$params[x$paramdata$hmmpars], x$hmodel$plabs, x$hmodel$parstate)
     params <- params[, !duplicated(abs(x$paramdata$constr))][, abs(x$paramdata$constr)]*rep(sign(x$paramdata$constr), each=B)

@@ -46,7 +46,7 @@ MatrixExp <- function(mat, t = 1, n = 20, k = 3, method="pade")
     nr <- nrow(mat)
     ev <- eigen(mat)
     if (length(t) > 1) res <- array(dim=c(dim(mat), length(t)))
-    if (any ( duplicated(ev$values)  ) || is.complex(ev$values) ) {
+    if (any ( duplicated(ev$values)  ) || is.complex(ev$values) || det(ev$vectors) == 0) {
         for (i in seq(along=t)) { 
             if (method=="series") {
                 ## series approximation

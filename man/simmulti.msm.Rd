@@ -25,7 +25,7 @@ simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
     time which are in the set \code{censor.states} are replaced by
     \code{k}. 
     Other named columns of the data frame represent any covariates.
-x  }
+  }
   
   \item{qmatrix}{
     The transition intensity matrix of the

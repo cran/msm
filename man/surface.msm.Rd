@@ -49,11 +49,11 @@ surface.msm(x, params=c(1,2), np=10, type=c("contour","filled.contour","persp","
   plots before running the maximum likelihood estimation, then just run
   \code{msm} with all estimates fixed at their initial values. 
 
-  \code{contour.msm} just calls surface.msm with \code{type = "persp"}.
+  \code{contour.msm} just calls surface.msm with \code{type = "contour"}.
 
   \code{persp.msm} just calls surface.msm with \code{type = "persp"}.
 
-  \code{image.msm} just calls surface.msm with \code{type = "persp"}.
+  \code{image.msm} just calls surface.msm with \code{type = "image"}.
 
   As these three functions are methods of the generic functions
   \code{contour}, \code{persp} and \code{image}, they

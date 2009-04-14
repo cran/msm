@@ -1,3 +1,22 @@
+2009-04-08 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
+
+	* man/msm.Rd: Documentation for qconstraint clarified. 
+
+	* R/outputs.R: Bug fix - interactions now expanded properly when
+	calling extractor functions for models with interactions between
+	covariates.
+
+	* R/msm.R: Bug fix which affected bootstrap refitting in
+	pearson.msm, giving "Error in `$<-.data.frame`(`*tmp*`,
+	"pci.imp"..."
+	
+	* DESCRIPTION: Version 0.8.2 released.
+	
+2009-04-03 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
+
+	*  LaTeX sources for PDF manual included in src/doc to enable
+	msm to be approved as a Debian package.
+	
 2008-07-25 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
 
 	* R/pearson.R: Bug fix, maxtimes was producing negative censoring

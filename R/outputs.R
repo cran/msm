@@ -225,6 +225,19 @@ image.msm <- function(x, ...)
 }
 
 ### Given a "covariates" argument of an extractor function containing
+### covariates which interact in the model, form the corresponding
+### "covariates" argument with the interactions expanded.
+
+expand.interactions.msm <- function(covariates, covlabels){
+    cn.nointer <- names(covariates)
+    elist <- strsplit(covlabels, ":")
+    elist <- lapply(elist, function(x)covariates[x])
+    elist <- lapply(elist, function(x)prod(unlist(x)))
+    names(elist) <- covlabels
+    elist
+}
+
+### Given a "covariates" argument of an extractor function containing
 ### factor covariates, convert the factor covariates to numeric
 ### contrasts.  For example, for a categorical covariate "smoke" with
 ### three levels "NON","CURRENT","EX", with baseline level "NON",
@@ -252,7 +265,9 @@ factorcov2numeric.msm <- function(covariates, x, intmisc="intens") {
         cfac.i <- as.list(cfac.i[-1])
         cfac.new <- c(cfac.new, cfac.i)
     }
-    c(cnum, cfac.new)[covdata$covlabels]
+    covs.out <- c(cnum, cfac.new)[covdata$covlabels[setdiff(seq(along=covdata$covlabels), grep(":", covdata$covlabels))]]
+    covs.out <- expand.interactions.msm(covs.out, covdata$covlabels)
+    covs.out
 }
 
 ### Extract the transition intensity matrix at given covariate values
@@ -334,7 +349,9 @@ qematrix.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALSE, 
             {covariates <- list();  for (i in 1 : nc) covariates[[covlabels[i]]] <- covmeans[i]}
             else stop("covariates argument must be 0, \"mean\", or a list of values for each named covariate")
         }
-        else covariates <- factorcov2numeric.msm(covariates, x, intmisc) # with factors as numeric contrasts
+        else {
+            covariates <- factorcov2numeric.msm(covariates, x, intmisc) # with factors as numeric contrasts
+        }
         if (intmisc=="intens"){
             logest <- x$Qmatrices$logbaseline
             for (i in 1 : nc) {
@@ -649,7 +666,9 @@ qratio.se.msm <- function(x, ind1, ind2, covariates="mean", cl=0.95)
     indmat[indmat == 1] <- seq(length = x$qmodel$npars)
     indmat <- t(indmat) # matrix of indices of estimate vector
     inds <- seq(length = x$qmodel$npars+x$qcmodel$npars) # identifiers for q and beta parameters
-    if (is.list(covariates)) covariates <- factorcov2numeric.msm(covariates, x)
+    if (is.list(covariates)) {
+        covariates <- factorcov2numeric.msm(covariates, x)
+    }
     if (!is.list(covariates) && covariates == 0)
     {covariates <- list();  for (i in 1 : nc) covariates[[x$qcmodel$covlabels[i]]] <- 0}
     coefs <- if (!is.list(covariates) && (covariates=="mean")) 1 else c(1, unlist(covariates) - x$qcmodel$covmeans)
