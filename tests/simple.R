@@ -358,7 +358,7 @@ p <- pmatrix.piecewise.msm(psor.msm, 0, 7, times, covariates)
 stopifnot(isTRUE(all.equal(0.172773087945103, p[1,3], tol=1e-04)))
 p <- pmatrix.piecewise.msm(psor.msm, 0, 19, times, covariates)
 stopifnot(isTRUE(all.equal(0.0510873669808412, p[1,3], tol=1e-04)))
-p <- pmatrix.msm(psor.msm, 5, covariates[[1]]) %*% pmatrix.msm(psor.msm, 5, covariates[[2]]) %*% pmatrix.msm(psor.msm, 5, covariates[[3]]) %*% pmatrix.msm(psor.msm, 4, covariates[[4]])
+p <- pmatrix.msm(psor.msm, 5, covariates=covariates[[1]]) %*% pmatrix.msm(psor.msm, 5, covariates=covariates[[2]]) %*% pmatrix.msm(psor.msm, 5, covariates=covariates[[3]]) %*% pmatrix.msm(psor.msm, 4, covariates=covariates[[4]])
 stopifnot(isTRUE(all.equal(0.0510873669808412, p[1,3], tol=1e-04)))
 
 p <- prevalence.msm(psor.msm, piecewise.times=times, piecewise.covariates=covariates, plot=TRUE)
