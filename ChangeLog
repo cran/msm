@@ -1,3 +1,10 @@
+2009-06-12 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
+
+	* tests/simple.R: Removed a couple of tests which fail due to
+	floating point fuzz on Fedora/Red Hat PPC Linux. 
+	
+	* DESCRIPTION: Version 0.9.1 released.
+	
 2009-06-09 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
 
 	* R/pearson.R: Covariate grouping fixed to 1 for pci models with
@@ -9,7 +16,7 @@
 2009-06-05 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
 
 	* DESCRIPTION: Licence altered from GPLv2 to GPL v2 or later.
-	Licence text removed from pijt.c.
+	Licence text removed from src/pijt.c.
 
 	* R/msm.R(msm): Default changed to use.deriv=TRUE. 
 

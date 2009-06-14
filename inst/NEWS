@@ -3,6 +3,13 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.9.1 (2009-06-12)
+-------------
+
+o Minor update to the test suite to allow build on Fedora / Red Hat
+  Linux. 
+
+
 Version 0.9 (2009-06-09)
 -----------
 
