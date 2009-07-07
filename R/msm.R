@@ -1223,6 +1223,7 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
         lik$returned[1:qmodel$ndpars] <-
             if (length(params)==0) lik$returned[1:qmodel$ndpars]*exp(p$allinits[!duplicated(p$constr)][1:qmodel$ndpars])
             else lik$returned[1:qmodel$ndpars]*exp(params[1:qmodel$ndpars])
+        lik$returned <- lik$returned[setdiff(seq(along=lik$returned), paramdata$fixedpars)]
     }
     ## subject-specific derivatives, to use for score residuals
     else if (deriv==3) {
@@ -1230,6 +1231,7 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
         lik$returned[,1:qmodel$ndpars] <-
             if (length(params)==0) lik$returned[,1:qmodel$ndpars]*rep(exp(p$allinits[!duplicated(p$constr)][1:qmodel$ndpars]), each=msmdata$npts)
             else lik$returned[,1:qmodel$ndpars]*rep(exp(params[1:qmodel$ndpars]), each=msmdata$npts)
+        lik$returned <- lik$returned[,setdiff(seq(length=ncol(lik$returned)), paramdata$fixedpars)]
     }
     lik$returned
 }

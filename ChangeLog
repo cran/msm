@@ -1,3 +1,14 @@
+2009-06-24 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
+
+	* DESCRIPTION: Version 0.9.2 released.
+	
+2009-06-24 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
+
+	* R/msm.R: Bug fix - don't return derivatives with respect to
+	fixed parameters - this was causing "gradient in optim evaluated
+	to wrong length" error for models with fixed parameters fitted
+	using BFGS.
+	
 2009-06-12 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
 
 	* tests/simple.R: Removed a couple of tests which fail due to
