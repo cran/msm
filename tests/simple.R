@@ -108,12 +108,12 @@ system.time(psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
 stopifnot(isTRUE(all.equal(1114.89946121717, psor.msm$minus2loglik, tol=1e-06)))
 stopifnot(isTRUE(all.equal(0.0953882330391683, qmatrix.msm(psor.msm)$estimates[1,2], tol=1e-03)))
 
-
-## pears <- pearsonnondeathbasic.msm(psor.msm, obgroups=2, timegroups=2, covgroupings=2, covvec = unlist(psor.msm$data$cov))
-## names(pears)
-## sum(pears$extable)
-## sum(pears$obstable)
-## sum(psor.msm$data$nocc)
+## Constraints and fixed pars (deriv bug in <= 0.9.1) 
+psorfix.msm <- msm(state ~ months, subject=ptnum, data=psor,
+                qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn,
+                constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
+                fixedpars=c(2,3), control = list(REPORT=1,trace=2), method="BFGS")
+stopifnot(isTRUE(all.equal(1159.87611076427, psorfix.msm$minus2loglik, tol=1e-06)))
 
 ## Constrain some covariate effects to be minus others
 psor.constr.msm <- msm(state ~ months, subject=ptnum, data=psor,

@@ -455,7 +455,7 @@ double pijdeath(int r, int s, Matrix pmat, vector intens, ivector qvector, int n
    Derivatives of Q matrix wrt q
    
    With constraints on q
-   p is the index of the current distinct intensity parameter being considered
+   p is the index of the current distinct intensity parameter being differentiated with respect to
    nc is length of constraint vector, ie number of intensities inc duplicates
    qmat includes duplicates. 
    ic loops over non-distinct intensities in constr
@@ -474,6 +474,7 @@ double pijdeath(int r, int s, Matrix pmat, vector intens, ivector qvector, int n
    DQ =            -2  1  0  1
    1  -1 0  0
    0  0  ...
+
 */
 
 void FormDQ(Matrix DQ, Matrix qmat, Matrix qbase, int p, int n, ivector qconstr, int np) {
@@ -487,7 +488,7 @@ void FormDQ(Matrix DQ, Matrix qmat, Matrix qbase, int p, int n, ivector qconstr,
 		DQ[MI(i,j,n)] = 0;
 	    if (ic < np) {
 		if (qmat[MI(i,j,n)] > 0) { 
-		    /* check which distinct intens this one corresponds to */
+			/* check which distinct intens this one corresponds to */
 		    if (qconstr[ic]-1 == p) { /* the pth intensity parameter starting from 0 */
 			DQ[MI(i,j,n)] = qmat[MI(i,j,n)] / qbase[MI(i,j,n)];
 			DQ[MI(i,i,n)] += -qmat[MI(i,j,n)] / qbase[MI(i,j,n)];
@@ -716,7 +717,7 @@ void dpijdeath(int r, int s, vector x, Array3 dpmat, Matrix pmat, vector intens,
 void DPmat(Array3 dpmat, double t, vector x, vector intens, vector oldintens, ivector qvector, 
 	   int n, int np, int ndp, int ndc, ivector qconstr, ivector bconstr, ivector wcov, int exacttimes)
 {
-    int i, j, p, err=0;
+	int i, j, p, pp, err=0;
     double eit, ejt; 
     Matrix DQ = (Matrix) Calloc(n*n, double); /* should initialize to zero */
     vector revals = (vector) Calloc(n, double);
@@ -743,7 +744,15 @@ void DPmat(Array3 dpmat, double t, vector x, vector intens, vector oldintens, iv
 	}
 	else { 
 	    MatInv(evecs, evecsinv, n);
-	    for (p=0; p<ndp+ndc; ++p) { 
+/* TODO don't calculate derivatives wrt fixed parameters, this is wasteful. 
+Currently these are calculated, but omitted in msm.R(likderiv.msm) just after exiting C. 
+Should retain meaning of p, ndp, ndc, but add new index pp, indexing unique non-fixed params 
+and a vector of length ndp+ndc indicating which are fixed.  Add line like 
+if (fixed[p]==1) { ++pp; } 
+and replace p by pp in formdq and last multmat assignment
+need to edit dpijdeath, dmatrixexpseries, dpmatexact, derivsimple, derivsimple_subj in same way. 
+*/ 
+	    for (p=0, pp=0; p<ndp+ndc; ++p) { 		    
 		if (p < ndp) 
 		    FormDQ(DQ, qmat, qbase, p, n, qconstr, np);
 		else FormDQCov(DQ, qmat, p-ndp, n, bconstr, wcov, np, x);
