@@ -103,17 +103,30 @@ data(psor)
 psor.q <- rbind(c(0,0.1,0,0),c(0,0,0.1,0),c(0,0,0,0.1),c(0,0,0,0))
 system.time(psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
                 qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn, # covinits=list(hieffusn = c(0.5, 0.1, 0), ollwsdrt=c(0.2, 0.1, -0.1)),
-                constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
+                 constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)), 
                 fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS"))
 stopifnot(isTRUE(all.equal(1114.89946121717, psor.msm$minus2loglik, tol=1e-06)))
 stopifnot(isTRUE(all.equal(0.0953882330391683, qmatrix.msm(psor.msm)$estimates[1,2], tol=1e-03)))
 
-## Constraints and fixed pars (deriv bug in <= 0.9.1) 
+## qconstraints and constraints bug in <= 0.9.2
+psorfix.msm <- msm(state ~ months, subject=ptnum, data=psor,
+                qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn, 
+                qconstraint = c(1,2,2), 
+                constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)), 
+                fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS")
+stopifnot(isTRUE(all.equal(1120.21100381564, psorfix.msm$minus2loglik, tol=1e-06)))
+
+## Constraints and fixed pars (deriv bug in <= 0.9.1, then <= 0.9.2) 
 psorfix.msm <- msm(state ~ months, subject=ptnum, data=psor,
                 qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn,
                 constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
                 fixedpars=c(2,3), control = list(REPORT=1,trace=2), method="BFGS")
 stopifnot(isTRUE(all.equal(1159.87611076427, psorfix.msm$minus2loglik, tol=1e-06)))
+psorfix.msm <- msm(state ~ months, subject=ptnum, data=psor,
+                qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn,
+                constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
+                fixedpars=c(6), control = list(REPORT=1,trace=2), method="BFGS")
+stopifnot(isTRUE(all.equal(1121.71012633891, psorfix.msm$minus2loglik, tol=1e-06)))
 
 ## Constrain some covariate effects to be minus others
 psor.constr.msm <- msm(state ~ months, subject=ptnum, data=psor,
