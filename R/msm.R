@@ -229,7 +229,6 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
         p$params[p$hmmpars] <- msm.recalc.basep(p$params[p$hmmpars], hmodel$plabs, hmodel$parstate)
         p$params[p$hmmpars] <- msm.mnlogit.transform(p$params[p$hmmpars], hmodel$plabs, hmodel$parstate)
     }
-
     p$estimates.t <- p$params  # Calculate estimates and CIs on natural scale
     p$estimates.t[p$hmmpars] <- msm.mninvlogit.transform(p$estimates.t[p$hmmpars], hmodel$plabs, hmodel$parstate)
     for (lab in rownames(.msm.TRANSFORMS)) {
@@ -1223,7 +1222,7 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
         lik$returned[1:qmodel$ndpars] <-
             if (length(params)==0) lik$returned[1:qmodel$ndpars]*exp(p$allinits[!duplicated(p$constr)][1:qmodel$ndpars])
             else lik$returned[1:qmodel$ndpars]*exp(params[1:qmodel$ndpars])
-        lik$returned <- lik$returned[setdiff(seq(along=lik$returned), paramdata$fixedpars)]
+        lik$returned <- lik$returned[setdiff(seq(along=lik$returned), p$constr[p$fixedpars])]
     }
     ## subject-specific derivatives, to use for score residuals
     else if (deriv==3) {
@@ -1231,7 +1230,7 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
         lik$returned[,1:qmodel$ndpars] <-
             if (length(params)==0) lik$returned[,1:qmodel$ndpars]*rep(exp(p$allinits[!duplicated(p$constr)][1:qmodel$ndpars]), each=msmdata$npts)
             else lik$returned[,1:qmodel$ndpars]*rep(exp(params[1:qmodel$ndpars]), each=msmdata$npts)
-        lik$returned <- lik$returned[,setdiff(seq(length=ncol(lik$returned)), paramdata$fixedpars)]
+        lik$returned <- lik$returned[,setdiff(seq(length=ncol(lik$returned)), p$constr[p$fixedpars])]
     }
     lik$returned
 }
@@ -1255,7 +1254,7 @@ msm.form.output <- function(whichp, model, cmodel, p)
         matrixname <- if (i==0) "logbaseline" else cmodel$covlabels[i] # name of the current output matrix.
         mat <- t(model$imatrix) # I fill matrices by row, while R fills them by column. Is this sensible...?
         if (whichp=="intens")
-            parinds <- if (i==0) which(p$plabs=="qbase") else which(p$plabs=="qcov")[(i-1)*model$ndpars + 1:model$npars]
+            parinds <- if (i==0) which(p$plabs=="qbase") else which(p$plabs=="qcov")[(i-1)*model$npars + 1:model$npars]
         if (whichp=="misc")
             parinds <- if (i==0) which(p$plabs=="p") else which(p$plabs=="hcov")[i + cmodel$ncovs*(1:model$npars - 1)]
         mat[t(model$imatrix)==1] <- p$params[parinds]

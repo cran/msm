@@ -690,12 +690,12 @@ states.
 Patient $i$'s contribution to the likelihood is
 \begin{eqnarray}
   \label{eq:multi:hiddencontrib}
-  L_i     & = & Pr(y_{i1}, \ldots, y_{im_i})\\
-  & = & \sum Pr(y_{i1}, \ldots, y_{im_i} | S_{i1}, \ldots, S_{im_i})
-  Pr(S_{i1}, \ldots, S_{im_i}) \nonumber
+  L_i     & = & Pr(y_{i1}, \ldots, y_{in_i})\\
+  & = & \sum Pr(y_{i1}, \ldots, y_{in_i} | S_{i1}, \ldots, S_{in_i})
+  Pr(S_{i1}, \ldots, S_{in_i}) \nonumber
 \end{eqnarray}
 where the sum is taken over all possible paths of underlying states
-$S_{i1}, \ldots, S_{im_i}$.  Assume that the observed states are
+$S_{i1}, \ldots, S_{in_i}$.  Assume that the observed states are
 conditionally independent given the values of the underlying states.
 Also assume the Markov property, $Pr(S_{ij}|S_{i,j-1}, \ldots, S_{i1})
 = Pr(S_{ij}|S_{i,j-1})$.  Then the contribution $L_i$ can be written
@@ -708,8 +708,8 @@ unknown final state:
   \label{eq:multi:hiddenlik}
   L_i & = & \sum_{S_{i1}} Pr(y_{i1}|S_{i1})Pr(S_{i1}) \sum_{S_{i2}} Pr(y_{i2}|S_{i2})Pr(S_{i2}|S_{i1}) \sum_{S_{i3}} Pr(y_{i3}|S_{i3}) Pr(S_{i3}|S_{i2})
   \nonumber \\
-  &   & \ldots \sum_{S_{im_i}} Pr(y_{im_i}|S_{im_i})
-  Pr(S_{im_i}|S_{in_{i-1}})
+  &   & \ldots \sum_{S_{in_i}} Pr(y_{in_i}|S_{in_i})
+  Pr(S_{in_i}|S_{in_{i-1}})
 \end{eqnarray}
 where $Pr(y_{ij}|S_{ij})$ is the emission probability density.  For
 misclassification models, this is the misclassification probability
@@ -721,14 +721,14 @@ Markov chain transition matrix $P(t)$ evaluated at $t = t_{i,j+1} -
 t_{ij}$.  Let $f$ be the vector with $r$ element the product of the
 initial state occupation probability $Pr(S_{i1}=r)$ and $Pr(y_{i1}|
 r)$, and let $\mathbf 1$ be a column vector consisting of ones. For $j
-= 2, \ldots, m_i$ let $T_{ij}$ be the $n \times n$ matrix with $(r,s)$
-entry
+= 2, \ldots, n_i$ let $T_{ij}$ be the $R \times R$ matrix (where $R$
+is the number of states) with $(r,s)$ entry
 \[
 Pr(y_{ij}| s) p_{rs} (t_{ij} - t_{i,j-1})
 \]
 Then subject $i$'s likelihood contribution is
 \begin{equation}
-  L_i =  f T_{i2} T_{i3}, \ldots T_{im_i} \mathbf 1
+  L_i =  f T_{i2} T_{i3}, \ldots T_{in_i} \mathbf 1
   \label{eq:multi:hidden:matprod}
 \end{equation}
 

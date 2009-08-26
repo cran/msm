@@ -529,7 +529,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     probability, which is fixed at one minus the sum of the others).
 
     If there are equality constraints on certain parameters, then    
-    \code{fixedpars} refers to the set of unique parameters, excluding
+    \code{fixedpars} indexes the set of unique parameters, excluding
     those which are constrained to be equal to previous parameters. 
     
     For covariates on misclassification probabilities, this is a change
