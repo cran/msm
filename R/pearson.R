@@ -36,7 +36,8 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
     ## Add a few useful variables to the data
     obstypename <- if (x$hmodel$hidden || x$cmodel$ncens > 0) "obstype" else "obstype.obs"
     od <- as.data.frame(dat[c("subject","time","state",obstypename)])
-    od$cov <- dat$cov.orig
+    ncovs <- x$qcmodel$ncovs
+    if (ncovs > 0) od$cov <- dat$cov.orig
     od$state <- factor(od$state, levels=sort(unique(od$state)))
     n <- dat$n
     od$ind <- 1:n # index into original data (useful if any rows of od are dropped)
@@ -101,7 +102,6 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
     trans$ngroups <- length(unique(trans$use))
 
     ## Determine unique Q matrices determined by covariate combinations
-    ncovs <- x$qcmodel$ncovs
     if (ncovs>0) {
         uniq <- unique(as.data.frame(od$cov[,dat$covdata$whichcov.orig,drop=FALSE]))
         nouniq <- dim(uniq)[1]
@@ -470,8 +470,8 @@ empiricaldists  <-  function(timeinterval, state, obgroup, obgroups, ndstates) {
         ##survfit seems to ignore increments of small size ## TODO investigate this
         ##Instead use own code to create KM
         elig <- (obgroup==i & state %in% ndstates)
-        eligt <- sort(unique(timeinterval[elig]))
-        events <- table(timeinterval[elig])
+        eligt <- sort(unique(round(timeinterval[elig],4)))
+        events <- table(round(timeinterval[elig],4))
         allt <- sort(timeinterval[obgroup==i])
         empdist["time",i,1:length(eligt)] <- eligt
         for (j in 1:length(eligt)) {

@@ -8,7 +8,7 @@
   models with time-dependent covariates.  }
 \usage{
 pmatrix.piecewise.msm(x, t1, t2, times, covariates,
-ci=c("none","normal","bootstrap"), cl=0.95, B=1000)
+ci=c("none","normal","bootstrap"), cl=0.95, B=1000, ...)
 }
 \arguments{
 
@@ -55,6 +55,9 @@ ci=c("none","normal","bootstrap"), cl=0.95, B=1000)
 
   \item{B}{Number of bootstrap replicates, or number of normal
     simulations from the distribution of the MLEs}
+
+  \item{...}{Optional arguments to be passed to \code{\link{MatrixExp}} to
+    control the method of computing the matrix exponential.}
 }
 \details{
     Suppose a multi-state model has been fitted, in which

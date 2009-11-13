@@ -762,13 +762,14 @@ pmatrix.msm <- function(x, # fitted msm model
                         ci=c("none","normal","bootstrap"), # calculate a confidence interval
                                         # using either simulation from asymptotic normal dist of MLEs, or bootstrap
                         cl = 0.95, # width of symmetric confidence interval
-                        B = 1000 # number of bootstrap replicates or normal simulations
+                        B = 1000, # number of bootstrap replicates or normal simulations
+                        ...
                         )
 {
     if (!is.numeric(t) || (t < 0)) stop("t must be a positive number")
     if (is.null(x$pci)) {
         q <- qmatrix.msm(x, covariates)
-        p <- MatrixExp(q$estimates, t)
+        p <- MatrixExp(q$estimates, t, ...)
         colnames(p) <- rownames(p) <- rownames(q$estimates)
         ci <- match.arg(ci)
         p.ci <- switch(ci,
@@ -779,7 +780,7 @@ pmatrix.msm <- function(x, # fitted msm model
     }    
     else {
         piecewise.covariates <- msm.fill.pci.covs(x, covariates)
-        res <- pmatrix.piecewise.msm(x, t1, t1 + t, x$pci, piecewise.covariates, ci, cl, B)
+        res <- pmatrix.piecewise.msm(x, t1, t1 + t, x$pci, piecewise.covariates, ci, cl, B, ...)
     } 
     class(res) <- "msm.est"
     res
@@ -795,7 +796,8 @@ pmatrix.piecewise.msm <- function(x, # fitted msm model
                                         # of length one greater than times
                                   ci=c("none","normal","bootstrap"),
                                   cl = 0.95, # width of symmetric confidence interval
-                                  B = 1000 # number of bootstrap replicates or normal simulations
+                                  B = 1000, # number of bootstrap replicates or normal simulations
+                                  ... # arguments to pass to MatrixExp
                                   )
 {
     x$pci <- NULL # to avoid infinite recursion when calling pmatrix.msm
@@ -825,21 +827,21 @@ pmatrix.piecewise.msm <- function(x, # fitted msm model
     ## Calculate accumulated pmatrix
     ## Three cases: ind1, ind2 in the same interval
     if (ind1 == ind2) {
-        P <- pmatrix.msm(x, t = t2 - t1, covariates=covariates[[ind1]])
+        P <- pmatrix.msm(x, t = t2 - t1, covariates=covariates[[ind1]], ...)
     }
     ## ind1, ind2 in successive intervals
     else if (ind2 == ind1 + 1) {
-        P.start <- pmatrix.msm(x, t = times[ind1] - t1 , covariates=covariates[[ind1]])
-        P.end <- pmatrix.msm(x, t = t2 - times[ind2-1], covariates=covariates[[ind2]])
+        P.start <- pmatrix.msm(x, t = times[ind1] - t1 , covariates=covariates[[ind1]], ...)
+        P.end <- pmatrix.msm(x, t = t2 - times[ind2-1], covariates=covariates[[ind2]], ...)
         P <- P.start %*% P.end
     }
     ## ind1, ind2 separated by one or more whole intervals
     else {
-        P.start <- pmatrix.msm(x, t = times[ind1] - t1, covariates=covariates[[ind1]])
-        P.end <- pmatrix.msm(x, t = t2 - times[ind2-1], covariates=covariates[[ind2]])
+        P.start <- pmatrix.msm(x, t = times[ind1] - t1, covariates=covariates[[ind1]], ...)
+        P.end <- pmatrix.msm(x, t = t2 - times[ind2-1], covariates=covariates[[ind2]], ...)
         P.middle <- diag(x$qmodel$nstates)
         for (i in (ind1+1):(ind2-1)) {
-            P.middle <- P.middle %*% pmatrix.msm(x, t = times[i] - times[i-1], covariates=covariates[[i]])
+            P.middle <- P.middle %*% pmatrix.msm(x, t = times[i] - times[i-1], covariates=covariates[[i]], ...)
         }
         P <- P.start %*% P.middle %*% P.end
     }

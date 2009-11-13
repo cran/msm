@@ -33,8 +33,10 @@ stopifnot(isTRUE(all.equal(4113.16601901957, cav.msm$minus2loglik, tol=1e-06)))
 
 if (developer.local) {
     system.time(cav.msm <- msm( state ~ years, subject=PTNUM, data = cav,
-                                 qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE,
-                                 method="BFGS", control=list(trace=5, REPORT=1, fnscale=1)) )
+                                 qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE, # opt.method="nlm"
+                               method="BFGS", control=list(trace=5, REPORT=1, fnscale=1)
+                               )
+                )
     stopifnot(isTRUE(all.equal(3968.7978930519, cav.msm$minus2loglik, tol=1e-06)))
 }
 
@@ -108,6 +110,19 @@ system.time(psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
 stopifnot(isTRUE(all.equal(1114.89946121717, psor.msm$minus2loglik, tol=1e-06)))
 stopifnot(isTRUE(all.equal(0.0953882330391683, qmatrix.msm(psor.msm)$estimates[1,2], tol=1e-03)))
 
+## crudeinits/geninits with missing values for state / time 
+
+psor2 <- psor; 
+psor2$ptnum[13:14] <- NA 
+psor2$months[7:8] <- NA
+psor2$state[7:8] <- NA
+
+crudeinits.msm(state ~ months, ptnum, data=psor2, qmatrix=psor.q)
+psor2.msm <- msm(state ~ months, subject=ptnum, data=psor2, gen.inits=TRUE, 
+                 qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn, # covinits=list(hieffusn = c(0.5, 0.1, 0), ollwsdrt=c(0.2, 0.1, -0.1)),
+                 constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
+                 fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS")
+
 ## qconstraints and constraints bug in <= 0.9.2
 psorfix.msm <- msm(state ~ months, subject=ptnum, data=psor,
                 qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn, 
@@ -120,12 +135,12 @@ stopifnot(isTRUE(all.equal(1120.21100381564, psorfix.msm$minus2loglik, tol=1e-06
 psorfix.msm <- msm(state ~ months, subject=ptnum, data=psor,
                 qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn,
                 constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
-                fixedpars=c(2,3), control = list(REPORT=1,trace=2), method="BFGS")
+                fixedpars=c(2,3), control = list(REPORT=1,trace=2), method="BFGS", use.deriv=TRUE)
 stopifnot(isTRUE(all.equal(1159.87611076427, psorfix.msm$minus2loglik, tol=1e-06)))
 psorfix.msm <- msm(state ~ months, subject=ptnum, data=psor,
                 qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn,
                 constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
-                fixedpars=c(6), control = list(REPORT=1,trace=2), method="BFGS")
+                fixedpars=6, control = list(REPORT=1,trace=2), method="BFGS")
 stopifnot(isTRUE(all.equal(1121.71012633891, psorfix.msm$minus2loglik, tol=1e-06)))
 
 ## Constrain some covariate effects to be minus others
