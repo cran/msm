@@ -459,16 +459,16 @@ msm.form.data <- function(formula, subject=NULL, obstype=NULL, obstrue=NULL, cov
     if (!hmodel$hidden || emodel$misc)
         msm.check.state(qmodel$nstates, state=state, cmodel$censor)  ## replace after splitting form.hmodel
     time <- mf[,2]
-    if (is.null(subject)) subject <- rep(1, nrow(mf))
-    obstype <- msm.form.obstype(obstype, length(state), state, dmodel, exacttimes)
-    obstrue <- msm.form.obstrue(obstrue, length(state), hmodel)
     droprows <- as.numeric(attr(mf, "na.action"))
     n <- length(c(state, droprows))
     statetimerows.kept <- (1:n)[! ((1:n) %in% droprows)]
+    if (is.null(subject)) subject <- rep(1, nrow(mf))
+    obstype <- msm.form.obstype(obstype, n, state, statetimerows.kept, dmodel, exacttimes)
+    obstrue <- msm.form.obstrue(obstrue, nrow(mf), hmodel)   
     subjrows.kept <- (1:n) [!is.na(subject)]
     otrows.kept <- statetimerows.kept[!is.na(obstype)]
     omrows.kept <- statetimerows.kept[!is.na(obstrue)]
-
+    
     ## Don't drop NA covariates on the transition process at the subject's final observation, since they are not used
     lastobs <- c(which(subject[1:(n-1)] != subject[2:n]), n)
     ## Parse covariates formula and extract data
@@ -519,13 +519,12 @@ msm.form.data <- function(formula, subject=NULL, obstype=NULL, obstrue=NULL, cov
                 final.rows <- intersect(final.rows, hcovdata[[i]]$covrows.kept)
     if (icovdata$ncovs > 0)
         final.rows <- intersect(final.rows, icovdata$covrows.kept)
-    subject <- subset(subject, subjrows.kept %in% final.rows)
-    ##      subject <- match(subject, unique(subject)) # convert to ordinal
+    subject <- subject[final.rows]
     time <- subset(time, statetimerows.kept %in% final.rows)
     msm.check.times(time, subject)
     state <- subset(state, statetimerows.kept %in% final.rows)
-    obstype <- subset(obstype, otrows.kept %in% final.rows)
-    obstrue <- subset(obstrue, omrows.kept %in% final.rows)
+    obstype <- subset(obstype, statetimerows.kept %in% final.rows)
+    obstrue <- subset(obstrue, statetimerows.kept %in% final.rows)
     covmat <- covmat.orig <- numeric()
     if (covdata$ncovs > 0) {
         covmat <- subset(covdata$covmat, covdata$covrows.kept %in% final.rows)
@@ -981,7 +980,7 @@ msm.form.cmodel <- function(censor=NULL, censor.states=NULL, qmatrix)
 ### 2: exact transition times (states unchanging between observation times),
 ### 3: death (exact entry time but state at previous instant unknown)
 
-msm.form.obstype <- function(obstype, nobs, state, dmodel, exacttimes)
+msm.form.obstype <- function(obstype, nobs, state, notna, dmodel, exacttimes)
 {
     if (!is.null(obstype)) {
         if (!is.numeric(obstype)) stop("obstype should be numeric")
@@ -994,9 +993,9 @@ msm.form.obstype <- function(obstype, nobs, state, dmodel, exacttimes)
     else {
         obstype <- rep(1, nobs)
         if (dmodel$ndeath > 0)
-            obstype[state %in% dmodel$obs] <- 3
+            obstype[notna][state %in% dmodel$obs] <- 3
     }
-    obstype
+    obstype[notna]
 }
 
 msm.form.obstrue <- function(obstrue, nobs, hmodel) {
@@ -1144,7 +1143,8 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
     pars[plabs == "p"] <- exp(pars[plabs == "p"])
     initprobs <- c(1 - sum(pars[plabs=="initp"]), pars[plabs %in% c("initp","initp0")])
     initprobs <- initprobs / initprobs[1] ## initprobs[1] documented as not allowed to be zero. 
-    
+
+    if (!do.what %in% c(0,1,3)) stop("deriv should be 0, 1 or 3")
     lik <- .C("msmCEntry",
               as.integer(do.what),
               as.integer(as.vector(t(qmodel$imatrix))),
@@ -1162,7 +1162,7 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
               as.integer(msmdata$covdata$whichcov), # this is really part of the model
               as.integer(msmdata$nocc),
               as.integer(msmdata$whicha),
-              as.integer(msmdata$obstype),
+              as.integer(if(do.what==3) msmdata$obstype.obs else msmdata$obstype), # need per-observation obstype when doing derivs by subject. 
 
               ## data for HMM or censored
               as.integer(match(msmdata$subject, unique(msmdata$subject))),
@@ -1224,6 +1224,7 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
             else lik$returned[1:qmodel$ndpars]*exp(params[1:qmodel$ndpars])
         lik$returned <- lik$returned[setdiff(seq(along=lik$returned), p$constr[p$fixedpars])]
     }
+    
     ## subject-specific derivatives, to use for score residuals
     else if (deriv==3) {
         lik$returned <- matrix(lik$returned, nrow=msmdata$npts)
@@ -1356,19 +1357,23 @@ statetable.msm <- function(state, subject, data=NULL)
 
 ## Calculate crude initial values for transition intensities by assuming observations represent the exact transition times
 
+#    if (nmiss > 0) warning(nmiss, " record", plural, " dropped due to missing values")
+
 crudeinits.msm <- function(formula, subject, qmatrix, data=NULL, censor=NULL, censor.states=NULL)
 {
     cens <- msm.form.cmodel(censor, censor.states, qmatrix)
-    mf <- model.frame(formula, data=data)
+    mf <- model.frame(formula, data=data, na.action=NULL)
     state <- mf[,1]
     time <- mf[,2]
-    msm.check.qmatrix(qmatrix)
-    msm.check.state(nrow(qmatrix), state, cens$censor)
     n <- length(state)
     if (missing(subject)) subject <- rep(1, n)
     if (!is.null(data))
         subject <- eval(substitute(subject), as.list(data), parent.frame())
     subject <- match(subject, unique(subject))
+    notna <- !is.na(subject) & !is.na(time) & !is.na(state)
+    subject <- subject[notna]; time <- time[notna]; state <- state[notna]
+    msm.check.qmatrix(qmatrix)
+    msm.check.state(nrow(qmatrix), state, cens$censor)
     nocens <- (! (state %in% cens$censor) )
     state <- state[nocens]; subject <- subject[nocens]; time <- time[nocens]
     n <- length(state)

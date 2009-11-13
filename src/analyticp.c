@@ -4,11 +4,19 @@ algebra software (Mathematica).
 
 Increases speed and stability by avoiding the numeric calculation of
 the matrix exponential.
+
+### The numbered label gives the indices into the matrix of rates (vectorised by reading across rows)
+### e.g. the 3-state model with qmatrix of the form 
+### well-disease, well-death, disease-death transitions allowed.
+### *,1,1    
+### 0,*,1
+### 0,0,*    uses the function p3q124()
+
+### Some models are isomorphic and use the same p?q? function. 
+### See .msm.graphs in R/constants.R for permutations. 
 */
 
 #include "msm.h"
-
-#define NOANDEBUG
 
 void p2q1(Matrix pmat, double t, vector intens, int *degen);
 void p2q12(Matrix pmat, double t, vector intens, int *degen);
@@ -67,27 +75,6 @@ void AnalyticP(Matrix pmat, double t, int nstates, int iso, int *perm, int *qper
 	    pmat[MI(i,j,nstates)] = pmat_base[MI(perm[i]-1,perm[j]-1,nstates)];
 	}
 
-#ifdef ANDEBUG
-    printf("iso = %d\n", iso);
-    for (i=0; i<nintens; ++i)
-      printf("qperm[%d]=%d,",i,qperm[i]);
-    printf("\n");
-    for (i=0; i<nintens; ++i)
-	printf("intens[%d]=%f,",i,intens[i]);
-    printf("\n");
-    for (i=0; i<nintens; ++i)
-	printf("intens_base[%d]=%f,",i,intens_base[i]);
-    printf("\n");
-    for (i=0; i<nstates; ++i)
-	printf("perm[%d]=%d,",i,perm[i]);
-    printf("\n");
-    for (i=0; i<nstates*nstates; ++i)
-	printf("pmat_base[%d]=%f,",i,pmat_base[i]);
-    printf("\n");
-    for (i=0; i<nstates*nstates; ++i)
-	printf("pmat[%d]=%f,",i,pmat[i]);
-    printf("\n");
-#endif
     Free(intens_base);
     Free(pmat_base);
 }

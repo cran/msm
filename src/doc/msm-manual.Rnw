@@ -1505,10 +1505,12 @@ maximum likelihood, or it may be close to the maximum.
   working in terms of a time unit of months or years instead of days,
   when the data range over thousands of days.
 
-\item[Convergence criteria] ``False convergence'' can sometimes be
-  solved by tightening the criteria (\Rfunarg{reltol}, defaults to
-  \texttt{1e-08}) for reporting convergence of the optimisation. For
-  example, \Rfunarg{control = list(reltol = 1e-16)}.
+\item[Convergence criteria] ``False convergence'', in which
+  \Rfunction{optim()} reports convergence of the optimisation but the
+  Hessian is not positive definite, can sometimes be solved by
+  tightening the criteria (\Rfunarg{reltol}, defaults to
+  \texttt{1e-08}) for reporting convergence. For example,
+  \Rfunarg{control = list(reltol = 1e-16)}.
 
   Alternatively consider using smaller step sizes for the numerical
   approximation to the gradient, used in calculating the Hessian.

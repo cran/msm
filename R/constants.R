@@ -69,6 +69,13 @@
 ### "perm" is permutation of states needed to transform graph into the first in the list of isomorphisms
 ### This database is used to determine the appropriate method for calculating the analytic P matrix.
 
+### The numbered label gives the indices into the matrix of rates (vectorised by reading across rows)
+### e.g. the model with qmatrix of the form 
+### *,1,1    
+### 0,*,1
+### 0,0,*    is "1-2-4" 
+### well-disease, well-death, disease-death transitions allowed.
+
 .msm.graphs <-
   list(
        "1" = list(),

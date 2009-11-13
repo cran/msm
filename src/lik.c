@@ -642,6 +642,11 @@ void derivsimple(msmdata *d, qmodel *qm, qcmodel *qcm,
 	    for (p = 0; p < ndp+ndc; ++p) {
 		deriv[p] += d->nocc[i] * dcontrib[p] / contrib;
 	    }
+#ifdef DEBUG
+	    for (p = 0; p < ndp+ndc; ++p) {
+	      printf("%d, %d, %d, %d, %6.4f, %d, %d, %lf\n", i, p, d->fromstate[i], d->tostate[i], d->timelag[i], d->obstype[i], d->nocc[i], -2 * d->nocc[i] * dcontrib[p] / contrib);
+	    }
+#endif 
 	}
     for (p = 0; p < ndp+ndc; ++p) 
 	deriv[p] *= -2;
@@ -669,10 +674,10 @@ void derivsimple_subj(msmdata *d, qmodel *qm, qcmodel *qcm,
 	{
 	    R_CheckUserInterrupt();
 	    if (d->firstobs[pt+1] > d->firstobs[pt] + 1) { /* individual has more than one observation? */ 
+	      for (p = 0; p < ndp+ndc; ++p) {
+		deriv[MI(pt,p,d->npts)] = 0;
+	      }
 		for (i = d->firstobs[pt]+1; i < d->firstobs[pt+1]; ++i) {
-		    for (p = 0; p < ndp+ndc; ++p) {
-			deriv[MI(pt,p,d->npts)] = 0;
-		    }
 		    GetCovData(i, d->covobs, d->whichcov, x, qcm->ncovs[0], d->n);
 		    AddCovs(i, d->n, np, qcm->ncovs, qm->intens, newintens,
 			    qcm->coveffect, d->covobs, d->whichcov, &totcovs, log, exp);
@@ -695,6 +700,9 @@ void derivsimple_subj(msmdata *d, qmodel *qm, qcmodel *qcm,
 		    }
 		    for (p = 0; p < ndp+ndc; ++p) {
 		      deriv[MI(pt,p,d->npts)] += dcontrib[p] / contrib; /* on loglik scale not -2*loglik */
+#ifdef DEBUG
+		      printf("%d, %d, %d, %d, %d, %6.4f, %d, %lf, %lf\n", i, p, pt, from, to, dt, d->obstype[i], -2 * dcontrib[p] / contrib, -2*deriv[MI(pt,p,d->npts)]);
+#endif 
 		    }
 		}
 		for (p = 0; p < ndp+ndc; ++p)
@@ -796,7 +804,7 @@ void msmCEntry(
   msmdata d; qmodel qm; qcmodel qcm; cmodel cm; hmodel hm; 
     
   d.fromstate = fromstate;     d.tostate = tostate;     d.timelag = timelag;   
-  d.cov = covvec;  d.covobs = covobsvec;  d.nocc = nocc;  d.whicha = whicha; d.obstype = obstype;  d.obstrue = obstrue; 
+  d.cov = covvec;  d.covobs = covobsvec;  d.nocc = nocc;  d.whicha = whicha; d.obstype = obstype; d.obstrue = obstrue; 
   d.whichcov = whichcov;  d.whichcovh = whichcovh;  d.whichcovi=whichcovi;
   d.subject = subjvec; d.time = timevec; d.obs = obsvec; d.firstobs = firstobs;
   d.nobs = *nobs;  d.n = *n; d.npts = *npts;

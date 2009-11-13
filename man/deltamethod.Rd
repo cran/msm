@@ -12,7 +12,7 @@ deltamethod(g, mean, cov, ses=TRUE)
 }
 \arguments{
   \item{g}{A formula representing the transformation. The variables must
-    be labelled \code{x1, x2,\ldots} For example,
+    be labelled \code{x1, x2,\dots} For example,
     
     \code{~ 1 / (x1 + x2)}
 

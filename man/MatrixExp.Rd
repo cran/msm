@@ -15,7 +15,8 @@ MatrixExp(mat, t = 1, n = 20, k = 3, method="pade")
     exponential}
   \item{k}{Underflow correction factor, for the series approximation}
   \item{method}{\code{"pade"} for the Pade approximation, or \code{"series"} for the
-    power series approximation.
+    power series approximation.  Ignored unless \code{mat} has repeated
+    eigenvalues. 
   }
 }
 \value{

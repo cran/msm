@@ -36,7 +36,36 @@ if (developer.local) {
   twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166), c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
   cavcens.msm <- msm(state ~ years, subject=PTNUM, data=cav.cens, qmatrix=twoway4.q, censor=99, fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS")
   p.list <- boot.msm(cavcens.msm, B=3)
+
+
+  ## multicore test  
+  
+  boot.msm <- function(x, stat=pmatrix.msm, B=1000, file=NULL, cores=1){
+      boot.list <- vector(B, mode="list")
+      if (!is.null(x$call$subject)) x$call$subject <- substitute(subject.name)
+      if (!is.null(x$call$obstype)) x$call$obstype <- substitute(obstype.name)
+      if (!is.null(x$call$obstrue)) x$call$obstrue <- substitute(obstrue.name)      
+      boot.fn <- function(dummy){ 
+          boot.data <- if (x$hmodel$hidden || x$cmodel$ncens) bootdata.subject.msm(x) else bootdata.trans.msm(x)
+          x$call$data <- substitute(boot.data)
+          res <- try(eval(x$call))
+          if (!is.null(stat))
+              res <- stat(res)
+          res
+      }                    
+      if (require(multicore) && cores>1)
+          boot.list <- mclapply(1:B, boot.fn, mc.cores=cores)
+      else boot.list <- lapply(1:B, boot.fn)
+  }
+
+  psor.msm <- msm(state ~ months, subject=ptnum, data=psor, qmatrix =
+                  psor.q, covariates = ~ollwsdrt+hieffusn, constraint =
+                  list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)), fixedpars=FALSE)
+
+  if (0){ 
+      times <- numeric(10)
+      for (i in 2:10)
+          times[i] <- system.time(q.list <- boot.msm(psor.msm, function(x)x$Qmatrices$baseline, file="~/msm/devel/psor.q.boot.rda", B=100, cores=i))["elapsed"]
+      times 
+  }  
 }
-
-
-

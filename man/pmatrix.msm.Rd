@@ -6,7 +6,8 @@
   model for a given time interval, at a given set of covariate values. 
 }
 \usage{
-pmatrix.msm(x, t=1, t1=0, covariates="mean", ci=c("none","normal","bootstrap"), cl=0.95, B=1000)
+pmatrix.msm(x, t=1, t1=0, covariates="mean",
+            ci=c("none","normal","bootstrap"), cl=0.95, B=1000, ...)
 }
 \arguments{
 
@@ -64,6 +65,9 @@ pmatrix.msm(x, t=1, t1=0, covariates="mean", ci=c("none","normal","bootstrap"), 
 
   \item{B}{Number of bootstrap replicates, or number of normal
     simulations from the distribution of the MLEs}
+
+  \item{...}{Optional arguments to be passed to \code{\link{MatrixExp}} to
+    control the method of computing the matrix exponential.}
 }
 \value{
   The matrix of estimated transition probabilities \eqn{P(t)} in the given time. 
@@ -81,7 +85,8 @@ returns a list with
   intensity matrix
   \eqn{Q},  the probability of occupying state \eqn{s} at time \eqn{u + t}
   conditionally on occupying state \eqn{r} at time \eqn{u} is given by the
-  \eqn{(r,s)} entry of the matrix \eqn{P(t) = \exp(tQ)}{P(t) = exp(tQ)}.
+  \eqn{(r,s)} entry of the matrix \eqn{P(t) = \exp(tQ)}{P(t) = exp(tQ)},
+  where \eqn{\exp()}{exp()} is the matrix exponential. 
 
   For non-homogeneous processes, where covariates and hence the
   transition intensity matrix are time-dependent, but are
