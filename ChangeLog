@@ -1,3 +1,11 @@
+2009-11-25 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
+
+	* R/pearson.R: Fix for problem revealed by different handling of
+	factors in R-2.10.0, which caused all expected values to be
+	returned as zero.  Thanks to Brian Tom for the report.
+	
+	* DESCRIPTION: Version 0.9.5 released.
+
 2009-11-13 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
 
 	* R/msm.R(msm.form.data): Bug fix for handling missing subject ID.

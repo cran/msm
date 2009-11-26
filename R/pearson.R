@@ -152,7 +152,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
     md$obtype <- rep(0, ntrans)
     if (exact.death) md$obtype[md$state %in% dstates] <- 1
     md$obtype[md$state %in% x$cmodel$censor] <- 2 
-    md$cens <- factor(md$obtype==2, levels=c(0,1))
+    md$cens <- factor(as.numeric(md$obtype==2), levels=c(0,1))
     ndeath  <-  sum(md$obtype==1)
     if (exact.death && is.null(next.obstime)) {
         cat("Imputing sampling times after deaths...\n")
@@ -292,6 +292,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
         exp.cens <- array(0, dim = c(nst,nndstates,groupdims,2))
         for (j in 1:nst)
             exp.cens[j,,,,,,] <- tapply(prob[j,], list(md$prevstate,md$timegroup,md$intervalgroup,md$covgroup,md$usergroup,md$cens), sum)
+            exp.cens[j,,,,,,] <- tapply(prob[j,], list(md$prevstate,md$timegroup,md$intervalgroup,md$covgroup,md$usergroup), sum)
         exp.cens <- replace(exp.cens,is.na(exp.cens),0)
         exptable <- array(0, dim=c(nstcens, nndstates, groupdims))
         exptable[1:nst,,,,,] <- exp.cens[,,,,,,1]
@@ -459,7 +460,7 @@ pearson.boot.msm <- function(x, imp.times=NULL, transitions=NULL, timegroups=4, 
 }
 
 ### Work out empirical distribution of sampling times for each observation (or time since initiation) group:
-    
+
 empiricaldists  <-  function(timeinterval, state, obgroup, obgroups, ndstates) {
     empdist <- array(0,c(3, obgroups, max(table(obgroup[state %in% ndstates])))) # Need times, cum value and point mass value
     dimnames(empdist) <- list(c("time", "surv", "pdeath"), levels(obgroup), NULL)
@@ -482,7 +483,6 @@ empiricaldists  <-  function(timeinterval, state, obgroup, obgroups, ndstates) {
     }
     empdist
 }
-
 
 ### For a single death, sample N points from the distribution of the next sampling time
 ### mintime, centime: minimum and maximum possible times
