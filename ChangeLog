@@ -1,3 +1,25 @@
+2010-02-09 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
+
+	* R/pearson.R: Fix for "NA in probability vector" error caused by
+	floating point comparisons in empiricaldists(), which were still
+	happening.  Thanks to Wen-Wen Yang for the report. 
+
+	* DESCRIPTION: Version 0.9.6 released
+	
+2010-01-29 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
+
+	* src/pijt.c(Pmat): Don't round extreme likelihood contributions
+	to 0 and 1 for models with "exacttimes", since they are not
+	probabilities.  Fixes occasional wrong likelihood calculations. 
+
+2010-01-14 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
+
+	* R/msm.R: The "pci" element of fitted model objects now excludes
+	values which are outside the time range of the data.  Allows
+	pmatrix.msm to be used on such models without error.  Also give a
+	warning when any "pci" cut points equal the min/max time point in
+	the data.  Thanks to Matt Cowperthwaite.
+	
 2009-11-25 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>	
 
 	* R/pearson.R: Fix for problem revealed by different handling of

@@ -5,7 +5,11 @@
   Extract the estimated transition probability matrix from a fitted
   non-time-homogeneous multi-state model for a given time interval.
   This is a generalisation of \code{\link{pmatrix.msm}} to
-  models with time-dependent covariates.  }
+  models with time-dependent covariates.  Note that
+  \code{\link{pmatrix.msm}} is sufficient to calculate transition
+  probabilities for time-inhomogeneous
+  models fitted using the \code{pci} argument to \code{\link{msm}}.
+}
 \usage{
 pmatrix.piecewise.msm(x, t1, t2, times, covariates,
 ci=c("none","normal","bootstrap"), cl=0.95, B=1000, ...)

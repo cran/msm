@@ -275,9 +275,9 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
     sets the first (baseline) level of unordered factors to zero.
 
-    To assume no covariate effect on a certain transition, set its
-    initial value to zero and use the \code{fixedpars} argument to fix
-    it during the optimisation.
+    To assume no covariate effect on a certain transition, use the
+    \code{fixedpars} argument to fix it at its initial value (which
+    is zero by default) during the optimisation.
     
   }
 
