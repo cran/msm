@@ -93,6 +93,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
             msmdata.obs.orig <- msmdata.obs
             names(msmdata.obs.orig)[names(msmdata.obs.orig) %in% c("covmat","covmat.orig")] <- c("cov","cov.orig") # used in bootstrap
             msmdata.obs <- tdmodel$dat
+            pci <- tdmodel$tcut
         }
     }
     if (hmodel$hidden || (cmodel$ncens > 0)) {
@@ -1462,14 +1463,14 @@ msm.pci <- function(tcut, dat, qmodel, cmodel, center)
     new$ncovs <- dat$ncovs + ntcut
 
     ## Check range of cut points
-    if (any(tcut < min(dat$time)))
-      warning("Time cut point", if (sum(tcut < min(dat$time)) > 1) "s " else " ",
-                paste(tcut[tcut<min(dat$time)],collapse=","),
-                " less than minimum observed time of ",min(dat$time))
-    if (any(tcut > max(dat$time)))
-        warning("Time cut point", if (sum(tcut > max(dat$time)) > 1) "s " else " ",
-                paste(tcut[tcut>max(dat$time)],collapse=","),
-                " greater than maximum observed time of ",max(dat$time))
+    if (any(tcut <= min(dat$time)))
+      warning("Time cut point", if (sum(tcut <= min(dat$time)) > 1) "s " else " ",
+                paste(tcut[tcut<=min(dat$time)],collapse=","),
+                " less than or equal to minimum observed time of ",min(dat$time))
+    if (any(tcut >= max(dat$time)))
+        warning("Time cut point", if (sum(tcut >= max(dat$time)) > 1) "s " else " ",
+                paste(tcut[tcut>=max(dat$time)],collapse=","),
+                " greater than or equal to maximum observed time of ",max(dat$time))
     tcut <- tcut[tcut > min(dat$time) & tcut < max(dat$time)]
     ntcut <- length(tcut)
     if (ntcut==0) 
@@ -1508,7 +1509,7 @@ msm.pci <- function(tcut, dat, qmodel, cmodel, center)
         new$covdata$whichcov <- match(new$covdata$covlabels, new$covlabels)
         new$covdata$whichcov.orig <- match(new$covdata$covlabels.orig, new$covlabels.orig)
 
-        res <- list(dat=new, cmodel=cmodel)
+        res <- list(dat=new, cmodel=cmodel, tcut=tcut)
     }
     res
 }

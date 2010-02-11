@@ -3,6 +3,16 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 0.9.6 (2009-02-09)
+-------------
+
+o Bug fix which caused occasional wrong likelihood calculations for
+  models with "exacttimes".   Thanks to Brian Tom for the report. 
+
+o Fix for "NA in probability vector" error in pearson.msm.  Thanks to
+  Wen-Wen Yang for the report.
+
+
 Version 0.9.5 (2009-11-25)
 -------------
 

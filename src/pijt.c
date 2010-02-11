@@ -418,13 +418,13 @@ void Pmat(Matrix pmat, double t, vector intens, int nintens, ivector qvector, in
 	    AnalyticP(pmat, t, nstates, iso, perm, qperm, intens, nintens, &degen);
 	else 
 	    MatrixExp(qmat, nstates, pmat, t, debug, degen);
+	/* Floating point fuzz sometimes causes trouble */
+	for (i=0; i<nstates; ++i) 
+	    for (j=0; j<nstates; ++j) {
+		if (pmat[MI(i, j, nstates)] < DBL_EPSILON) pmat[MI(i, j, nstates)] = 0;
+		if (pmat[MI(i, j, nstates)] > 1 - DBL_EPSILON) pmat[MI(i, j, nstates)] = 1;
+	    }
     }
-    /* Floating point fuzz sometimes causes trouble */
-    for (i=0; i<nstates; ++i) 
-	for (j=0; j<nstates; ++j) {
-	    if (pmat[MI(i, j, nstates)] < DBL_EPSILON) pmat[MI(i, j, nstates)] = 0;
-	    if (pmat[MI(i, j, nstates)] > 1 - DBL_EPSILON) pmat[MI(i, j, nstates)] = 1;
-	}
     Free(qmat);
 }
 

@@ -40,9 +40,14 @@ pmatrix.msm(x, t=1, t1=0, covariates="mean",
     \code{list (age = 60, sex = 1)}
 
     For time-inhomogeneous models fitted using the \code{pci} option to
-    \code{msm}, the covariate \code{timeperiod} will 
-    
-    the time periods according to the time interval given 
+    \code{\link{msm}}, "covariates" here include only those specified using the
+    \code{covariates} argument to \code{\link{msm}}, and exclude the
+    artificial covariates representing the time period.
+
+    For time-inhomogeneous models fitted "by hand" by using a
+    time-dependent covariate in the \code{covariates} argument to
+    \code{\link{msm}}, the function \code{\link{pmatrix.piecewise.msm}}
+    should be used to to calculate transition probabilities. 
   }
 
   \item{ci}{If \code{"normal"}, then calculate a confidence interval for
@@ -86,13 +91,20 @@ returns a list with
   \eqn{Q},  the probability of occupying state \eqn{s} at time \eqn{u + t}
   conditionally on occupying state \eqn{r} at time \eqn{u} is given by the
   \eqn{(r,s)} entry of the matrix \eqn{P(t) = \exp(tQ)}{P(t) = exp(tQ)},
-  where \eqn{\exp()}{exp()} is the matrix exponential. 
+  where \eqn{\exp()}{exp()} is the matrix exponential.
 
   For non-homogeneous processes, where covariates and hence the
-  transition intensity matrix are time-dependent, but are
-  piecewise-constant within  the time interval \code{[u,
-  u+t]}, the function \code{\link{pmatrix.piecewise.msm}} can be used.
-  
+  transition intensity matrix \eqn{Q} are piecewise-constant in time,
+  the transition probability matrix is calculated as
+  a product of matrices over a series of intervals, as explained in
+  \code{\link{pmatrix.piecewise.msm}}.
+
+  The \code{\link{pmatrix.piecewise.msm}}
+  function is only necessary for models fitted using a
+  time-dependent covariate in the \code{covariates} argument to
+  \code{\link{msm}}. For time-inhomogeneous models fitted using "pci",
+  \code{pmatrix.msm} can be used, with arguments \code{t} and \code{t1},
+  to calculate transition probabilities over any time period. 
 }
 \seealso{
   \code{\link{qmatrix.msm}},  \code{\link{pmatrix.piecewise.msm}}, \code{\link{boot.msm}}

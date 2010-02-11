@@ -384,7 +384,7 @@ double liksimple(msmdata *d, qmodel *qm, qcmodel *qcm,
 		AddCovs(i, d->nobs, qm->npars, qcm->ncovs, qm->intens, newintens,
 			qcm->coveffect, d->cov, d->whichcov, &totcovs,
 			log, exp);
-		Pmat(pmat, d->timelag[i], newintens, qm->npars, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, i==37);
+		Pmat(pmat, d->timelag[i], newintens, qm->npars, qm->ivector, qm->nst, (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);
 	    }
 	    if (d->obstype[i] == OBS_DEATH)
 		contrib = pijdeath(d->fromstate[i], d->tostate[i], pmat, newintens, qm->ivector, qm->nst);

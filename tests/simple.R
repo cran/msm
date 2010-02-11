@@ -119,7 +119,8 @@ psor2$state[7:8] <- NA
 
 crudeinits.msm(state ~ months, ptnum, data=psor2, qmatrix=psor.q)
 psor2.msm <- msm(state ~ months, subject=ptnum, data=psor2, gen.inits=TRUE, 
-                 qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn, # covinits=list(hieffusn = c(0.5, 0.1, 0), ollwsdrt=c(0.2, 0.1, -0.1)),
+                 qmatrix = psor.q,
+                 covariates = ~ollwsdrt+hieffusn, # covinits=list(hieffusn = c(0.5, 0.1, 0), ollwsdrt=c(0.2, 0.1, -0.1)),
                  constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
                  fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS")
 

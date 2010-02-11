@@ -63,6 +63,9 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
         od <- od[!cens.notend,]
         warning("Omitting censored states not at the end of individual series")
     }
+    ## Drop individuals with only one observation
+    od <- od[!od$subject %in% unique(od$subject)[table(od$subject)==1],]
+    
     ## Drop observations of censoring types other than "not dead"
     if (length(x$cmodel$censor) >= 2) {
         ind <- NULL
@@ -321,9 +324,9 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
 
     ## Simulated observation times to use as sampling frame for bootstrapped data
     if (!is.null(imputation)) {
-      imp.times <- matrix(rep(dat$time, N), nrow=length(dat$time), ncol=N)
-      prevtime <- imp.times[which(dat$state %in% dstates) - 1,]
-      imp.times[dat$state %in% dstates, ] <- prevtime + imputation[,,"times"]
+      imp.times <- matrix(rep(od$time, N), nrow=length(od$time), ncol=N)
+      prevtime <- imp.times[which(od$state %in% dstates) - 1,]
+      imp.times[od$state %in% dstates, ] <- prevtime + imputation[,,"times"]
     }
     else imp.times <- NULL
     
@@ -470,14 +473,20 @@ empiricaldists  <-  function(timeinterval, state, obgroup, obgroups, ndstates) {
         ##s1 <- survfit(Surv(timeinterval[obgroup==i],(state[obgroup==i] %in% ndstates))~1,type="kaplan-meier")
         ##survfit seems to ignore increments of small size ## TODO investigate this
         ##Instead use own code to create KM
-        elig <- (obgroup==i & state %in% ndstates)
-        eligt <- sort(unique(round(timeinterval[elig],4)))
-        events <- table(round(timeinterval[elig],4))
-        allt <- sort(timeinterval[obgroup==i])
+        t <- round(timeinterval[(obgroup==i & state %in% ndstates)],4)
+        eligt <- sort(unique(t))
+        events <- table(t)    
+        allt <- sort(round(timeinterval[obgroup==i],4))
         empdist["time",i,1:length(eligt)] <- eligt
         for (j in 1:length(eligt)) {
-            empdist["surv",i,j] <-  if (j>1) (empdist["surv",i,j-1]*(1 - events[j]/sum(allt>=eligt[j]))) else  (1 - events[j]/sum(allt>=eligt[j]))
-            empdist["pdeath",i,j] <-  if (j>1) (empdist["surv",i,j-1] - empdist["surv",i,j]) else  (1 - empdist["surv",i,j])
+            nrisk <- sum(allt + sqrt(.Machine$double.eps) >= eligt[j])
+            if (nrisk==0) nrisk <- 1 # avoid floating point fuzz in comparing last point 
+            empdist["surv",i,j] <-
+                if (j>1) (empdist["surv",i,j-1]*(1 - events[j]/nrisk))
+                else  (1 - events[j]/nrisk)
+            empdist["pdeath",i,j] <-
+                if (j>1) (empdist["surv",i,j-1] - empdist["surv",i,j])
+                else (1 - empdist["surv",i,j])
             ## Now deals with ties correctly
         }
     }
