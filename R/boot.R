@@ -21,8 +21,8 @@ bootdata.trans.msm <- function(x) {
     for (j in dat$covlabels.orig) {
         frominds <- seq(1, 2*length(inds)-1, 2)
         data.boot[frominds, j] <- data.boot[frominds+1,j] <- dat$cov.orig[inds, j]
-        if (dat$covdata$covfactor[j])
-            data.boot[,j] <- factor(data.boot[,j], labels=levels(dat$cov.orig[,j]))
+        if (is.factor(dat$cov.orig[, j]))
+            data.boot[, j] <- factor(data.boot[,j], labels=levels(dat$cov.orig[, j]))
     }
     colnames(data.boot) <- gsub("factor\\((.+)\\)", "\\1", colnames(data.boot))
     data.boot
@@ -52,11 +52,10 @@ bootdata.subject.msm <- function(x) {
     data.boot[,state.name] <- dat$state[inds]
     data.boot[,"obstype.name"] <- dat$obstype[inds]
     data.boot[,"obstrue.name"] <- dat$obstrue[inds]
-    for (j in dat$covlabels.orig) {
+    for (j in dat$covlabels.orig) { 
         data.boot[, j] <- dat$cov.orig[inds, j]
-        if (dat$covdata$covfactor[j]){
-          data.boot[,j] <- factor(data.boot[,j], labels=levels(dat$cov.orig[,j]))
-        }
+        if (is.factor(dat$cov.orig[, j]))
+            data.boot[, j] <- factor(data.boot[,j], labels=levels(dat$cov.orig[, j]))
     }
     colnames(data.boot) <- gsub("factor\\((.+)\\)", "\\1", colnames(data.boot))
     data.boot
@@ -126,8 +125,8 @@ pmatrix.piecewise.ci.msm <- function(x, t1, t2, times, covariates="mean", cl=0.9
     aperm(p.ci, c(2,3,1))
 }
 
-totlos.ci.msm <- function(x, start=1, fromt=0, tot=Inf, covariates="mean", cl=0.95, B=1000, ...) {
-    t.list <- boot.msm(x, function(x)totlos.msm(x, start, fromt, tot, covariates), B)
+totlos.ci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean", cl=0.95, B=1000, ...) {
+    t.list <- boot.msm(x, function(x)totlos.msm(x, start, end, fromt, tot, covariates), B)
     t.array <- do.call("rbind", t.list)
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
 }
@@ -165,6 +164,7 @@ normboot.msm <- function(x, stat, B=100) {
     sim <- rmvnorm(B, x$opt$par, solve(0.5 * x$opt$hessian))
     params <- matrix(nrow=B, ncol=x$paramdata$npars)  # replicate constrained parameters.
     params[,x$paramdata$optpars] <- sim 
+    params[,x$paramdata$fixedpars] <- x$paramdata$params[x$paramdata$fixedpars]
     params[,x$paramdata$hmmpars] <- msm.mninvlogit.transform(x$paramdata$params[x$paramdata$hmmpars], x$hmodel$plabs, x$hmodel$parstate)
     params <- params[, !duplicated(abs(x$paramdata$constr))][, abs(x$paramdata$constr)]*rep(sign(x$paramdata$constr), each=B)
 
@@ -217,8 +217,8 @@ pmatrix.piecewise.normci.msm <- function(x, t1, t2, times, covariates="mean", cl
     aperm(p.ci, c(2,3,1))
 }
 
-totlos.normci.msm <- function(x, start=1, fromt=0, tot=Inf, covariates="mean", cl=0.95, B=1000, ...) {
-    t.list <- normboot.msm(x, function(x)totlos.msm(x, start, fromt, tot, covariates, ci="none"), B)
+totlos.normci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean", cl=0.95, B=1000, ...) {
+    t.list <- normboot.msm(x, function(x)totlos.msm(x, start, end, fromt, tot, covariates, ci="none"), B)
     t.array <- do.call("rbind", t.list)
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
 }

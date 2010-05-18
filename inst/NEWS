@@ -3,7 +3,14 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
-Version 0.9.6 (2009-02-09)
+Version 0.9.7 (2010-05-18)
+-------------
+
+o Bug fixes for bootstrapping with totlos, covariates on HMM outcomes
+  and fixedpars. Thanks to Li Su for the report.
+
+
+Version 0.9.6 (2010-02-09)
 -------------
 
 o Bug fix which caused occasional wrong likelihood calculations for

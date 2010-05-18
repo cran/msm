@@ -657,7 +657,9 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     covariates on misclassification probabilities.}
   \item{hmodel}{A list of class "hmodel", containing objects specifying the hidden Markov model.
     Estimates of "baseline" location parameters are
-    presented with any covariates fixed to their means in the data.  }  
+    presented with any covariates fixed to their means in the data,
+    or if \code{center=FALSE}, with covariates fixed to zero. 
+  }  
   \item{cmodel}{A list of objects specifying any model for censoring.}
 
   Printing a \code{msm} object by typing the object's name at the
