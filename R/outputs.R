@@ -995,8 +995,8 @@ totlos.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean"
     names(totlos) <- rownames(x$qmodel$qmatrix)[end]
     ci <- match.arg(ci)
     t.ci <- switch(ci,
-                   bootstrap = totlos.ci.msm(x=x, start=start, fromt=fromt, tot=tot, covariates=covariates, cl=cl, B=B),
-                   normal = totlos.normci.msm(x=x, start=start, fromt=fromt, tot=tot, covariates=covariates, cl=cl, B=B),
+                   bootstrap = totlos.ci.msm(x=x, start=start, end=end, fromt=fromt, tot=tot, covariates=covariates, cl=cl, B=B),
+                   normal = totlos.normci.msm(x=x, start=start, end=end, fromt=fromt, tot=tot, covariates=covariates, cl=cl, B=B),
                    none = NULL)
     if (ci=="none") totlos else rbind(totlos, t.ci)
 }

@@ -59,14 +59,12 @@
     \frac{\Phi(u, \mu_2, \sigma_3) - \Phi(l, \mu_2,
       \sigma_3)}{\Phi(u, \mu_0, \sigma_0) - \Phi(l, \mu_0, \sigma_0)}
     \phi(x, \mu_0 + \mu_\epsilon, \sigma_2)
-  }{
-    (Phi(upper, mu2, sigma3) - Phi(lower, mu2, sigma3)) / (Phi(upper,
-    mean, sd) - Phi(lower, mean, sd)) * phi(x, mean + meanerr, sigma2)}
+  }{(Phi(upper, mu2, sigma3) - Phi(lower, mu2, sigma3)) / (Phi(upper, mean, sd) - Phi(lower, mean, sd)) * phi(x, mean + meanerr, sigma2)}
   where 
   \deqn{\sigma_2^2 = \sigma_0^2 + \sigma_\epsilon^2,}{sigma2*sigma2 = sd*sd + sderr*sderr,}
   \deqn{\sigma_3 = \sigma_0 \sigma_\epsilon / \sigma_2,}{sigma3 = sd*sderr / sigma2,}
-  \deqn{\mu_2 = (x - \mu_\epsilon) \sigma_0^2 + \mu_0 \sigma_\epsilon^2,}{mu2 = (x -
-    meanerr)*sd*sd + mean*sderr*sderr,}
+  \deqn{\mu_2 = (x - \mu_\epsilon) \sigma_0^2 + \mu_0
+    \sigma_\epsilon^2,}{mu2 = (x - meanerr)*sd*sd + mean*sderr*sderr,}
   
   \eqn{\mu_0}{mean} is the mean of the original Normal distribution before
   truncation, \cr
@@ -84,8 +82,7 @@
   The uniform distribution with measurement error has density
 
   \deqn{(\Phi(x, \mu_\epsilon+l, \sigma_\epsilon) - \Phi(x, \mu_\epsilon+u, \sigma_\epsilon))
-    / (u - l)}{(Phi(x, meanerr+l, sderr) - Phi(x, meanerr+u, sderr))
-    / (upper - lower)}
+    / (u - l)}{(Phi(x, meanerr+l, sderr) - Phi(x, meanerr+u, sderr)) / (upper - lower)}
 
   These are calculated from the original truncated Normal or Uniform density
   functions \eqn{f(. | \mu, \sigma, l, u)}{f(. | mu, sd)} as

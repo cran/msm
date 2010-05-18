@@ -451,7 +451,7 @@ pearson.boot.msm <- function(x, imp.times=NULL, transitions=NULL, timegroups=4, 
     boot.df <- boot.param.msm(x)
     boot.df <- boot.df[!boot.df$pci.imp,]
     x$call$data <- substitute(boot.df)
-    refit.msm <- try(eval(x$call))        
+    refit.msm <- try(eval(x$call)) # estimation might not converge for a particular bootstrap resample
     if (inherits(refit.msm, "msm")) {
       p <- pearson.msm(refit.msm, transitions=transitions, timegroups=timegroups,
                        intervalgroups=intervalgroups, covgroups=covgroups, groups=groups, boot=FALSE)
