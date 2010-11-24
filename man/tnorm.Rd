@@ -13,8 +13,10 @@
 }
 \usage{
      dtnorm(x, mean=0, sd=1, lower=-Inf, upper=Inf, log = FALSE)
-     ptnorm(q, mean=0, sd=1, lower=-Inf, upper=Inf, lower.tail = TRUE, log.p = FALSE)
-     qtnorm(p, mean=0, sd=1, lower=-Inf, upper=Inf, lower.tail = TRUE, log.p = FALSE)
+     ptnorm(q, mean=0, sd=1, lower=-Inf, upper=Inf,
+            lower.tail = TRUE, log.p = FALSE)
+     qtnorm(p, mean=0, sd=1, lower=-Inf, upper=Inf,
+            lower.tail = TRUE, log.p = FALSE)
      rtnorm(n, mean=0, sd=1, lower=-Inf, upper=Inf)
 }
 \arguments{

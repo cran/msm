@@ -23,10 +23,11 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
 \details{
   The bootstrap datasets are computed by resampling independent
   transitions between pairs of states (for non-hidden models without
-  censoring), or independent patient series (for hidden models or
+  censoring), or independent individual series (for hidden models or
   models with censoring).  Therefore this approach doesn't work if,
   for example, the data for a HMM consist of a series of observations
-  from just one individual. 
+  from just one individual, and is inaccurate for small numbers of
+  independent transitions or individuals. 
 
   Confidence intervals or standard errors for the corresponding
   statistic can be calculated by summarising the returned list of
@@ -47,11 +48,11 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
   parameters. Bootstrapping should give a more
   accurate estimate of the uncertainty.
 
-  An alternative method which is faster than bootstrapping but more
-  accurate than the delta method, is to draw a sample from the
-  asymptotic multivariate normal distribution implied by the
-  maximum likelihood estimates (and covariance matrix), and summarise
-  the transformed bootstrapping.  See \code{\link{pmatrix.msm}}
+  An alternative method which is less accurate though faster than
+  bootstrapping, but more accurate than the delta method, is to draw a
+  sample from the asymptotic multivariate normal distribution implied by
+  the maximum likelihood estimates (and covariance matrix), and
+  summarise the transformed estimates.  See \code{\link{pmatrix.msm}}.
   
   All objects used in the original call to \code{\link{msm}} which
   produced \code{x}, such as the \code{qmatrix}, should be in the
@@ -91,14 +92,19 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
   ## Psoriatic arthritis example 
   data(psor)
   psor.q <- rbind(c(0,0.1,0,0),c(0,0,0.1,0),c(0,0,0,0.1),c(0,0,0,0))
-  psor.msm <- msm(state ~ months, subject=ptnum, data=psor, qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn, constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)), control = list(REPORT=1,trace=2), method="BFGS")
+  psor.msm <- msm(state ~ months, subject=ptnum, data=psor, qmatrix =
+    psor.q, covariates = ~ollwsdrt+hieffusn,
+    constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
+    control = list(REPORT=1,trace=2), method="BFGS")
   ## Bootstrap the baseline transition intensity matrix.  This will take a long time. 
   q.list <- boot.msm(psor.msm, function(x)x$Qmatrices$baseline)
   ## Manipulate the resulting list of matrices to calculate bootstrap standard errors. 
   apply(array(unlist(q.list), dim=c(4,4,5)), c(1,2), sd)
   ## Similarly calculate a bootstrap 95\% confidence interval
-  apply(array(unlist(q.list), dim=c(4,4,5)), c(1,2), function(x)quantile(x, c(0.025, 0.975)))
-  ## Bootstrap standard errors are larger than the asymptotic standard errors calculated from the Hessian
+  apply(array(unlist(q.list), dim=c(4,4,5)), c(1,2),
+        function(x)quantile(x, c(0.025, 0.975)))
+  ## Bootstrap standard errors are larger than the asymptotic standard
+  ## errors calculated from the Hessian
   psor.msm$QmatricesSE$baseline
 }
 }

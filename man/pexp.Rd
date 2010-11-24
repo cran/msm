@@ -65,10 +65,14 @@ maximum \eqn{t_i}{ti} such that
 x <- seq(0.1, 50, by=0.1)
 rate <- c(0.1, 0.2, 0.05, 0.3)
 t <- c(0, 10, 20, 30)
-plot(x, dexp(x, 0.1), type="l") ## standard exponential distribution
-lines(x, dpexp(x, rate, t), type="l", lty=2)  ## distribution with piecewise constant rate
-plot(x, pexp(x, 0.1), type="l") ## standard exponential distribution
-lines(x, ppexp(x, rate, t), type="l", lty=2)  ## distribution with piecewise constant rate
+## standard exponential distribution
+plot(x, dexp(x, 0.1), type="l")
+## distribution with piecewise constant rate
+lines(x, dpexp(x, rate, t), type="l", lty=2)  
+## standard exponential distribution
+plot(x, pexp(x, 0.1), type="l") 
+## distribution with piecewise constant rate
+lines(x, ppexp(x, rate, t), type="l", lty=2)  
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{distribution}

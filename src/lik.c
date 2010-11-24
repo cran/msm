@@ -12,6 +12,7 @@
 #include "hmm.h"
 #include <Rmath.h>
 #define NODEBUG
+#define NODEBUG2
 #define NOVITDEBUG
 
 linkfn LINKFNS[3][2] = {
@@ -207,7 +208,9 @@ void update_likhidden(double *curr, int nc, int obsno, msmdata *d, qmodel *qm, q
 		LINKFNS[hm->links[i]][0], LINKFNS[hm->links[i]][1]);
     }
     GetOutcomeProb(pout, curr, nc, newpars, hm, qm, d->obstrue[obsno]);
-/*     printf("pout: %4.3f, %4.3f, %4.3f, %4.3f\n", pout[0], pout[1], pout[2], pout[3]);   */
+#ifdef DEBUG2
+    printf("pout: %4.3f, %4.3f, %4.3f, %4.3f\n", pout[0], pout[1], pout[2], pout[3]);   
+#endif   
     /* calculate the transition probability (P) matrix for the time interval dt */
     Pmat(pmat, d->time[obsno] - d->time[obsno-1], newintens, qm->npars, qm->ivector, qm->nst,
 	 (d->obstype[obsno] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm, qm->qperm, 0);
@@ -231,10 +234,15 @@ void update_likhidden(double *curr, int nc, int obsno, msmdata *d, qmodel *qm, q
 		    }
 		    if (T[MI(i,j,qm->nst)] < 0) T[MI(i,j,qm->nst)] = 0;
 		    newp[j] = newp[j] + cump[i]*T[MI(i,j,qm->nst)];
-/*   		    printf("%4.3f, ", pmat[MI(i,j,qm->nst)]);   */
+#ifdef DEBUG2
+   		    printf("%4.3f, ", pmat[MI(i,j,qm->nst)]);
+#endif
 		}
-/*   	    printf("\n");   */
-			
+#ifdef DEBUG2
+   	    printf("\n");   
+	    printf("newp: ");
+	    printf("%lf, ", newp[j]); 
+#endif			
 	}
     /* re-scale the likelihood at each step to prevent it getting too small and underflowing */
     /*  while cumulatively recording the log scale factor   */
@@ -288,8 +296,18 @@ double likhidden(int pt, /* ordinal subject ID */
 	    GetCensored((double)d->obs[obsno], cm, &nc, &curr);
 	    update_likhidden(curr, nc, obsno, d, qm, qcm, hm, cump, newp, &lweight);
 	}
-    for (i = 0, lik = 0; i < qm->nst; ++i)
+#ifdef DEBUG2
+      printf("cump: ");
+#endif
+    for (i = 0, lik = 0; i < qm->nst; ++i) { 
+#ifdef DEBUG2
+      printf("%lf, ", cump[i]); 
+#endif
 	lik = lik + cump[i];
+    } 
+#ifdef DEBUG2
+      printf("\n");
+#endif
     Free(curr); Free(cump);  Free(newp); Free(pout); Free(newpars); Free(newinitp);
     /* Transform the likelihood back to the proper scale */
     return -2*(log(lik) - lweight); 
@@ -488,6 +506,13 @@ void Viterbi(msmdata *d, qmodel *qm, qcmodel *qcm,
 		    GetOutcomeProb(pout, curr, nc, newpars, hm, qm, d->obstrue[i]);
 #ifdef VITDEBUG			  
 		    for (tru=0;tru<nc;++tru) printf("curr[%d] = %1.0lf, ",tru, curr[tru]); printf("\n");
+		    for (k=0; k<qm->npars; ++k) printf("intens[%d] = %f", k, qm->intens[k]); printf("\n");
+		    for (k=0; k<qcm->ncovs[0]; ++k) printf("cov[%d] = %f", k, d->cov[MI(i-1,k,d->nobs)]); printf("\n");
+		    for (k=0; k<qm->npars; ++k) printf("newintens[%d] = %f", k, newintens[k]); printf("\n");
+		    for (j = 0; j < qm->nst; ++j) {
+		      for (k=0; k<hm->npars[j]; ++k) printf("hpar[%d] = %f", k, hm->pars[k]); 
+		      printf("\n");
+		    }
 #endif
 		    Pmat(pmat, dt, newintens, qm->npars, qm->ivector, qm->nst,
 			 (d->obstype[i] == OBS_EXACT), qm->analyticp, qm->iso, qm->perm,  qm->qperm, 0);

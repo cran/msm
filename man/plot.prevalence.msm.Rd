@@ -13,7 +13,9 @@ plot.prevalence.msm(x, mintime=NULL, maxtime=NULL, timezero=NULL,
                     initstates=NULL, interp=c("start","midpoint"),
                     covariates="mean", misccovariates="mean",
                     piecewise.times=NULL, piecewise.covariates=NULL,
-                    xlab="Times",ylab="Prevalence (\%)", lwd=1, legend.pos=NULL,
+                    xlab="Times",ylab="Prevalence (\%)", lwd.obs=1,
+                    lwd.exp=1, lty.obs=1, lty.exp=2, col.obs="blue",
+                    col.exp="red", legend.pos=NULL,
                     ...)
 }
 \arguments{
@@ -46,7 +48,12 @@ plot.prevalence.msm(x, mintime=NULL, maxtime=NULL, timezero=NULL,
     to specify this.}
   \item{xlab}{x axis label.}
   \item{ylab}{y axis label.}
-  \item{lwd}{Line width. See \code{\link{par}}.}  
+  \item{lwd.obs}{Line width for observed prevalences. See \code{\link{par}}.}  
+  \item{lwd.exp}{Line width for expected prevalences. See \code{\link{par}}.}
+  \item{lty.obs}{Line type for observed prevalences. See \code{\link{par}}.} 
+  \item{lty.exp}{Line type for expected prevalences. See \code{\link{par}}.} 
+  \item{col.obs}{Line colour for observed prevalences. See \code{\link{par}}.}
+  \item{col.exp}{Line colour for expected prevalences. See \code{\link{par}}.}
   \item{legend.pos}{Vector of the \eqn{x} and \eqn{y} position,
     respectively, of the legend.}
   \item{...}{Further arguments to be passed to the generic \code{\link{plot}}

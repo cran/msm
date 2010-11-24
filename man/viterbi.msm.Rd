@@ -12,7 +12,8 @@
 viterbi.msm(x)
 }
 \arguments{
-  \item{x}{A fitted hidden Markov multi-state model, as produced by \code{\link{msm}}}
+  \item{x}{A fitted hidden Markov multi-state model, or a model with
+    censored state observations, as produced by \code{\link{msm}}}
 }
 \value{
     A data frame with columns:

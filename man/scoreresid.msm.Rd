@@ -32,6 +32,6 @@ scoreresid.msm(x, plot=FALSE)
   will have higher score residuals.
   
 }
-\author{Andrew Titman  \email{andrew.titman@mrc-bsu.cam.ac.uk} (theory),
+\author{Andrew Titman  \email{a.titman@lancaster.ac.uk} (theory),   
   Chris Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk} (code)}
 \keyword{models}

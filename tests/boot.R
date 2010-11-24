@@ -40,23 +40,23 @@ if (developer.local) {
 
   ## multicore test  
   
-  boot.msm <- function(x, stat=pmatrix.msm, B=1000, file=NULL, cores=1){
-      boot.list <- vector(B, mode="list")
-      if (!is.null(x$call$subject)) x$call$subject <- substitute(subject.name)
-      if (!is.null(x$call$obstype)) x$call$obstype <- substitute(obstype.name)
-      if (!is.null(x$call$obstrue)) x$call$obstrue <- substitute(obstrue.name)      
-      boot.fn <- function(dummy){ 
-          boot.data <- if (x$hmodel$hidden || x$cmodel$ncens) bootdata.subject.msm(x) else bootdata.trans.msm(x)
-          x$call$data <- substitute(boot.data)
-          res <- try(eval(x$call))
-          if (!is.null(stat))
-              res <- stat(res)
-          res
-      }                    
-      if (require(multicore) && cores>1)
-          boot.list <- mclapply(1:B, boot.fn, mc.cores=cores)
-      else boot.list <- lapply(1:B, boot.fn)
-  }
+##   boot.msm <- function(x, stat=pmatrix.msm, B=1000, file=NULL, cores=1){
+##       boot.list <- vector(B, mode="list")
+##       if (!is.null(x$call$subject)) x$call$subject <- substitute(subject.name)
+##       if (!is.null(x$call$obstype)) x$call$obstype <- substitute(obstype.name)
+##       if (!is.null(x$call$obstrue)) x$call$obstrue <- substitute(obstrue.name)      
+##       boot.fn <- function(dummy){ 
+##           boot.data <- if (x$hmodel$hidden || x$cmodel$ncens) bootdata.subject.msm(x) else bootdata.trans.msm(x)
+##           x$call$data <- substitute(boot.data)
+##           res <- try(eval(x$call))
+##           if (!is.null(stat))
+##               res <- stat(res)
+##           res
+##       }                    
+##       if (require(multicore) && cores>1)
+##           boot.list <- mclapply(1:B, boot.fn, mc.cores=cores)
+##       else boot.list <- lapply(1:B, boot.fn)
+##   }
 
   psor.msm <- msm(state ~ months, subject=ptnum, data=psor, qmatrix =
                   psor.q, covariates = ~ollwsdrt+hieffusn, constraint =

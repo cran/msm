@@ -101,6 +101,18 @@ if (developer.local) {
     vit <- viterbi.msm(misc.msm)[viterbi.msm(misc.msm)$subject==100063,]
     stopifnot(isTRUE(all.equal(c(1, 1, 1, 1, 2, 2, 2, 2, 2, 2), vit$fitted, tol=1e-06)))
 
+### TEST VITERBI ON SUBSET WITH FIXEDPARS BUG REPORT
+    
+    pt <- 100046
+    for (pt in unique(cav$PTNUM)){ 
+        subs <- cav[cav$PTNUM==pt,]
+        x <- viterbi.msm(misc.msm); x <- x[x$subject==pt,]
+        miscfix.msm <- msm(state ~ years, subject = PTNUM, data = subs, qmatrix = qmatrix.msm(misc.msm)$estimates, ematrix=ematrix.msm(misc.msm)$estimates, death = 4, fixedpars=TRUE)
+        y <- viterbi.msm(miscfix.msm)
+        print(pt)
+        stopifnot(all(x$fitted==y$fitted))
+    }
+    
     odds <- odds.msm(misccov.msm)
 #    stopifnot(isTRUE(all.equal(0.924920277547759, odds$dage[1,2], tol=1e-06)))
 #    stopifnot(isTRUE(all.equal(0.9350691888108385, odds$dage[2,2], tol=1e-06)))

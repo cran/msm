@@ -68,7 +68,7 @@ pearson.msm(x, transitions=NULL, timegroups=3, intervalgroups=3,
     \code{groups} at the first observation for each subject are
     ignored. }
   
-  \item{boot}{Estimate an exact p-value using a parametric bootstrap.
+  \item{boot}{Estimate an "exact" p-value using a parametric bootstrap.
 
     All objects used in the original call to \code{\link{msm}} which
   produced \code{x}, such as the \code{qmatrix}, should be in the
@@ -233,7 +233,7 @@ pearson.msm(psor.msm, timegroups=2, intervalgroups=2, covgroups=2)
 # A random effects model might accommodate such fast progressors. 
 }
 \author{
-Andrew Titman (\email{andrew.titman@mrc-bsu.cam.ac.uk}),
-Chris Jackson (\email{chris.jackson@mrc-bsu.cam.ac.uk})
+  Andrew Titman (\email{a.titman@lancaster.ac.uk}),  
+  Chris Jackson (\email{chris.jackson@mrc-bsu.cam.ac.uk})
 }
 \keyword{models}

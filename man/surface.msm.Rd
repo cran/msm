@@ -23,11 +23,11 @@ surface.msm(x, params=c(1,2), np=10, type=c("contour","filled.contour","persp","
     surface. If 100 likelihood function evaluations is slow, then reduce this. }
   \item{type}{Character string specifying the type of plot to produce.
     \tabular{ll}{
-    "contour" \tab Contour plot, using the R function
+    \code{"contour"} \tab Contour plot, using the R function
     \code{\link{contour}}. \cr
-    "filled.contour" \tab Solid-color contour plot, using the R function \code{\link{filled.contour}}. \cr
-    "persp" \tab Perspective plot, using the R function \code{\link{persp}}. \cr
-    "image" \tab Grid color plot, using the R function \code{\link{image}}. \cr
+    \code{"filled.contour"} \tab Solid-color contour plot, using the R function \code{\link{filled.contour}}. \cr
+    \code{"persp"} \tab Perspective plot, using the R function \code{\link{persp}}. \cr
+    \code{"image"} \tab Grid color plot, using the R function \code{\link{image}}. \cr
     }
   }
   \item{point}{Vector of length \code{n}, where \code{n} is the number

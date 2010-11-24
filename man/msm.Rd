@@ -28,9 +28,10 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     
     \code{state ~ time}
 
-    Observed states should be in the set \code{1, \dots, n},
-    where \code{n} is the number of states.
-  }
+    Observed states should be in the set \code{1, \dots, n}, where
+    \code{n} is the number of states.  The times can indicate different
+    types of observation scheme, so be careful to choose the correct
+    \code{obstype}.  }
 
   \item{subject}{Vector of subject identification numbers for the data
     specified by \code{formula}. If missing, then all observations
@@ -67,8 +68,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   }
 
   \item{gen.inits}{If \code{TRUE}, then initial values for the
-    transition intensities are estimated by assuming that the data
-    represent the exact transition times of the process. The non-zero
+    transition intensities are generated automatically using the method
+    in \code{\link{crudeinits.msm}}. The non-zero
     entries of the supplied \code{qmatrix} are assumed to indicate the
     allowed transitions of the model.}
   
@@ -133,8 +134,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     A misclassification model, that is, a hidden Markov model where
     the outcomes are misclassified observations of the underlying
     states, can either be specified using a list of \code{\link{hmmCat}}
-    objects, or by using an \code{ematrix} as in previous versions of
-    \pkg{msm}.
+    objects, or by using an \code{ematrix}.
 
     For example, \cr
 
@@ -164,7 +164,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     
     \describe{
       \item{1}{An observation of the process at an arbitrary time (a "snapshot"
-	of the process, or "panel-observed" data)}
+	of the process, or "panel-observed" data). The states are
+	unknown between observation times.}
       \item{2}{An exact transition time, with the state at the previous
 	observation retained until the current observation.}
       \item{3}{An exact transition time, but the state at the instant before
@@ -425,7 +426,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     censoring.  Censoring means that the observed state is known only to be
     one of a particular set of states. For example, \code{censor=999}
     indicates that all observations of \code{999} in the vector of observed
-    states denote censoring times.  By default, this means that the true
+    states are censored states.  By default, this means that the true
     state could have been anything other than an absorbing state. To
     specify corresponding true states explicitly, use a \code{censor.states}
     argument. 
@@ -443,9 +444,9 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     facility. If the true state is unknown on occasions when a
     piecewise constant covariate is known to change, then censored
     states can be inserted in the data on those occasions.
-    The covariate may represent time itself, or some other
-    time-dependent variable.  The \code{pci} option to msm can be used
-    to perform this trick automatically.
+    The covariate may represent time itself, in which case the \code{pci} option to msm can be used
+    to perform this trick automatically, or some other time-dependent
+    variable.
   }
 
   \item{censor.states}{
@@ -471,7 +472,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
      specifies that the intensity changes at time points 5 and 10.
      This will automatically construct a model with a categorical
-     (factor) covariate called \code{timeperiod}, with levels \code{"timeperiod[-Inf,5)"},
+     (factor) covariate called \code{timeperiod}, with levels
+     \code{"timeperiod[-Inf,5)"}, 
      \code{"timeperiod[5,10)"} and \code{"timeperiod[10,Inf)"}, where
      the first
      level is the baseline.  This covariate defines the time period in
@@ -497,7 +499,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
      \code{qmatrix.msm(example.msm, covariates=list(timeperiod="[5,Inf)"))}
      
      This facility does not support interactions between time and
-     other covariates.  Such models need to be specified by hand, using 
+     other covariates.  Such models need to be specified "by hand", using 
      a state variable with censored observations inserted.
      Note that the \code{data} component of the \code{msm} object
      returned from a call to \code{msm} with \code{pci} supplied contains the
@@ -522,11 +524,12 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     fixed at their initial values during the optimisation. These are
     given in the order: transition intensities (reading across rows of
     the transition matrix), covariates on intensities (ordered by
-    intensities within covariates), hidden Markov model parameters
-    (ordered by parameters within states), hidden Markov model covariate
-    parameters (ordered by covariates within parameters within states),
-    initial state occupancy probabilities (excluding the first
-    probability, which is fixed at one minus the sum of the others).
+    intensities within covariates), hidden Markov model parameters,
+    including misclassification probabilities (ordered by parameters
+    within states), hidden Markov model covariate parameters (ordered by
+    covariates within parameters within states), initial state occupancy
+    probabilities (excluding the first probability, which is fixed at one
+    minus the sum of the others).
 
     If there are equality constraints on certain parameters, then    
     \code{fixedpars} indexes the set of unique parameters, excluding
@@ -540,9 +543,10 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     models stage by stage. To fix all parameters, specify
     \code{fixedpars = TRUE}. }
 
-  \item{center}{If \code{TRUE} (the default) then covariates are centered at
-    their means during the maximum likelihood estimation. This usually
-    improves stability of the numerical optimisation. }
+  \item{center}{If \code{TRUE} (the default, unless
+    \code{fixedpars=TRUE}) then covariates are centered at their means
+    during the maximum likelihood estimation. This usually improves
+    stability of the numerical optimisation. }
 
   \item{opt.method}{Quoted name of the R function to perform
     minimisation of the minus twice log likelihood.  Either "optim" or
@@ -583,13 +587,25 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   }
 }
 \value{
-  A list of class \code{msm}, with components:
+  To obtain summary information from models fitted by the
+  \code{\link{msm}} function, it is recommended to use extractor
+  functions such as \code{\link{qmatrix.msm}},
+  \code{\link{pmatrix.msm}}, \code{\link{sojourn.msm}}.  These provide
+  estimates and confidence intervals for quantities such as transition
+  probabilities for given covariate values. 
+  
+  For advanced use, it may be necessary to directly use information
+  stored in the object returned by the \code{msm} function.  This is a
+  list of class \code{msm}, with components:
 
   \item{call}{The original call to \code{msm}.}
     \item{Qmatrices}{A list of matrices. The first component, labelled
     \code{logbaseline}, is a matrix containing the estimated
     transition intensities on the log scale with any covariates fixed at
-    their means in the data. Each remaining component is a matrix giving the linear
+    their means in the data (or at zero, if \code{center=FALSE}). The
+    component labelled \code{baseline} is the equivalent on the
+    untransformed scale. Each
+    remaining component is a matrix giving the linear
     effects of the labelled covariate on the matrix of log
     intensities.  To extract an estimated intensity matrix on the natural
     scale, at an arbitrary combination of covariate values, use the
@@ -605,7 +621,10 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   \item{Ematrices}{A list of matrices. The first component, labelled
     \code{logitbaseline}, is the estimated misclassification probability
     matrix (expressed as as log odds relative to the probability of the
-    true state) with any covariates fixed at their means in the data. Each
+    true state) with any covariates fixed at their means in the data (or
+    at zero, if \code{center=FALSE}). The
+    component labelled \code{baseline} is the equivalent on the
+    untransformed scale. Each
     remaining component is a matrix giving the linear
     effects of the labelled covariate on the matrix of logit
     misclassification probabilities.   To extract an estimated misclassification
@@ -620,7 +639,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     A list with components:
 
     \code{mean} = estimated mean sojourn times in the transient states,
-    with covariates fixed at their means.
+    with covariates fixed at their means (if center=TRUE) or at zero
+    (if center=FALSE). 
 
     \code{se} = corresponding standard errors.
   }
@@ -672,21 +692,16 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   \code{hmodel} component is also formatted and printed. This includes
   estimates and confidence intervals for each
   parameter.
-
-  To extract summary information from the fitted model, it is
-  recommended to use the more flexible extractor functions, such as
-  \code{\link{qmatrix.msm}}, \code{\link{pmatrix.msm}},
-  \code{\link{sojourn.msm}}, instead of directly reading from list
-  components of \code{msm} objects.
-  
 }
 \details{
   For full details about the methodology behind the \pkg{msm} package,
   refer to the PDF manual \file{msm-manual.pdf} in the \file{doc}
   subdirectory of the package. This includes a tutorial in the typical
-  use of \pkg{msm}.
+  use of \pkg{msm}.  The paper by Jackson (2011) in Journal of
+  Statistical Software presents the material in this manual in a more
+  concise form. 
 
-  Note that \pkg{msm} is for fitting \emph{continuous-time} Markov
+  \pkg{msm} was designed for fitting \emph{continuous-time} Markov
   models, processes where transitions can occur at any time.
   These models are defined by \emph{intensities}, which govern both the
   time spent in the current state and the probabilities of the next
@@ -694,9 +709,14 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   advance to only occur at multiples of some time unit, and the model is
   purely governed by the probability distributions of the state at the
   next time point, conditionally on the state at the current time. These
-  are more appropriately fitted using multinomial logistic regression,
-  for example, using \code{multinom} from the
-  R package \pkg{nnet} (Venables and Ripley, 2002).
+  can also be fitted in \pkg{msm}, assuming that there is a
+  continuous-time process underlying the data.  Then the fitted
+  transition probability matrix over one time period, as
+  returned by \code{pmatrix.msm(...,t=1)} is equivalent to the
+  matrix that governs the discrete-time model. However, these can be
+  fitted more efficiently using multinomial logistic regression, for
+  example, using \code{multinom} from the R package \pkg{nnet} (Venables
+  and Ripley, 2002).
 
   For simple continuous-time multi-state Markov models,
   the likelihood is calculated in terms of the transition intensity
@@ -731,19 +751,15 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   also be important.  For flat likelihoods, 'informative' initial values
   will often be required.
   
-  Users upgrading from versions of \pkg{msm} less than 0.5 will need to
-  change some of their model fitting syntax. In particular, initial
-  values are now specified in the \code{qmatrix} and \code{covinits}
-  arguments instead of \code{inits}, and \code{qmatrix} is no longer a
-  matrix of \code{0/1} indicators.  See the appendix to the PDF manual
-  or the NEWS file in the top-level installation directory for a full
-  list of changes.
-
 }
 \references{
+  Jackson, C. H. (2011). Multi-State Models for Panel Data: The msm Package
+  for R., Journal of Statistical Software, 38(8), 1-29. URL
+  http://www.jstatsoft.org/v38/i08/.
+
   Kalbfleisch, J., Lawless, J.F., The analysis of panel data under a
   Markov assumption \emph{Journal of the Americal Statistical
-    Association} (1985) 80(392): 863--871.
+  Association} (1985) 80(392): 863--871.
     
   Kay, R.  A Markov model for analysing cancer markers and disease
   states in survival studies.  \emph{Biometrics} (1986) 42: 855--865.

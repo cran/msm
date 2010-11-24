@@ -8,7 +8,10 @@
 \usage{
 plot.survfit.msm(x, from=1, to=NULL, range=NULL, covariates="mean",
                  interp=c("start","midpoint"), ci=c("none","normal","bootstrap"), B=100,
-                 legend.pos=NULL, xlab="Time", ylab="Survival probability", lwd=1, ...)
+                 legend.pos=NULL, xlab="Time", ylab="Survival probability",
+                 lty=1, lwd=1, col="red", lty.ci=2, lwd.ci=1, col.ci="red", 
+                 mark.time=TRUE, col.surv="blue", lty.surv=2, lwd.surv=1,
+                 ...)
 }
 \arguments{
 
@@ -66,9 +69,20 @@ plot.survfit.msm(x, from=1, to=NULL, range=NULL, covariates="mean",
     respectively, of the legend.}
   \item{xlab}{x axis label.}
   \item{ylab}{y axis label.}
-  \item{lwd}{Line width. See \code{\link{par}}.}  
+  \item{lty}{Line type for the fitted curve. See \code{\link{par}}.}  
+  \item{lwd}{Line width for the fitted curve. See \code{\link{par}}.}  
+  \item{col}{Colour for the fitted curve. See \code{\link{par}}.}  
+  \item{lty.ci}{Line type for the fitted curve confidence limits. See \code{\link{par}}.}  
+  \item{lwd.ci}{Line width for the fitted curve confidence limits. See \code{\link{par}}.}  
+  \item{col.ci}{Colour for the fitted curve confidence limits. See \code{\link{par}}.}  
+  \item{mark.time}{Mark the empirical survival curve at each censoring
+  point, see \code{\link[survival]{lines.survfit}}.}
+  \item{col.surv}{Colour for the empirical survival curve, passed to \code{\link[survival]{lines.survfit}}. See \code{\link{par}}.}
+  \item{lty.surv}{Line type for the empirical survival curve, passed to \code{\link[survival]{lines.survfit}}. See \code{\link{par}}.}  
+  \item{lwd.surv}{Line width for the empirical survival curve, passed to \code{\link[survival]{lines.survfit}}. See \code{\link{par}}.}  
   \item{...}{Other arguments to be passed to the
-    \code{\link{plot.survfit}} and \code{\link{lines.survfit}} functions.}
+    \code{\link{plot}} function which draws the fitted curve, or the \code{\link[survival]{lines.survfit}}
+    function which draws the empirical curve. }
 }
 \details{
   If the data represent observations of the process at arbitrary times, then
@@ -79,5 +93,5 @@ plot.survfit.msm(x, from=1, to=NULL, range=NULL, covariates="mean",
 
   This currently only handles time-homogeneous models. 
 }
-\seealso{\code{\link{survfit}}, \code{\link{plot.survfit}}, \code{\link{plot.prevalence.msm}}}
+\seealso{\code{\link[survival]{survfit}}, \code{\link[survival]{plot.survfit}}, \code{\link{plot.prevalence.msm}}}
 \keyword{models}
