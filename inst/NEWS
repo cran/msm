@@ -3,6 +3,26 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 1.0 (2010-11-24)
+-------------
+
+o 1.0 release to accompany the forthcoming Journal of Statistical
+  Software paper about msm.
+
+o Line types, colours and widths can be configured in plotprog.msm, 
+  plot.survfit.msm and plot.prevalence.msm.
+
+o Added warning for multiple observations at the same time on the same
+  person with different states, which leads to zero likelihood and
+  the dreaded "cannot be evaluated at initial values" message.
+
+o If center=FALSE, the $Qmatrices$baseline, $Ematrices$baseline and
+  $sojourn components of msm objects are evaluated with covariate
+  values of 0, for consistency with "logbaseline". Documentation and
+  printed output corrected accordingly.  These issues caused problems
+  with viterbi.msm.  Thanks to Kenneth Gundersen for the report.
+
+
 Version 0.9.7 (2010-05-18)
 -------------
 
@@ -13,8 +33,8 @@ o Bug fixes for bootstrapping with totlos, covariates on HMM outcomes
 Version 0.9.6 (2010-02-09)
 -------------
 
-o Bug fix which caused occasional wrong likelihood calculations for
-  models with "exacttimes".   Thanks to Brian Tom for the report. 
+o Fix of a bug which caused occasional wrong likelihood calculations
+  for models with "exacttimes".  Thanks to Brian Tom for the report.
 
 o Fix for "NA in probability vector" error in pearson.msm.  Thanks to
   Wen-Wen Yang for the report.

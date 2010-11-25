@@ -7,7 +7,8 @@
 }
 \usage{
 plotprog.msm(formula, subject, data, legend.pos=NULL, xlab="Time",
-                   ylab="1 - incidence probability", lwd=1, xlim=NULL, ...)
+                   ylab="1 - incidence probability", lwd=1, xlim=NULL,
+                   mark.time=TRUE, ...)
 }
 \arguments{
   \item{formula}{A formula giving the vectors containing the observed
@@ -30,9 +31,11 @@ plotprog.msm(formula, subject, data, legend.pos=NULL, xlab="Time",
   \item{ylab}{y axis label.}
   \item{lwd}{Line width. See \code{\link{par}}.}
   \item{xlim}{x axis limits, e.g. c(0,10) for an axis ranging from 0 to 10. Default is the range of observation times.}
+  \item{mark.time}{Mark the empirical survival curve at each censoring
+  point, see \code{\link{lines.survfit}}.}
   
   \item{...}{Other arguments to be passed to the
-    \code{\link[survival]{plot.survfit}} and \code{\link[survival]{lines.survfit}} functions.}
+    \code{\link{plot}} and \code{\link[survival]{lines.survfit}} functions.}
 }
 \details{
   If the data represent observations of the process at arbitrary times, then

@@ -175,7 +175,6 @@ rtnorm <- function (n, mean = 0, sd = 1, lower = -Inf, upper = Inf) {
                                        (-upper + sqrt(upper^2 + 4)) * exp((upper*2 - -upper*sqrt(upper^2 + 4)) / 4)),
                                        2, # rejection sampling with exponential proposal. Use if upper << mean.
                                        3)))) # rejection sampling with uniform proposal. Use if bounds are narrow and central.
-
     
     ind.nan <- ind[alg==-1]; ind.no <- ind[alg==0]; ind.expl <- ind[alg==1]; ind.expu <- ind[alg==2]; ind.u <- ind[alg==3]
     ret[ind.nan] <- NaN

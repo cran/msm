@@ -6,7 +6,8 @@
   multi-state model and their confidence limits. 
 }
 \usage{
-sojourn.msm(x, covariates="mean", ci=c("delta","normal","bootstrap","none"), cl=0.95, B=1000)
+sojourn.msm(x, covariates="mean", ci=c("delta","normal","bootstrap","none"),
+  cl=0.95, B=1000)
 }
 \arguments{
 

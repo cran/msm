@@ -34,8 +34,14 @@ if (developer.local) {
 
 ## Covs on misc probs, new way, with hmodel
 
+## HUH FIXME Why does centering change the likelihood?
+## Different intial values!  Go through and fix all these. 
+## Or is it sensible to have different initial liks for same pars if fixedpars=TRUE/FALSE?
+## any need for this change?  just allows the subset trick in viterbi
+## could just document that covariates will be changed, unless center=FALSE. 
+
 misccovnew.msm <- msm(state ~ years, subject = PTNUM, data = cav,
-                      qmatrix = oneway4.q, death = 4, fixedpars=TRUE,
+                      qmatrix = oneway4.q, death = 4, fixedpars=TRUE, center=TRUE,
                       hmodel=list(
                         hmmCat(prob=c(0.9, 0.1, 0, 0)),
                         hmmCat(prob=c(0.1, 0.8, 0.1, 0)),

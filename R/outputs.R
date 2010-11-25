@@ -6,7 +6,9 @@ print.msm <- function(x, ...)
 
     if (!attr(x,"fixed")) {
         cat ("Maximum likelihood estimates: \n")
-        covmessage <- if (x$qcmodel$ncovs == 0) "" else "with covariates set to their means"
+        covmessage <-
+            if (x$qcmodel$ncovs == 0) ""
+            else paste("with covariates set to ", (if (x$center) "their means" else "0"))
         for (i in c("baseline", x$qcmodel$covlabels)) {
             title <-
                 if (i == "baseline") paste("Transition intensity matrix",covmessage,"\n")
@@ -136,7 +138,8 @@ plot.msm <- function(x, from=NULL, to=NULL, range=NULL, covariates="mean", legen
 
 ### Plot KM estimate of time to first occurrence of each state
 
-plotprog.msm <- function(formula, subject, data, legend.pos=NULL, xlab="Time", ylab="1 - incidence probability", lwd=1, xlim=NULL, ...) {
+plotprog.msm <- function(formula, subject, data, legend.pos=NULL, xlab="Time", ylab="1 - incidence probability", lwd=1, xlim=NULL,
+                         mark.time=TRUE, ...) {
     data <- na.omit(data)
     mf <- model.frame(formula, data=data)
     state <- mf[,1]
@@ -146,7 +149,7 @@ plotprog.msm <- function(formula, subject, data, legend.pos=NULL, xlab="Time", y
     subject <- match(subject, unique(subject))
     rg <- range(time)
     if (is.null(xlim)) xlim=rg
-    plot(0, xlim=xlim, ylim=c(0,1), type="n", xlab=xlab, ylab=ylab, lwd=lwd, ...)
+    plot(0, xlim=xlim, ylim=c(0,1), type="n", xlab=xlab, ylab=ylab, ...)
     states <- sort(unique(state))[-1]
     cols <- rainbow(length(states))
     for (i in states) {
@@ -158,7 +161,8 @@ plotprog.msm <- function(formula, subject, data, legend.pos=NULL, xlab="Time", y
                                                   mintime = if(any(x[,"state"]>=i)) min(x[x[,"state"] >= i, "time"]) else max(x[,"time"]))
                                             }
                                                 ))) # slow 
-        lines(survfit(Surv(st$mintime,st$anystate) ~ 1),col=cols[i-1],lty=i-1, lwd=lwd,...)
+        lines(survfit(Surv(st$mintime,st$anystate) ~ 1),
+              col=cols[i-1], lty=i-1, lwd=lwd, mark.time=mark.time, ...)
     }
     timediff <- (rg[2] - rg[1]) / 50
     if (!is.numeric(legend.pos) || length(legend.pos) != 2)
@@ -768,9 +772,9 @@ pmatrix.msm <- function(x, # fitted msm model
 {
     if (!is.numeric(t) || (t < 0)) stop("t must be a positive number")
     if (is.null(x$pci)) {
-        q <- qmatrix.msm(x, covariates)
-        p <- MatrixExp(q$estimates, t, ...)
-        colnames(p) <- rownames(p) <- rownames(q$estimates)
+        q <- qmatrix.msm(x, covariates, ci="none")
+        p <- MatrixExp(q, t, ...)
+        colnames(p) <- rownames(p) <- rownames(q)
         ci <- match.arg(ci)
         p.ci <- switch(ci,
                        bootstrap = pmatrix.ci.msm(x=x, t=t, t1=t1, covariates=covariates, cl=cl, B=B),
@@ -1241,7 +1245,8 @@ prevalence.msm <- function(x,
 plot.prevalence.msm <- function(x, mintime=NULL, maxtime=NULL, timezero=NULL, initstates=NULL,
                                 interp=c("start","midpoint"), covariates="mean", misccovariates="mean",
                                 piecewise.times=NULL, piecewise.covariates=NULL, xlab="Times",ylab="Prevalence (%)",
-                                lwd=1, legend.pos=NULL,...){
+                                lwd.obs=1, lwd.exp=1, lty.obs=1, lty.exp=2,
+                                col.obs="blue", col.exp="red", legend.pos=NULL,...){
     time <- x$data$time
     if (is.null(mintime)) mintime <- min(time)
     if (is.null(maxtime)) maxtime <- max(time)
@@ -1255,20 +1260,23 @@ plot.prevalence.msm <- function(x, mintime=NULL, maxtime=NULL, timezero=NULL, in
     nrows <- if (floor(sqrt(S))^2 < S && S <= floor(sqrt(S))*ceiling(sqrt(S))) floor(sqrt(S)) else ceiling(sqrt(S))
     par(mfrow=c(nrows, ncols))
     for (i in states) {
-        plot(t, obs$obsperc[,i], type="l", lty=1, ylim=c(0, 100), xlab=xlab, ylab=ylab, lwd=lwd, 
+        plot(t, obs$obsperc[,i], type="l", ylim=c(0, 100), xlab=xlab, ylab=ylab, lwd=lwd.obs, lty=lty.obs, col=col.obs, 
              main=rownames(x$qmodel$qmatrix)[i],...)
-        lines(t, expec[,i], lty=2, lwd=lwd)
+        lines(t, expec[,i], lwd=lwd.exp, lty=lty.exp, col=col.exp)
     }
     if (!is.numeric(legend.pos) || length(legend.pos) != 2)
         legend.pos <- c(0.4*maxtime, 40)
-    legend(x=legend.pos[1], y=legend.pos[2], legend=c("Observed","Expected"), lty=1:2, lwd=lwd)
+    legend(x=legend.pos[1], y=legend.pos[2], legend=c("Observed","Expected"), lty=c(lty.obs,lty.exp), lwd=c(lwd.obs,lwd.exp), col=c(col.obs,col.exp))
     invisible()
 }
 
 ### Empirical versus fitted survival curve 
 
 plot.survfit.msm <- function(x, from=1, to=NULL, range=NULL, covariates="mean", interp=c("start","midpoint"), ci=c("none","normal","bootstrap"), B=100,
-                             legend.pos=NULL, xlab="Time", ylab="Survival probability", lwd=1, ...) {
+                             legend.pos=NULL, xlab="Time", ylab="Survival probability",
+                             lty=1, lwd=1, col="red", lty.ci=2, lwd.ci=1, col.ci="red", 
+                             mark.time=TRUE, col.surv="blue", lty.surv=2, lwd.surv=1,
+                             ...) {
     if (!inherits(x, "msm")) stop("expected x to be a msm model")
     if (is.null(to))
         to <- max(absorbing.msm(x))
@@ -1298,10 +1306,10 @@ plot.survfit.msm <- function(x, from=1, to=NULL, range=NULL, covariates="mean", 
         else pr <- c(pr, P[from, to])
     }
     plot(times, 1 - pr, type="l", xlab=xlab, ylab=ylab, lwd=lwd,
-         ylim=c(0,1), lty = 1, col="red",...)
+         ylim=c(0,1), lty = lty, col=col,...)
     if (ci != "none") {
-        lines(times, 1 - lower, lty=3, col="red", lwd=lwd)
-        lines(times, 1 - upper, lty=3, col="red", lwd=lwd)
+        lines(times, 1 - lower, lty=lty.ci, col=col.ci, lwd=lwd.ci)
+        lines(times, 1 - upper, lty=lty.ci, col=col.ci, lwd=lwd.ci)
     }
     dat <- as.data.frame(x$data[c("subject", "time", "state")])
     st <- as.data.frame(
@@ -1314,14 +1322,14 @@ plot.survfit.msm <- function(x, from=1, to=NULL, range=NULL, covariates="mean", 
                                             c(anystate = as.numeric(any(x[,"state"]==to)), mintime = mintime)
                                         }
                                             ))) # slow 
-    lines(survfit(Surv(st$mintime,st$anystate) ~ 1),col="blue",lty=2, lwd=lwd,...)
+    lines(survfit(Surv(st$mintime,st$anystate) ~ 1), mark.time=mark.time, col=col.surv, lty=lty.surv, lwd=lwd.surv,...)
     timediff <- (rg[2] - rg[1]) / 50
     if (!is.numeric(legend.pos) || length(legend.pos) != 2)
         legend.pos <- c(max(x$data$time) - 25*timediff, 1)
     if (ci=="none")
-        legend(legend.pos[1], legend.pos[2], lty=c(1,2), lwd=lwd, col=c("red","blue"),
+        legend(legend.pos[1], legend.pos[2], lty=c(lty, lty.surv), lwd=c(lwd, lwd.surv), col=c(col, col.surv),
                legend=c("Fitted","Empirical"))
-    else legend(legend.pos[1], legend.pos[2], lty=c(1,3,2), lwd=lwd, col=c("red","red","blue"),
+    else legend(legend.pos[1], legend.pos[2], lty=c(lty, lty.ci, lty.surv), lwd=c(lwd,lwd.ci, lwd.surv), col=c(col ,col.ci, col.surv),
                 legend=c("Fitted","Fitted (confidence interval)", "Empirical"))
 
     invisible()

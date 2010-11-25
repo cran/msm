@@ -21,8 +21,9 @@ bootdata.trans.msm <- function(x) {
     for (j in dat$covlabels.orig) {
         frominds <- seq(1, 2*length(inds)-1, 2)
         data.boot[frominds, j] <- data.boot[frominds+1,j] <- dat$cov.orig[inds, j]
-        if (is.factor(dat$cov.orig[, j]))
-            data.boot[, j] <- factor(data.boot[,j], labels=levels(dat$cov.orig[, j]))
+        if (is.factor(dat$cov.orig[, j])) { 
+            data.boot[, j] <- factor(data.boot[,j], labels=sort(unique(dat$cov.orig[inds, j])))
+        }
     }
     colnames(data.boot) <- gsub("factor\\((.+)\\)", "\\1", colnames(data.boot))
     data.boot
@@ -55,7 +56,7 @@ bootdata.subject.msm <- function(x) {
     for (j in dat$covlabels.orig) { 
         data.boot[, j] <- dat$cov.orig[inds, j]
         if (is.factor(dat$cov.orig[, j]))
-            data.boot[, j] <- factor(data.boot[,j], labels=levels(dat$cov.orig[, j]))
+            data.boot[, j] <- factor(data.boot[,j], labels=sort(unique(dat$cov.orig[, j])))
     }
     colnames(data.boot) <- gsub("factor\\((.+)\\)", "\\1", colnames(data.boot))
     data.boot

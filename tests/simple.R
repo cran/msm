@@ -110,6 +110,19 @@ system.time(psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
 stopifnot(isTRUE(all.equal(1114.89946121717, psor.msm$minus2loglik, tol=1e-06)))
 stopifnot(isTRUE(all.equal(0.0953882330391683, qmatrix.msm(psor.msm)$estimates[1,2], tol=1e-03)))
 
+## center=FALSE
+psor.nocen.msm <- msm(state ~ months, subject=ptnum, data=psor,
+                    qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn,
+                    constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)), 
+                    fixedpars=FALSE, center=FALSE, control = list(REPORT=1,trace=2), method="BFGS")
+## $baseline and component should obey center
+stopifnot(isTRUE(all.equal(psor.nocen.msm$Qmatrices$baseline, qmatrix.msm(psor.nocen.msm, covariates=0, ci="none"))))
+stopifnot(isTRUE(all.equal(psor.msm$Qmatrices$baseline, qmatrix.msm(psor.msm, covariates="mean", ci="none"))))
+stopifnot(isTRUE(all.equal(psor.nocen.msm$sojourn, sojourn.msm(psor.nocen.msm, covariates=0))))
+stopifnot(isTRUE(all.equal(psor.msm$sojourn, sojourn.msm(psor.msm, covariates="mean"))))
+stopifnot(isTRUE(all.equal(exp(psor.nocen.msm$Qmatrices$logbaseline[c(5,10,15)]), psor.nocen.msm$Qmatrices$baseline[c(5,10,15)])))
+stopifnot(isTRUE(all.equal(exp(psor.msm$Qmatrices$logbaseline[c(5,10,15)]), psor.msm$Qmatrices$baseline[c(5,10,15)])))
+
 ## crudeinits/geninits with missing values for state / time 
 
 psor2 <- psor; 
@@ -330,10 +343,15 @@ if (interactive())
       persp(psor.msm, np=5)
       image(psor.msm)
       plot.prevalence.msm(psor.msm)
+      plot.prevalence.msm(psor.msm, col.obs="green", col.exp="brown", lty.obs=2, lty.exp=3, lwd.obs=2, lwd.exp=4, cex.axis=2)
 
       ##
       plotprog.msm(state ~ months, subject=ptnum, data=psor, legend.pos=c(20,0.99), lwd=3, xlab="Months")
+      plotprog.msm(state ~ months, subject=ptnum, data=psor, legend.pos=c(20,0.99), lwd=1, mark.time=FALSE, xlab="Months")
       plot.survfit.msm(psor.msm, lwd=3, xlab="Months")
+      plot.survfit.msm(psor.msm, lwd=3, lwd.surv=3, mark.time=FALSE, col.surv="green", lty.surv=4, xlab="Months")
+      plot.survfit.msm(psor.msm, lwd=3, lwd.surv=3, ci="normal", B=4, col.surv="green", lty.surv=4, xlab="Months",
+                       lty.ci=1, lwd.ci=2, col.ci="purple")
     }
 
 
@@ -450,7 +468,10 @@ if (0) {
                                  qmatrix = psor.q, covariates = ~factor(ollwsdrt) + hieffusn, # covinits=list(hieffusn = c(0.5, 0.1, 0), ollwsdrt=c(0.2, 0.1, -0.1)),
                                  constraint = list(hieffusn=c(1,1,1)), # censor=99, censor.states=c(3,4),
                                  fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS"))
-    pmatrix.msm(psor2.msm, ci="boot", B=5, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo"))
+    pmatrix.msm(psor2.msm, ci="boot", B=50, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo"))
+    pmatrix.msm(psor2.msm, ci="boot", B=3)
+    boot.msm(psor2.msm, stat=function(x)qmatrix.msm(x)$estimates[1,2], B=3)
+    
     qmatrix.msm(psor2.msm, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo"))
     qmatrix.msm(psor2.msm, ci="normal", B=50, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo"))
     qmatrix.msm(psor2.msm, ci="boot", B=3, covariates=list(hieffusn=0, "factor(ollwsdrt)"="foo"))

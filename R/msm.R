@@ -33,7 +33,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                 pci = NULL,
                 cl = 0.95, # width of confidence intervals
                 fixedpars = NULL, # specify which parameters to fix. TRUE for all parameters
-                center = TRUE, # center covariates at their means
+                center = TRUE, # center covariates at their means during optimisation
                 opt.method = c("optim","nlm"),
                 hessian = TRUE,
                 use.deriv = TRUE,
@@ -46,7 +46,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
     obstype <- if (missing(obstype)) NULL else eval(substitute(obstype), data, parent.frame())
     obstrue <- if (missing(obstrue)) NULL else eval(substitute(obstrue), data, parent.frame())
     if (missing(data)) data <- environment(formula)
-
+    
 ### MODEL FOR TRANSITION INTENSITIES
     qmodel <- msm.form.qmodel(qmatrix, qconstraint, exacttimes, gen.inits, formula, subject, data, censor, censor.states, analyticp)
 
@@ -79,7 +79,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
 
 ### CENSORING MODEL
     cmodel <- msm.form.cmodel(censor, censor.states, qmodel$qmatrix)
-
+    
     msmdata.obs <- msm.form.data(formula, subject, obstype, obstrue, covariates, data,
                                  hcovariates, misccovariates, initcovariates,
                                  qmodel, emodel, hmodel, cmodel, dmodel, exacttimes, center)
@@ -210,7 +210,11 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
         p$params[p$hmmpars] <- msm.mninvlogit.transform(p$params[p$hmmpars], hmodel$plabs, hmodel$parstate)
         p$params.uniq <- p$params[!duplicated(abs(p$constr))]
         p$params <- p$params[!duplicated(abs(p$constr))][abs(p$constr)]*sign(p$constr)
-        if (hessian && all(eigen(opt$hessian)$values > 0)) {
+
+        if (hessian &&
+            all(!is.na(opt$hessian)) && all(!is.nan(opt$hessian)) && all(is.finite(opt$hessian)) &&
+            all(eigen(opt$hessian)$values > 0))
+        {
             p$foundse <- TRUE
             p$covmat <- matrix(0, nrow=p$npars, ncol=p$npars)
             p$covmat[p$optpars,p$optpars] <- solve(0.5 * opt$hessian)
@@ -300,7 +304,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                        )
     attr(msmobject, "fixed") <- p$fixed
     class(msmobject) <- "msm"
-    q <- qmatrix.msm(msmobject) # intensity matrix with centered covariates
+    q <- qmatrix.msm(msmobject, covariates=(if(center) "mean" else 0)) # intensity matrix on natural scale
     msmobject$Qmatrices$baseline <- q$estimates
     msmobject$QmatricesSE$baseline <- q$SE
     msmobject$QmatricesL$baseline <- q$L
@@ -310,14 +314,14 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
         msmobject$EmatricesSE <- EmatricesSE
         msmobject$EmatricesL <- EmatricesL
         msmobject$EmatricesU <- EmatricesU
-        e <- ematrix.msm(msmobject) # misc matrix with centered covariates
+        e <- ematrix.msm(msmobject, covariates=(if(center) "mean" else 0)) # misc matrix on natural scale
         msmobject$Ematrices$baseline <- e$estimates
         msmobject$EmatricesSE$baseline <- e$SE
         msmobject$EmatricesL$baseline <- e$L
         msmobject$EmatricesU$baseline <- e$U
     }
-    ## Calculate mean sojourn times with centered covariates
-    msmobject$sojourn <- sojourn.msm(msmobject)
+    ## Calculate mean sojourn times at baseline 
+    msmobject$sojourn <- sojourn.msm(msmobject, covariates=(if(center) "mean" else 0))
     msmobject
 }
 
@@ -349,7 +353,6 @@ msm.fixdiag.ematrix <- function(ematrix)
 
 msm.form.qmodel <- function(qmatrix, qconstraint=NULL, exacttimes=FALSE, gen.inits=FALSE, formula, subject, data, censor, censor.states, analyticp)
 {
-### INTENSITY MATRIX (INPUT: qmatrix, qconstraint; OUTPUT: nstates, nintens, qmatrix, qvector, baseconstr, nintenseffs)
     if (gen.inits)
         qmatrix <- crudeinits.msm(formula, subject, qmatrix, data, censor, censor.states)
     msm.check.qmatrix(qmatrix)
@@ -521,8 +524,8 @@ msm.form.data <- function(formula, subject=NULL, obstype=NULL, obstrue=NULL, cov
         final.rows <- intersect(final.rows, icovdata$covrows.kept)
     subject <- subject[final.rows]
     time <- subset(time, statetimerows.kept %in% final.rows)
-    msm.check.times(time, subject)
     state <- subset(state, statetimerows.kept %in% final.rows)
+    msm.check.times(time, subject, state)
     obstype <- subset(obstype, statetimerows.kept %in% final.rows)
     obstrue <- subset(obstrue, statetimerows.kept %in% final.rows)
     covmat <- covmat.orig <- numeric()
@@ -584,7 +587,7 @@ msm.check.state <- function(nstates, state=NULL, censor)
     invisible()
 }
 
-msm.check.times <- function(time, subject)
+msm.check.times <- function(time, subject, state=NULL)
 {
 ### Check if any individuals have only one observation (after excluding missing data)
     subj.num <- match(subject,unique(subject)) # avoid problems with factor subjects with empty levels
@@ -614,6 +617,16 @@ msm.check.times <- function(time, subject)
         badlist <- paste(badsubjs, collapse=", ")
         plural <- if (length(badsubjs)==1) "" else "s"
         stop ("Observations within subject", plural, " ", badlist, " are not ordered by time")
+    }
+### Check if any consecutive observations are made at the same time, but with different states  
+    if (!is.null(state)){ 
+        prevsubj <- c(-Inf, subj.num[1:length(subj.num)-1])
+        prevtime <- c(-Inf, time[1:length(time)-1])
+        prevstate <- c(-Inf, state[1:length(state)-1])
+        sametime <- (subj.num==prevsubj & prevtime==time & prevstate!=state)
+        badlist <- paste(paste(which(sametime)-1, which(sametime), sep=" and "), collapse=", ")
+        if (any(sametime))
+            warning("Different states observed at the same time on the same subject at observations ", badlist)
     }
     invisible()
 }
@@ -691,6 +704,7 @@ msm.impute.censored <- function(fromstate, tostate, Pmat, cmodel)
 msm.check.model <- function(fromstate, tostate, obs, subject, obstype=NULL, qmatrix, cmodel)
 {
     n <- length(fromstate)
+    qmatrix <- qmatrix / mean(qmatrix[qmatrix>0]) # rescale to avoid false warnings with small rates
     Pmat <- MatrixExp(qmatrix)
     Pmat[Pmat < 1e-16] <- 0
     imputed <- msm.impute.censored(fromstate, tostate, Pmat, cmodel)
@@ -700,14 +714,14 @@ msm.check.model <- function(fromstate, tostate, obs, subject, obstype=NULL, qmat
 
     if (identical(all.equal(min(unitprob, na.rm=TRUE), 0),  TRUE))
     {
-        badobs <- min (obs[unitprob==0], na.rm = TRUE)
-        warning ("Data inconsistent with transition matrix for model without misclassification:\n",
+        badobs <- which.min(unitprob)
+        warning ("Data may be inconsistent with transition matrix for model without misclassification:\n",
                  "individual ", if(is.null(subject)) "" else subject[obs==badobs], " moves from state ", fromstate[obs==badobs],
                  " to state ", tostate[obs==badobs], " at observation ", badobs, "\n")
     }
     if (any(qunit[obstype==2]==0)) {
         badobs <- min (obs[qunit==0 & obstype==2], na.rm = TRUE)
-        warning ("Data inconsistent with intensity matrix for observations with exact transition times and no misclassification:\n",
+        warning ("Data may be inconsistent with intensity matrix for observations with exact transition times and no misclassification:\n",
                  "individual ", if(is.null(subject)) "" else subject[obs==badobs], " moves from state ", fromstate[obs==badobs],
                  " to state ", tostate[obs==badobs], " at observation ", badobs)
     }

@@ -1,6 +1,7 @@
 \name{pmatrix.piecewise.msm}
 \alias{pmatrix.piecewise.msm}
-\title{Transition probability matrix for processes with piecewise-constant intensities}
+\title{Transition probability matrix for processes with
+ piecewise-constant intensities}
 \description{
   Extract the estimated transition probability matrix from a fitted
   non-time-homogeneous multi-state model for a given time interval.

@@ -51,7 +51,7 @@ deltamethod(g, mean, cov, ses=TRUE)
 
   If you can spare the computational time, bootstrapping is a more  
   accurate method of calculating confidence intervals or standard errors
-  of transformations of parameters. See \code{\link{boot.msm}}.  
+  for transformations of parameters. See \code{\link{boot.msm}}.  
 }
 \references{Oehlert, G. W. \emph{A note on the delta method}. American
   Statistician 46(1), 1992}

@@ -7,7 +7,8 @@
   model at a given set of covariate values. 
 }
 \usage{
-ematrix.msm(x, covariates="mean", ci=c("delta","normal","bootstrap","none"), cl=0.95, B=1000)
+ematrix.msm(x, covariates="mean", ci=c("delta","normal","bootstrap","none"),
+            cl=0.95, B=1000)
 }
 \arguments{
   
@@ -81,7 +82,7 @@ ematrix.msm(x, covariates="mean", ci=c("delta","normal","bootstrap","none"), cl=
   the multinomial-logit scale by \code{\link{msm}}. A covariance matrix
   is estimated from the Hessian of the maximised log-likelihood.  From
   these, the delta method can be used to obtain standard errors of the
-  probabilities on the naturalscale at arbitrary covariate values.
+  probabilities on the natural scale at arbitrary covariate values.
   Confidence intervals are estimated by assuming normality on the
   multinomial-logit scale.
 }
