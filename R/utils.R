@@ -89,7 +89,7 @@ MatrixExp <- function(mat, t = 1, n = 20, k = 3, method="pade")
 dtnorm <- function(x, mean=0, sd=1, lower=-Inf, upper=Inf, log=FALSE)
   {
       ret <- numeric(length(x))
-      ret[x < lower | x > upper] <- 0
+      ret[x < lower | x > upper] <- if (log) -Inf else 0
       ind <- x >=lower & x <=upper
       if (any(ind)) {
           denom <- pnorm(upper, mean, sd) - pnorm(lower, mean, sd)

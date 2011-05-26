@@ -198,3 +198,20 @@ hmodel3 <- list(hmmNorm(mean=100, sd=16), hmmNorm(mean=54, sd=18), hmmIdent(999)
                  covinits = list("timeperiod[365,730)"=rep(0.01,3), "timeperiod[730,Inf)"=rep(0.01,3)), 
                  hconstraint = list(acute = c(1,1)),
                  fixedpars=TRUE, center=FALSE))
+
+
+## Christos bug - can't reproduce with cav, non misc
+
+data(cav)
+print(cav[1:10,])
+twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166),
+c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
+statetable.msm(state, PTNUM, data=cav)
+
+cav.msm <- msm( state ~ years, subject=PTNUM, data = cav,
+               qmatrix = twoway4.q, death = 4,pci=c(10),
+               control = list ( trace = 2, REPORT = 1 , maxit=10000) )
+cav.msm
+pmatrix.msm(cav.msm, t=1, t1=11)
+
+

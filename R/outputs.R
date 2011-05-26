@@ -867,7 +867,7 @@ pmatrix.piecewise.msm <- function(x, # fitted msm model
 msm.fill.pci.covs <- function(x, covariates="mean"){
     nc <- x$qcmodel$ncovs
     ## indices of covariates representing time periods
-    ti <- grep("timeperiod\\[([0-9]+|Inf),([0-9]+|Inf)\\)", x$qcmodel$covlabels) 
+    ti <- grep("timeperiod\\[.+\\)", x$qcmodel$covlabels) 
     ni <- setdiff(1:nc, ti) # indices of other covariates
     covlist <- vector(nc, mode="list")
     names(covlist) <- x$qcmodel$covlabels

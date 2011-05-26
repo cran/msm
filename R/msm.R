@@ -46,7 +46,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
     obstype <- if (missing(obstype)) NULL else eval(substitute(obstype), data, parent.frame())
     obstrue <- if (missing(obstrue)) NULL else eval(substitute(obstrue), data, parent.frame())
     if (missing(data)) data <- environment(formula)
-    
+
 ### MODEL FOR TRANSITION INTENSITIES
     qmodel <- msm.form.qmodel(qmatrix, qconstraint, exacttimes, gen.inits, formula, subject, data, censor, censor.states, analyticp)
 
@@ -79,7 +79,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
 
 ### CENSORING MODEL
     cmodel <- msm.form.cmodel(censor, censor.states, qmodel$qmatrix)
-    
+
     msmdata.obs <- msm.form.data(formula, subject, obstype, obstrue, covariates, data,
                                  hcovariates, misccovariates, initcovariates,
                                  qmodel, emodel, hmodel, cmodel, dmodel, exacttimes, center)
@@ -154,7 +154,9 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
         class(hmodel) <- "hmodel"
     }
     if (!is.null(initcovariates)) {
-        hmodel <- msm.form.icmodel(hmodel, msmdata$icovdata, initcovinits)
+        if (hmodel$hidden)
+            hmodel <- msm.form.icmodel(hmodel, msmdata$icovdata, initcovinits)
+        else warning("initprobs and initcovariates ignored for non-hidden Markov models")
     }
     else if (hmodel$hidden) {
         hmodel <- c(hmodel, list(nicovs=rep(0, hmodel$nstates-1), nicoveffs=0))
@@ -320,7 +322,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
         msmobject$EmatricesL$baseline <- e$L
         msmobject$EmatricesU$baseline <- e$U
     }
-    ## Calculate mean sojourn times at baseline 
+    ## Calculate mean sojourn times at baseline
     msmobject$sojourn <- sojourn.msm(msmobject, covariates=(if(center) "mean" else 0))
     msmobject
 }
@@ -618,8 +620,8 @@ msm.check.times <- function(time, subject, state=NULL)
         plural <- if (length(badsubjs)==1) "" else "s"
         stop ("Observations within subject", plural, " ", badlist, " are not ordered by time")
     }
-### Check if any consecutive observations are made at the same time, but with different states  
-    if (!is.null(state)){ 
+### Check if any consecutive observations are made at the same time, but with different states
+    if (!is.null(state)){
         prevsubj <- c(-Inf, subj.num[1:length(subj.num)-1])
         prevtime <- c(-Inf, time[1:length(time)-1])
         prevstate <- c(-Inf, state[1:length(state)-1])

@@ -34,7 +34,9 @@ prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="mean",
     Defaults to the mean values of the covariates in the data set.}
   \item{piecewise.times}{Times at which piecewise-constant intensities
     change. See \code{\link{pmatrix.piecewise.msm}} for how
-    to specify this.}
+    to specify this.  This is only required for time-inhomogeneous
+    models specified using explicit time-dependent covariates, and
+    should not be used for models specified using "pci". }
   \item{piecewise.covariates}{Covariates on which the piecewise-constant
     intensities depend. See \code{\link{pmatrix.piecewise.msm}} for how
     to specify this.}
