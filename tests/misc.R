@@ -18,7 +18,7 @@ stopifnot(isTRUE(all.equal(4296.9155995778, misc.msm$minus2loglik, tol=1e-06)))
 
 if (developer.local) {
     system.time(misc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
-                                qmatrix = oneway4.q, ematrix=ematrix, death = 4, # fixedpars=1:5,
+                                qmatrix = oneway4.q, ematrix=ematrix, death = 4, # pci=5, # fixedpars=1:5,
                                 control = list(trace=1, REPORT=1), method="BFGS"))
     stopifnot(isTRUE(all.equal(3951.82919869367, misc.msm$minus2loglik, tol=1e-06)))
     if(interactive()) save(misc.msm, file="~/msm/devel/models/misc.msm.rda")

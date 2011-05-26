@@ -58,8 +58,22 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
   produced \code{x}, such as the \code{qmatrix}, should be in the
   working environment, or else \code{boot.msm} will produce an
   \dQuote{object not found} error.  This enables \code{boot.msm} to
-  refit the original model to the replicate datasets. 
+  refit the original model to the replicate datasets.  However there is
+  currently a limitation.  In the original call to \code{msm}, the
+  \code{"formula"} argument should be specified directly, as, for
+  example,
+
+  \code{msm(state ~ time, data = ...)}
+
+  and not, for example,
   
+  \code{form = data$state ~ data$time}
+  
+  \code{msm(formula=form, data = ...)}
+
+  otherwise \code{boot.msm} will be unable to draw the replicate
+  datasets.
+
   If \code{stat} is \code{NULL}, then \code{B} different \code{msm} model
   objects will be stored in memory. This is unadvisable, as \code{msm}
   objects tend to be large, since they contain the original data used for

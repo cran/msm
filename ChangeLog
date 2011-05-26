@@ -1,3 +1,30 @@
+2011-05-26 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* DESCRIPTION: Version 1.0.1 released
+
+2011-05-20 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R(msm.fill.pci.covs): Bug fix, pmatrix.msm would break
+	for models with non-integer time change points "pci". Thanks to
+	Christos Argyropoulos for the report.
+
+	* man/prevalence.msm.Rd: Clarify that "piecewise.times" is not
+	needed for models fitted with "pci". Thanks to Christos
+	Argyropoulos.
+
+	* R/msm.R(msm): Warning if initcovariates is supplied but the
+	model is not hidden Markov. Thanks to Christos Argyropoulos.
+
+2011-05-05 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/utils.R(dtnorm): Return -Inf when log=TRUE and x outside
+	truncation bounds.  Thanks to William Leeds for the report.
+
+2011-02-08 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* man/msm.Rd: Help page clarified to say that "state" is also used
+	for the observed outcome in a HMM. Thanks to Ricardo Antunes.
+
 2010-11-24 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* R/outputs.R: Line types, colours and widths can be configured in
@@ -5,7 +32,7 @@
 
 	* DESCRIPTION: Version 1.0 finally released to accompany the
 	forthcoming paper on msm in Journal of Statistical Software.
-	
+
 2010-11-12 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* man/msm.Rd: Documentation for the return value of msm corrected
@@ -16,7 +43,7 @@
 
 	* R/msm.R(msm), R/outputs.R(print.msm): Return the "baseline" and
 	"sojourn" components of result matrices at covariate values of 0
-	if center=0.  Thanks to Kenneth Gundersen for the report. 
+	if center=0.  Thanks to Kenneth Gundersen for the report.
 
 2010-11-01 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
@@ -30,14 +57,14 @@
 	point numbers to zero, and added "may be" to warning about data
 	inconsistent with transition matrix, due to uncertainty about
 	these comparisons.
-	
+
 2010-09-22 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* R/msm.R(msm.check.times): Added warning for multiple observations
 	at the same time on the same person with different states, which
 	leads to zero likelihood and "cannot be evaluated at initial
 	values" message.
- 
+
 2010-05-18 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* DESCRIPTION: Version 0.9.7 released

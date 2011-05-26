@@ -3,6 +3,16 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 1.0.1 (2010-05-26)
+-------------
+
+o Fix of a bug which made pmatrix.msm break for time-inhomogeneous
+  models with non-integer time cut points "pci".  Thanks to Christos
+  Argyropoulos for the report.
+
+o Return -Inf in dtnorm when outside truncation bounds and log=TRUE.
+
+
 Version 1.0 (2010-11-24)
 -------------
 
