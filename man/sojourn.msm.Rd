@@ -66,10 +66,12 @@ sojourn.msm(x, covariates="mean", ci=c("delta","normal","bootstrap","none"),
 \details{
   The mean sojourn time in a transient state \eqn{r} is estimated by
   \eqn{- 1 / q_{rr}}, where \eqn{q_{rr}} is the \eqn{r}th entry on the diagonal
-  of the estimated transition intensity matrix.  Calls
-  \code{\link{deltamethod}} to find approximate standard errors.
-  Confidence limits are estimated by assuming normality on the log
-  scale. 
+  of the estimated transition intensity matrix.
+
+  A continuous-time Markov model is fully specified by the mean sojourn
+  times and the probability that each state is next (\code{\link{pnext.msm}}).
+  This is a more intuitively meaningful description of a model than the transition intensity
+  matrix (\code{\link{qmatrix.msm}}).
 }
 \seealso{
   \code{\link{msm}}, \code{\link{qmatrix.msm}}, \code{\link{deltamethod}}

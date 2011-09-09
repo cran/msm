@@ -38,6 +38,12 @@ if (developer.local) {
                                )
                 )
     stopifnot(isTRUE(all.equal(3968.7978930519, cav.msm$minus2loglik, tol=1e-06)))
+    
+    pnext.msm(cav.msm)
+    pnext.msm(cav.msm, ci="normal")
+    pnext.msm(cav.msm, ci="bootstrap", B=3)
+    if (0)
+        pnext.msm(cav.msm, ci="bootstrap")   
 }
 
 ## No death state.
@@ -59,7 +65,7 @@ if (developer.local) {
     stopifnot(isTRUE(all.equal(4119.9736299032, cav.msm$minus2loglik, tol=1e-06)))
 }
 
-## Covariates
+## Covariates
 
 cav.msm <- msm( state ~ years, subject=PTNUM, data = cav,
                  qmatrix = twoway4.q, death = TRUE, fixedpars=TRUE,
@@ -109,6 +115,8 @@ system.time(psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
                 fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS"))
 stopifnot(isTRUE(all.equal(1114.89946121717, psor.msm$minus2loglik, tol=1e-06)))
 stopifnot(isTRUE(all.equal(0.0953882330391683, qmatrix.msm(psor.msm)$estimates[1,2], tol=1e-03)))
+
+pn <- pnext.msm(psor.msm)
 
 ## center=FALSE
 psor.nocen.msm <- msm(state ~ months, subject=ptnum, data=psor,
@@ -608,6 +616,19 @@ obstype[cav$state==4][1:50] <- 3 # just to make sure this is the same
 cav.msm <- msm( state ~ years, subject=PTNUM, data = cav.dp, qmatrix = twoway4.q, obstype=obstype, fixedpars=TRUE,
                  method="BFGS", control=list(trace=5, REPORT=1))
 stopifnot(isTRUE(all.equal(4906.74189711688, cav.msm$minus2loglik, tol=1e-06)))
+
+
+## Subset function for matrix estimates and CIs 
+Q <- qmatrix.msm(psor.msm)
+Q[1,2]
+try(Q[1,2,3,4,5])
+try(Q[1])
+Q[1,]
+Q[,2]
+Q[]
+Q[c(1,2),]
+Q[c(2,1),]
+Q[c(1,2),c(1,2)]
 
 
 

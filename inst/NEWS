@@ -3,7 +3,20 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
-Version 1.0.1 (2010-05-26)
+Version 1.1 (2011-09-09)
+-------------
+
+o New function "pnext.msm" to compute a matrix of probabilities for 
+  the next state of the process. 
+
+o New "[" method to intuitively extract a row and column of
+  matrix-based estimates and confidence intervals, for example
+  qmatrix.msm(x)[1,2]
+
+o Miscellaneous doc and minor bug fixes, see Changelog. 
+
+
+Version 1.0.1 (2011-05-26)
 -------------
 
 o Fix of a bug which made pmatrix.msm break for time-inhomogeneous

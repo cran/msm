@@ -84,7 +84,7 @@ boot.msm <- function(x, stat=pmatrix.msm, B=1000, file=NULL){
         boot.data <- if (x$hmodel$hidden || x$cmodel$ncens) bootdata.subject.msm(x) else bootdata.trans.msm(x)
         x$call$data <- substitute(boot.data)
         boot.list[[i]] <- try(eval(x$call))
-        if (!is.null(stat))
+        if (!is.null(stat) && !inherits(boot.list, "try-error"))
             boot.list[[i]] <- stat(boot.list[[i]])
         if (!is.null(file)) save(boot.list, file=file)
     }
@@ -110,6 +110,13 @@ qratio.ci.msm <- function(x, ind1, ind2, covariates="mean", cl=0.95, B=1000) {
     q.list <- boot.msm(x, function(x)qratio.msm(x=x, ind1=ind1, ind2=ind2, covariates=covariates)["estimate"], B)
     q.vec <- unlist(q.list)
     c(quantile(q.vec, c(0.5 - cl/2, 0.5 + cl/2)), sd(q.vec))
+}
+
+pnext.ci.msm <- function(x, covariates="mean", cl=0.95, B=1000) {
+    p.list <- boot.msm(x, function(x)pnext.msm(x=x, covariates=covariates, ci="none")$estimates, B)
+    p.array <- array(unlist(p.list), dim=c(dim(p.list[[1]]), length(p.list)))
+    p.ci <- apply(p.array, c(1,2), function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
+    aperm(p.ci, c(2,3,1))
 }
 
 pmatrix.ci.msm <- function(x, t, t1, covariates="mean", cl=0.95, B=1000) {
@@ -157,7 +164,8 @@ expected.ci.msm <- function(x,
 
 ### Compute a CI for a statistic using a sample from the assumed MVN
 ### distribution of MLEs of log Q, logit E and covariate effects on these
-### Not user visible: only support a limited set of statistics based on Q matrix and E matrix.
+### Not user visible: only support statistics based on Q matrix and E matrix
+### i.e. statistics computed as functions of x$Qmatrices, x$Ematrices and x$paramdata$params
 
 normboot.msm <- function(x, stat, B=100) {
     ## simulate from vector of unreplicated parameters, to avoid numerical problems with rmvnorm when lots of correlations are 1 
@@ -167,7 +175,8 @@ normboot.msm <- function(x, stat, B=100) {
     params[,x$paramdata$optpars] <- sim 
     params[,x$paramdata$fixedpars] <- x$paramdata$params[x$paramdata$fixedpars]
     params[,x$paramdata$hmmpars] <- msm.mninvlogit.transform(x$paramdata$params[x$paramdata$hmmpars], x$hmodel$plabs, x$hmodel$parstate)
-    params <- params[, !duplicated(abs(x$paramdata$constr))][, abs(x$paramdata$constr)]*rep(sign(x$paramdata$constr), each=B)
+    params <- params[, !duplicated(abs(x$paramdata$constr)), drop=FALSE][, abs(x$paramdata$constr), drop=FALSE] *
+        rep(sign(x$paramdata$constr), each=B)
 
     sim.stat <- vector(B, mode="list")
     for (i in 1:B) {
@@ -199,9 +208,16 @@ qematrix.normci.msm <- function(x, covariates="mean", intmisc="intens", sojourn=
 }
 
 qratio.normci.msm <- function(x, ind1, ind2, covariates="mean", cl=0.95, B=1000) {
-    q.list <- normboot.msm(x, function(x)qratio.msm(x=x, ind1=ind1, ind2=ind2, covariates=covariates)["estimate"], B)
+    q.list <- normboot.msm(x, function(x)qratio.msm(x=x, ind1=ind1, ind2=ind2, covariates=covariates, ci="none")["estimate"], B)
     q.vec <- unlist(q.list)
     c(quantile(q.vec, c(0.5 - cl/2, 0.5 + cl/2)), sd(q.vec))
+}
+
+pnext.normci.msm <- function(x, covariates="mean", cl=0.95, B=1000) {
+    p.list <- normboot.msm(x, function(x)pnext.msm(x=x, covariates=covariates, ci="none")$estimates, B)
+    p.array <- array(unlist(p.list), dim=c(dim(p.list[[1]]), length(p.list)))
+    p.ci <- apply(p.array, c(1,2), function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
+    aperm(p.ci, c(2,3,1))
 }
 
 pmatrix.normci.msm <- function(x, t, t1, covariates="mean", cl=0.95, B=1000) {

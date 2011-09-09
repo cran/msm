@@ -182,6 +182,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
     This is a generalisation of the \code{death} and \code{exacttimes}
     arguments to allow different schemes per observation.
+    \code{obstype} overrides both \code{death} and \code{exacttimes}. 
 
     \code{exacttimes=TRUE} specifies that all observations are of
     obstype 2.
@@ -414,17 +415,22 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     \code{initcovinits} is not specified, all covariate effects are
     initialised to zero.}
 
-  \item{death}{Vector of indices of exactly-observed "death" states.
-    These are absorbing states whose time of entry is known exactly, but the
-    individual is assumed to be in an unknown transient state ("alive")
-    at the previous instant.  This is the usual situation for times of death in
-    chronic disease monitoring data.  For example, if you specify
-    \code{death = c(4, 5)} then states 4 and 5 are assumed to be
-    exactly-observed death states.
+  \item{death}{Vector of indices of absorbing states whose time of entry
+    is known exactly, but the individual is assumed to be in an unknown
+    transient state ("alive") at the previous instant.  This is the
+    usual situation for times of death in chronic disease monitoring
+    data.  For example, if you specify \code{death = c(4, 5)} then
+    states 4 and 5 are assumed to be exactly-observed death states.
 
     \code{death = TRUE} indicates that the final state is a death state,
     and \code{death = FALSE} (the default) indicates that there is no
     death state. See the \code{obstype} argument.
+
+    This is overridded by \code{obstype} or \code{exacttimes}.  If the
+    state is known between the time of death and the previous
+    observation, then you should specify \code{obstype=2} for the death
+    times, or \code{exacttimes=TRUE} if the state is known at all times,
+    and the \code{death} argument is ignored.
   }
 
   \item{censor}{ A state, or vector of states, which indicates
@@ -478,8 +484,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
      specifies that the intensity changes at time points 5 and 10.
      This will automatically construct a model with a categorical
      (factor) covariate called \code{timeperiod}, with levels
-     \code{"timeperiod[-Inf,5)"},
-     \code{"timeperiod[5,10)"} and \code{"timeperiod[10,Inf)"}, where
+     \code{"[-Inf,5)"},
+     \code{"[5,10)"} and \code{"[10,Inf)"}, where
      the first
      level is the baseline.  This covariate defines the time period in
      which the observation was made.  Initial values and
@@ -519,7 +525,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     set to \code{TRUE}, then all observation times are assumed to
     represent the exact and complete times of transition of the process.
     This is equivalent to every row of the data having \code{obstype =
-    2}.  See the \code{obstype} argument.
+      2}.  See the \code{obstype} argument.   If both \code{obstype} and
+    \code{exacttimes} are specified then \code{exacttimes} is ignored. 
   }
 
   \item{cl}{Width of symmetric confidence intervals for maximum
