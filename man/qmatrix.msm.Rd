@@ -12,7 +12,7 @@ qmatrix.msm(x, covariates="mean", sojourn=FALSE,
 }
 \arguments{
  
-  \item{x}{A fitted multi-state model, as returned by \code{\link{msm}}}.
+  \item{x}{A fitted multi-state model, as returned by \code{\link{msm}}.}
 
   \item{covariates}{
     The covariate values at which to estimate the intensity matrix. 
@@ -39,7 +39,8 @@ qmatrix.msm(x, covariates="mean", sojourn=FALSE,
   \item{ci}{
     If \code{"delta"} (the default) then confidence intervals are
     calculated by the delta method, or by simple transformation of the
-    Hessian in the very simplest cases. 
+    Hessian in the very simplest cases.  Normality on the log scale
+    is assumed. 
     
     If \code{"normal"}, then calculate a confidence interval by
     simulating \code{B} random vectors
@@ -90,10 +91,13 @@ qmatrix.msm(x, covariates="mean", sojourn=FALSE,
 \details{
   Transition intensities and covariate effects are estimated on the log
   scale by \code{\link{msm}}. A covariance matrix is estimated from the
-  Hessian of the maximised log-likelihood.  The delta method is used to
-  obtain from these the standard error of the intensities on the natural
-  scale at arbitrary covariate values. Confidence limits are calculated
-  by assuming normality on the log scale. 
+  Hessian of the maximised log-likelihood. 
+
+  A more practically meaningful parameterisation of a continuous-time Markov model
+  with transition intensities \eqn{q_{rs}} is in terms of the mean
+  sojourn times \eqn{-1 / q_{rr}} in each state \eqn{r} and the
+  probabilities that the next move of the process when in state \eqn{r}
+  is to state \eqn{s}, \eqn{-q_{rs} / q_{rr}}. 
 }
 
 \seealso{

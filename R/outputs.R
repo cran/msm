@@ -426,8 +426,8 @@ qematrix.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALSE, 
                 ## SEs of diagonal entries
                 diagse <- qmatrix.diagse.msm(x, covariates, sojourn, ni, ivector, nc, covlabels, covmeans)
                 diag(semat) <- diagse$diagse
-                diag(lmat) <- sign(diag(mat)[1]) * (exp(log(abs(diag(mat))) - sign(diag(mat)[1]) * qnorm(1 - 0.5*(1 - cl))*diagse$diaglse))
-                diag(umat) <- sign(diag(mat)[1]) * (exp(log(abs(diag(mat))) + sign(diag(mat)[1]) * qnorm(1 - 0.5*(1 - cl))*diagse$diaglse))
+                diag(lmat) <- sign(diag(mat)) * (exp(log(abs(diag(mat))) - sign(diag(mat)) * qnorm(1 - 0.5*(1 - cl))*diagse$diaglse))
+                diag(umat) <- sign(diag(mat)) * (exp(log(abs(diag(mat))) + sign(diag(mat)) * qnorm(1 - 0.5*(1 - cl))*diagse$diaglse))
                 if (sojourn) {
                     sojse <- diagse$sojse
                     sojl <- exp(log(soj) - qnorm(1 - 0.5*(1 - cl))*diagse$sojlse)
@@ -477,6 +477,22 @@ print.msm.est <- function(x, digits=NULL, ...)
     if (is.list(x))
         print.ci(x$estimates, x$L, x$U, digits=digits)
     else print(unclass(x))
+}
+
+"[.msm.est" <- function(x, i, j, drop=FALSE){    
+    Narg <- nargs() - (!missing(drop)) # number of args including x, excluding drop
+    if ((missing(i) && missing(j)))
+        res <- x
+    else if (!is.list(x))
+        res <- unclass(x)[i,j]
+    else {
+        if (missing(j) && (Narg==2))
+            stop("Two dimensions must be supplied, found only one")
+        x <- array(unlist(x), dim=c(dim(x[[1]]),4))
+        dimnames(x) <- list(rownames(x[[1]]), colnames(x[[1]]), c("estimate","SE","lower","upper"))
+        res <- x[i,j,]
+    }
+    res
 }
 
 print.ci <- function(x, l, u, digits=NULL)
@@ -636,7 +652,7 @@ qratio.msm <- function(x, ind1, ind2,
                        ci=c("delta","normal","bootstrap","none"),
                        cl=0.95, B=1000)
 {
-    q <- qmatrix.msm(x, covariates)$estimates
+    q <- qmatrix.msm(x, covariates, ci="none")
     if (!is.numeric(ind1) || length(ind1) != 2 || !is.numeric(ind2) || length(ind2) != 2)
         stop("ind1 and ind2 must be numeric vectors of length 2")
     if (any (! (ind1 %in% 1 : x$qmodel$nstates))  |  any (! (ind2 %in% 1 : x$qmodel$nstates) ) )
@@ -922,6 +938,40 @@ sojourn.msm <- function(x, covariates = "mean", ci=c("delta","normal","bootstrap
     res
 }
 
+
+### Extract the probabilities of occupying each state next 
+
+pnext.msm <- function(x, covariates="mean", ci=c("delta","normal","bootstrap","none"), cl=0.95, B=1000)
+{
+    ci <- match.arg(ci)
+    Q <- qmatrix.msm(x, covariates, ci="none")
+    pnext <- - Q / diag(Q)
+    pnext[x$qmodel$imatrix==0] <- 0
+    p.ci <- array(0, dim=c(dim(pnext), 2))
+    if (x$foundse && (ci != "none")){
+        if (ci == "delta") {
+            for (i in 1:x$qmodel$nstates) {
+                for (j in 1:x$qmodel$nstates) {
+                    if (pnext[i,j] > 0) {
+                        se <- qratio.se.msm(x, c(i,j), c(i,i), covariates, cl)$se
+                        lse <- qratio.se.msm(x, c(i,j), c(i,i), covariates, cl)$lse
+                        p.ci[i,j,1] <- exp ( log(pnext[i,j]) - qnorm(1 - 0.5*(1 - cl)) * lse )
+                        p.ci[i,j,2] <- exp ( log(pnext[i,j]) + qnorm(1 - 0.5*(1 - cl)) * lse )
+                    }
+                }
+            }
+        }
+        else if (ci=="normal")
+            p.ci <- pnext.normci.msm(x, covariates, cl, B)
+        else if (ci=="bootstrap")
+            p.ci <- pnext.ci.msm(x, covariates, cl, B)
+        res <- list(estimates=pnext, L=p.ci[,,1], U=p.ci[,,2])
+    }
+    else res <- list(estimates=pnext)
+    class(res) <- "msm.est"
+    res
+}
+
 ### Extract the coefficients
 
 coef.msm <- function(object, ...)
@@ -991,7 +1041,7 @@ totlos.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean"
         f <- function(time) {
             y <- numeric(length(time))
             for (i in seq(along=y))
-                y[i] <- pmatrix.msm(x, time[i], covariates=covariates)[start,end[j]]
+                y[i] <- pmatrix.msm(x, time[i], covariates=covariates, ci="none")[start,end[j]]
             y
         }
         totlos[j] <- integrate(f, fromt, tot, ...)$value
@@ -1175,7 +1225,6 @@ expected.msm <- function(x,
     else {
         if (is.null(initstates)) initstates <- observed.msm(x, times=timezero)$obstab[1:x$qmodel$nstates]
         initprobs <- initstates / sum(initstates)
-                                        #        exptab <- matrix(initstates, nrow=1)
         start <- min(which(times - timezero >= 0))
         if (length(times) >= start) {
             for (j in start:length(times)) {

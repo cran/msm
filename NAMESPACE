@@ -23,6 +23,7 @@ plot.prevalence.msm,
 plot.survfit.msm,
 pmatrix.msm,
 pmatrix.piecewise.msm,
+pnext.msm,
 prevalence.msm,
 qmatrix.msm,
 qratio.msm,
@@ -89,4 +90,5 @@ S3method(logLik, msm)
 S3method(print, hmodel)
 S3method(print, hmmdist)
 S3method(print, msm.est)
+S3method("[", msm.est)
 S3method(print, pearson.msm)

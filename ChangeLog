@@ -1,3 +1,36 @@
+2011-09-09 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* DESCRIPTION: Version 1.1 released
+
+2011-07-25 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* msm/outputs.R: New function "[.msm.est" to extract specific rows
+	and columns of the output from, e.g., qmatrix.msm() in a more
+	intuitive way.
+
+2011-07-24 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* msm/outputs.R: New function "pnext.msm" to compute a matrix of
+	probabilities for the next state of the process.
+
+2011-07-07 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* man/msm.Rd: Doc clarifies that "death" is overridden by
+	"obstype" and "exacttimes", and "exacttimes" is overridden
+	by "obstype".
+
+2011-06-09 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* man/msm.Rd: Correct documentation for factor levels of
+	"timeperiod".
+
+	* R/outputs.R(qematrix.msm): Fix CIs for diagonal entries when
+	first state is absorbing.
+
+	* R/msm.R(msm.check.model): Refer to transition numbers, not
+	observation numbers, in "data inconsistent with model" error
+	message.
+
 2011-05-26 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* DESCRIPTION: Version 1.0.1 released

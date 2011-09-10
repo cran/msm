@@ -719,7 +719,7 @@ msm.check.model <- function(fromstate, tostate, obs, subject, obstype=NULL, qmat
         badobs <- which.min(unitprob)
         warning ("Data may be inconsistent with transition matrix for model without misclassification:\n",
                  "individual ", if(is.null(subject)) "" else subject[obs==badobs], " moves from state ", fromstate[obs==badobs],
-                 " to state ", tostate[obs==badobs], " at observation ", badobs, "\n")
+                 " to state ", tostate[obs==badobs], " at transition ", badobs, "\n")
     }
     if (any(qunit[obstype==2]==0)) {
         badobs <- min (obs[qunit==0 & obstype==2], na.rm = TRUE)
