@@ -55,7 +55,8 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
         emodel <- msm.form.emodel(ematrix, econstraint, initprobs, est.initprobs, qmodel)
     }
     else emodel <- list(misc=FALSE, npars=0, ndpars=0)
-
+    if (emodel$npars==0) emodel <- list(misc=FALSE, npars=0, ndpars=0) # user supplied degenerate ematrix with no misclassification
+    
 ### GENERAL HIDDEN MARKOV MODEL
     if (!missing(hmodel)) {
         msm.check.hmodel(hmodel, qmodel$nstates)
@@ -441,8 +442,8 @@ msm.form.emodel <- function(ematrix, econstraint=NULL, initprobs=NULL, est.initp
         constr <- match(econstraint, unique(econstraint))
     }
     else
-        constr <- 1:npars
-    ndpars <- max(constr)
+        constr <- seq(length=npars)
+    ndpars <- if(npars>0) max(constr) else 0 # handle degenerate ematrix with no misclassification
     emodel <- list(misc=TRUE, npars=npars, nstates=nstates, imatrix=imatrix, ematrix=ematrix, inits=inits,
                    constr=constr, ndpars=ndpars, nipars=nipars, initprobs=initprobs)
     class(emodel) <- "msmemodel"
@@ -595,11 +596,13 @@ msm.check.times <- function(time, subject, state=NULL)
     subj.num <- match(subject,unique(subject)) # avoid problems with factor subjects with empty levels
     nobspt <- table(subj.num)
     if (any (nobspt == 1)) {
-        badsubjs <- sort(unique(subject))[ nobspt == 1 ]
+        badsubjs <- unique(subject)[ nobspt == 1 ]
+        andothers <- if (length(badsubjs)>3) " and others" else ""
+        if (length(badsubjs)>3) badsubjs <- badsubjs[1:3]
         badlist <- paste(badsubjs, collapse=", ")
         plural <- if (length(badsubjs)==1) "" else "s"
         has <-  if (length(badsubjs)==1) "has" else "have"
-        warning ("Subject", plural, " ", badlist, " only ", has, " one complete observation")
+        warning ("Subject", plural, " ", badlist, andothers, " only ", has, " one complete observation")
     }
 ### Check if observations within a subject are adjacent
     ind <- tapply(1:length(subj.num), subj.num, length)
@@ -607,18 +610,22 @@ msm.check.times <- function(time, subject, state=NULL)
     imax <- tapply(1:length(subj.num), subj.num, max)
     adjacent <- (ind == imax-imin+1)
     if (any (!adjacent)) {
-        badsubjs <- sort(unique(subject))[ !adjacent ]
+        badsubjs <- unique(subject)[ !adjacent ]
+        andothers <- if (length(badsubjs)>3) " and others" else ""
+        if (length(badsubjs)>3) badsubjs <- badsubjs[1:3]
         badlist <- paste(badsubjs, collapse=", ")
         plural <- if (length(badsubjs)==1) "" else "s"
-        stop ("Observations within subject", plural, " ", badlist, " are not adjacent in the data")
+        stop ("Observations within subject", plural, " ", badlist, andothers, " are not adjacent in the data")
     }
 ### Check if observations are ordered in time within subject
     orderedpt <- ! tapply(time, subj.num, is.unsorted)
     if (any (!orderedpt)) {
-        badsubjs <- sort(unique(subject))[ !orderedpt ]
+        badsubjs <- unique(subject)[ !orderedpt ]
+        andothers <- if (length(badsubjs)>3) " and others" else ""
+        if (length(badsubjs)>3) badsubjs <- badsubjs[1:3]
         badlist <- paste(badsubjs, collapse=", ")
         plural <- if (length(badsubjs)==1) "" else "s"
-        stop ("Observations within subject", plural, " ", badlist, " are not ordered by time")
+        stop ("Observations within subject", plural, " ", badlist, andothers, " are not ordered by time")
     }
 ### Check if any consecutive observations are made at the same time, but with different states
     if (!is.null(state)){
@@ -697,7 +704,7 @@ msm.impute.censored <- function(fromstate, tostate, Pmat, cmodel)
     list(fromstate=fromstate, tostate=tostate)
 }
 
-### CHECK IF TRANSITION PROBABILITIES FOR DATA ARE ALL NON-ZERO
+### CHECK THAT TRANSITION PROBABILITIES FOR DATA ARE ALL NON-ZERO
 ### (e.g. check for backwards transitions when the model is irreversible)
 ### obstype 1 must have unitprob > 0
 ### obstype 2 must have qunit != 0, and unitprob > 0.
@@ -718,20 +725,20 @@ msm.check.model <- function(fromstate, tostate, obs, subject, obstype=NULL, qmat
     {
         badobs <- which.min(unitprob)
         warning ("Data may be inconsistent with transition matrix for model without misclassification:\n",
-                 "individual ", if(is.null(subject)) "" else subject[obs==badobs], " moves from state ", fromstate[obs==badobs],
-                 " to state ", tostate[obs==badobs], " at transition ", badobs, "\n")
+                 "individual ", if(is.null(subject)) "" else subject[badobs], " moves from state ", fromstate[badobs],
+                 " to state ", tostate[badobs], " at non-missing observation ", obs[badobs], "\n")
     }
     if (any(qunit[obstype==2]==0)) {
         badobs <- min (obs[qunit==0 & obstype==2], na.rm = TRUE)
         warning ("Data may be inconsistent with intensity matrix for observations with exact transition times and no misclassification:\n",
                  "individual ", if(is.null(subject)) "" else subject[obs==badobs], " moves from state ", fromstate[obs==badobs],
-                 " to state ", tostate[obs==badobs], " at observation ", badobs)
+                 " to state ", tostate[obs==badobs], " at non-missing observation ", badobs)
     }
     absorbing <- absorbing.msm(qmatrix=qmatrix)
     absabs <- (fromstate %in% absorbing) & (tostate %in% absorbing)
     if (any(absabs)) {
         badobs <- min( obs[absabs] )
-        warning("Absorbing - absorbing transition at observation ", badobs)
+        warning("Absorbing - absorbing transition at non-missing observation ", badobs)
     }
     invisible()
 }

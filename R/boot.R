@@ -75,17 +75,22 @@ bootdata.subject.msm <- function(x) {
 
 ### a) if call supplied as factor(), strip factor() from name. 
 
+
 boot.msm <- function(x, stat=pmatrix.msm, B=1000, file=NULL){
-    boot.list <- vector(B, mode="list")
     if (!is.null(x$call$subject)) x$call$subject <- substitute(subject.name)
     if (!is.null(x$call$obstype)) x$call$obstype <- substitute(obstype.name)
     if (!is.null(x$call$obstrue)) x$call$obstrue <- substitute(obstrue.name)
-    for (i in 1:B) {
+    boot.fn <- function(dummy){ 
         boot.data <- if (x$hmodel$hidden || x$cmodel$ncens) bootdata.subject.msm(x) else bootdata.trans.msm(x)
         x$call$data <- substitute(boot.data)
-        boot.list[[i]] <- try(eval(x$call))
-        if (!is.null(stat) && !inherits(boot.list, "try-error"))
-            boot.list[[i]] <- stat(boot.list[[i]])
+        res <- try(eval(x$call))
+        if (!inherits(res, "try-error") && !is.null(stat))
+            res <- try(stat(res))
+        res
+    }
+    boot.list <- vector(B, mode="list")
+    for (i in 1:B) {
+        boot.list[[i]] <- boot.fn()
         if (!is.null(file)) save(boot.list, file=file)
     }
     boot.list
@@ -133,7 +138,7 @@ pmatrix.piecewise.ci.msm <- function(x, t1, t2, times, covariates="mean", cl=0.9
     aperm(p.ci, c(2,3,1))
 }
 
-totlos.ci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean", cl=0.95, B=1000, ...) {
+totlos.ci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean", cl=0.95, B=1000) {
     t.list <- boot.msm(x, function(x)totlos.msm(x, start, end, fromt, tot, covariates), B)
     t.array <- do.call("rbind", t.list)
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
@@ -167,14 +172,14 @@ expected.ci.msm <- function(x,
 ### Not user visible: only support statistics based on Q matrix and E matrix
 ### i.e. statistics computed as functions of x$Qmatrices, x$Ematrices and x$paramdata$params
 
-normboot.msm <- function(x, stat, B=100) {
+normboot.msm <- function(x, stat, B=1000) {
     ## simulate from vector of unreplicated parameters, to avoid numerical problems with rmvnorm when lots of correlations are 1 
     if (!x$foundse) stop("Asymptotic standard errors not available in fitted model")
     sim <- rmvnorm(B, x$opt$par, solve(0.5 * x$opt$hessian))
     params <- matrix(nrow=B, ncol=x$paramdata$npars)  # replicate constrained parameters.
     params[,x$paramdata$optpars] <- sim 
-    params[,x$paramdata$fixedpars] <- x$paramdata$params[x$paramdata$fixedpars]
-    params[,x$paramdata$hmmpars] <- msm.mninvlogit.transform(x$paramdata$params[x$paramdata$hmmpars], x$hmodel$plabs, x$hmodel$parstate)
+    params[,x$paramdata$fixedpars] <- rep(x$paramdata$params[x$paramdata$fixedpars], each=B)
+    params[,x$paramdata$hmmpars] <- rep(msm.mninvlogit.transform(x$paramdata$params[x$paramdata$hmmpars], x$hmodel$plabs, x$hmodel$parstate), each=B)
     params <- params[, !duplicated(abs(x$paramdata$constr)), drop=FALSE][, abs(x$paramdata$constr), drop=FALSE] *
         rep(sign(x$paramdata$constr), each=B)
 
@@ -235,7 +240,7 @@ pmatrix.piecewise.normci.msm <- function(x, t1, t2, times, covariates="mean", cl
 }
 
 totlos.normci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean", cl=0.95, B=1000, ...) {
-    t.list <- normboot.msm(x, function(x)totlos.msm(x, start, end, fromt, tot, covariates, ci="none"), B)
+    t.list <- normboot.msm(x, function(x)totlos.msm(x, start, end, fromt, tot, covariates, ci="none", ...), B)
     t.array <- do.call("rbind", t.list)
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
 }

@@ -121,10 +121,11 @@ qtnorm <- function(p, mean=0, sd=1, lower=-Inf, upper=Inf, lower.tail=TRUE, log.
       if (log.p) p <- exp(p)
       if (!lower.tail) p <- 1 - p
       ret <- numeric(length(p))
-      ret[p == 1] <- Inf
-      ret[p == 0] <- -Inf
+      ret[p == 1] <- upper
+      ret[p == 0] <- lower
       ret[p < 0 | p > 1] <- NaN
-      ind <- (p > 0 & p < 1)
+      ret[upper < lower] <- NaN
+      ind <- (p > 0 & p < 1 & lower <= upper)
       if (any(ind)) {
           hind <- seq(along=p)[ind]
           h <- function(y) {
@@ -346,7 +347,7 @@ dpexp <- function (x, rate = 1, t = 0, log = FALSE)
       if (length(t) > 1) {
           dt <- t[-1] - t[-length(t)]
           if (log) {
-              cs <- c(0, cumsum(pexp(dt, rate[-length(rate)], log=TRUE, lower.tail=FALSE)))
+              cs <- c(0, cumsum(pexp(dt, rate[-length(rate)], log.p=TRUE, lower.tail=FALSE)))
               ret <- cs[ind] + ret
           }
           else {

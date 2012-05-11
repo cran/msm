@@ -1,16 +1,64 @@
+2012-05-11 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R(msm.check.times): Bug fix in data consistency checks
+	with unsorted subject IDs. Thanks to Kelly Williams-Sieg for the
+	report.
+
+	* DESCRIPTION: Version 1.1.1 released
+
+2012-05-01 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/utils.R: Corner cases in qtnorm fixed. Thanks to Art Owen for
+	the report.
+
+	* R/boot.R: Multicore functionality removed from this release
+	since doSMP was removed from CRAN.  Will restore when a stable
+	preferred cross-platform solution emerges.
+
+2012-01-31 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/pearson.R: Bug fix for models where transitions are only
+	allowed from one state.  Thanks to Gavin Chan for the report.
+
+2012-01-31 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R: If user supplies an ematrix with all misclassification
+	probabilities zero, the non-misclassification model is fitted.
+	Thanks to Sharareh Taghipour for the report.
+
+	* R/msm.R(msm.check.model): Bug fix for error messages when model
+	inconsistent with data.
+
+2011-11-28 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/boot.R: boot.msm and functions which use this can now use
+	doSMP to parallelise calculations.
+
+2011-11-25 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/boot.R: Fix of bug which affected calculation of confidence
+	intervals by the "normal" method when there were fixed parameters
+	or HMMs.
+
+2011-10-27 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: Bug fix: Subset function "[.msm.est" was labelling
+	columns wrong for objects with no SE component (pmatrix.msm,
+	pnext.msm).
+
 2011-09-09 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* DESCRIPTION: Version 1.1 released
 
 2011-07-25 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
-	* msm/outputs.R: New function "[.msm.est" to extract specific rows
+	* R/outputs.R: New function "[.msm.est" to extract specific rows
 	and columns of the output from, e.g., qmatrix.msm() in a more
 	intuitive way.
 
 2011-07-24 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
-	* msm/outputs.R: New function "pnext.msm" to compute a matrix of
+	* R/outputs.R: New function "pnext.msm" to compute a matrix of
 	probabilities for the next state of the process.
 
 2011-07-07 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
@@ -27,8 +75,8 @@
 	* R/outputs.R(qematrix.msm): Fix CIs for diagonal entries when
 	first state is absorbing.
 
-	* R/msm.R(msm.check.model): Refer to transition numbers, not
-	observation numbers, in "data inconsistent with model" error
+	* R/msm.R(msm.check.model): Refer to observation numbers, not
+	transition numbers, in "data inconsistent with model" error
 	message.
 
 2011-05-26 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>

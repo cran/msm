@@ -291,6 +291,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
     else {
         obstable <- exptable <- array(0,dim=c(nstcens, nndstates, groupdims))
         dimnames(obstable) <- dimnames(exptable) <- c(list(1:nstcens, 1:nndstates), groupdimnames)
+        ## ?? why is obstable redefined?
         obstable <- table(md$state, md$prevstate, md$timegroup, md$intervalgroup, md$covgroup, md$usergroup)
         exp.cens <- array(0, dim = c(nst,nndstates,groupdims,2))
         for (j in 1:nst)
@@ -314,7 +315,19 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
 
     n.indep.trans <- length(trans$from[trans$to <= nst]) - length(unique(trans$from[trans$to <= nst]))
     ## number of states x categories from which there were zero transitions, excluding states with only one destination (which were already removed in the previous line)
-    n.zerofrom <- sum(apply(obstable, 1:4, function(u)tapply(u, trans$from, sum)) [ table(trans$from) > 1 , , , ,] == 0) 
+
+    browser()
+
+    ## Bug (Gavin Chan) - example where apply() returns object with dims 3,1,1,1, but 5 dims in subset
+    ## obstable has dim 3,1,1,1,4 ,  4=nstcens
+## psor: dim(obstable) = 2 2 2 1 9, apply returns object with dims (3,2,2,2,1).
+    ## tapply only has one category in broken version?  
+    ## trans$from = 1, 1, 1  : only one from category?
+    ## shouldn't drop first dimension
+    
+    n.zerofrom <- sum(
+                      array(apply(obstable, 1:4, function(u)tapply(u, trans$from, sum)), dim=c(length(unique(trans$from)), dim(obstable)[1:4]))
+                      [ table(trans$from) > 1 , , , ,] == 0)
     df.upper <- prod(dim(obstable)[1:4])*n.indep.trans - n.zerofrom
     df.lower <- df.upper - length(x$opt$par)
     test <- data.frame(stat=stat,

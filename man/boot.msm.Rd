@@ -18,7 +18,8 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
   \item{file}{Name of a file in which to save partial results after each
     replicate. This is saved using \code{\link{save}} and can be
     restored using \code{\link{load}}, producing an object called
-    \code{boot.list} containing the partial results.}  
+    \code{boot.list} containing the partial results.  Not currently
+    supported when using parallel processing.}
 }
 \details{
   The bootstrap datasets are computed by resampling independent

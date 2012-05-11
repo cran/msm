@@ -133,7 +133,9 @@ pearson.msm(x, transitions=NULL, timegroups=3, intervalgroups=3,
   Entries in the third matrix will be bigger in magnitude for groups for
   which the model fits poorly.  \cr
   
-  The fourth element of the list, \code{"test"}, is a data frame with one row containing
+  
+
+  \item{\code{"test"}}{, the fourth element of the list, is a data frame with one row containing
   the Pearson-type goodness-of-fit test statistic \code{stat}.  The test statistic is
   the sum of the deviances. For panel-observed data without exact death times, \code{p.lower} and
   \code{p.upper} are theoretical lower and upper limits for the
@@ -141,28 +143,28 @@ pearson.msm(x, transitions=NULL, timegroups=3, intervalgroups=3,
   distributions with \code{df.lower} and \code{df.upper} degrees of freedom,
   respectively.  \code{df.upper} is the number of independent cells in
   the contingency table, and \code{df.lower} is \code{df.upper} minus
-  the number of estimated parameters in the model. \cr
+  the number of estimated parameters in the model.}
 
-  The element \code{"intervalq"} (not printed by default) contains the
+  \item{\code{"intervalq"}}{(not printed by default) contains the
   definition of the grouping of the intervals between
   observations.  These groups are defined by quantiles within the groups
-  corresponding to the time since the start of the process. \cr
+  corresponding to the time since the start of the process.}
 
-  If there are exact death times, the element \code{"sim"} contains
+  \item{\code{"sim"}}{If there are exact death times, this contains
   simulations of the contingency tables and test statistics for each
   imputation of the next scheduled sampling time.  These are averaged
   over to produce the presented tables and test statistic. This element
-  is not printed by default. \cr
+  is not printed by default.
 
   With exact death times, the null variance of the test statistic (formed
   by taking mean of simulated test statistics) is less than twice the
   mean (Titman, 2008), and the null distribution is not chi-squared.
   In this case, \code{p.upper} is an upper limit for the true asymptotic
-  p-value, but \code{p.lower} is not a lower limit, and is not presented. \cr
+  p-value, but \code{p.lower} is not a lower limit, and is not presented.}
   
-  If the bootstrap has been used, the element \code{"boot"} will contain
+  \item{\code{"boot"}}{If the bootstrap has been used, the element will contain
   the bootstrap replicates of the test statistics (not printed by
-  default).
+  default).}
 }
 \details{
   This method (Aguirre-Hernandez and Farewell, 2002) is intended for

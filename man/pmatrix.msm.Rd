@@ -7,7 +7,8 @@
 }
 \usage{
 pmatrix.msm(x, t=1, t1=0, covariates="mean",
-            ci=c("none","normal","bootstrap"), cl=0.95, B=1000, ...)
+            ci=c("none","normal","bootstrap"), cl=0.95, B=1000,
+            ...)
 }
 \arguments{
 

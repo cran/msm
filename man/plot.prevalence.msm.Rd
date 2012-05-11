@@ -9,7 +9,7 @@
   solid lines, expected prevalences as dashed lines. 
 }
 \usage{
-plot.prevalence.msm(x, mintime=NULL, maxtime=NULL, timezero=NULL,
+\method{plot}{prevalence.msm}(x, mintime=NULL, maxtime=NULL, timezero=NULL,
                     initstates=NULL, interp=c("start","midpoint"),
                     covariates="mean", misccovariates="mean",
                     piecewise.times=NULL, piecewise.covariates=NULL,
