@@ -9,7 +9,8 @@
 }
 \usage{
 pnext.msm(x, covariates = "mean",
-           ci=c("delta","normal","bootstrap","none"), cl = 0.95, B=1000)
+           ci=c("delta","normal","bootstrap","none"), cl = 0.95,
+           B=1000)
 }
 \arguments{
   \item{x}{A fitted multi-state model, as returned by

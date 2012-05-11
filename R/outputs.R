@@ -479,6 +479,17 @@ print.msm.est <- function(x, digits=NULL, ...)
     else print(unclass(x))
 }
 
+print.msm.est.cols <- function(x, digits=NULL, diag=TRUE, ...)
+{
+    inc <- if (diag) (x$estimates>0 | x$estimates<0) else (x$estimates>0)
+    res <- cbind(x$estimates[inc], x$L[inc], x$U[inc])
+    rn <- rownames(x$estimates)[row(inc)[inc]]    
+    cn <- colnames(x$estimates)[col(inc)[inc]]
+    rownames(res) <- paste(rn, cn, sep="-")
+    colnames(res) <- c("Estimate", "LCL", "UCL")
+    res
+}
+
 "[.msm.est" <- function(x, i, j, drop=FALSE){    
     Narg <- nargs() - (!missing(drop)) # number of args including x, excluding drop
     if ((missing(i) && missing(j)))
@@ -488,8 +499,14 @@ print.msm.est <- function(x, digits=NULL, ...)
     else {
         if (missing(j) && (Narg==2))
             stop("Two dimensions must be supplied, found only one")
-        x <- array(unlist(x), dim=c(dim(x[[1]]),4))
-        dimnames(x) <- list(rownames(x[[1]]), colnames(x[[1]]), c("estimate","SE","lower","upper"))
+        if ("SE" %in% names(x)) { 
+            x <- array(unlist(x), dim=c(dim(x[[1]]),4))
+            dimnames(x) <- list(rownames(x[[1]]), colnames(x[[1]]), c("estimate","SE","lower","upper"))
+        }
+        else {
+            x <- array(unlist(x), dim=c(dim(x[[1]]),3))
+            dimnames(x) <- list(rownames(x[[1]]), colnames(x[[1]]), c("estimate","lower","upper"))
+        }
         res <- x[i,j,]
     }
     res

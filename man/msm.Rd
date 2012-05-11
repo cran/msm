@@ -178,7 +178,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     }
     If \code{obstype} is not specified, this defaults to all 1. If
     \code{obstype} is a single number, all observations are assumed to
-    be of this type.
+    be of this type.  The obstype value for the first observation
+    from each subject is not used.
 
     This is a generalisation of the \code{death} and \code{exacttimes}
     arguments to allow different schemes per observation.
@@ -422,16 +423,18 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     data.  For example, if you specify \code{death = c(4, 5)} then
     states 4 and 5 are assumed to be exactly-observed death states.
 
-    \code{death = TRUE} indicates that the final state is a death state,
-    and \code{death = FALSE} (the default) indicates that there is no
-    death state. See the \code{obstype} argument.
+    See the \code{obstype} argument.  States of this kind correspond to
+    \code{obstype=3}. \code{death = TRUE} indicates that the final
+    absorbing state is of this kind, and \code{death = FALSE} (the
+    default) indicates that there is no state of this kind.
 
-    This is overridded by \code{obstype} or \code{exacttimes}.  If the
-    state is known between the time of death and the previous
-    observation, then you should specify \code{obstype=2} for the death
-    times, or \code{exacttimes=TRUE} if the state is known at all times,
-    and the \code{death} argument is ignored.
-  }
+    The \code{death} argument is overridden by \code{obstype} or
+    \code{exacttimes}.  Note that times of death do not necessarily have
+    \code{obstype=3}.  If the state is known between the time of death
+    and the previous observation, then you should specify
+    \code{obstype=2} for the death times, or \code{exacttimes=TRUE} if
+    the state is known at all times, and the \code{death} argument is
+    ignored.  }
 
   \item{censor}{ A state, or vector of states, which indicates
     censoring.  Censoring means that the observed state is known only to be
@@ -449,7 +452,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     unnecessary, since the standard multi-state model likelihood is
     applicable.
 
-    Note in particular that general time-inhomogenous Markov models with
+    Note in particular that general time-inhomogeneous Markov models with
     piecewise constant transition
     intensities can be constructed using the \code{censor}
     facility. If the true state is unknown on occasions when a
@@ -503,7 +506,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
      the data, \code{pci} is ignored and a time-homogeneous model is
      fitted.
 
-     After fitting a time-inhomogeneous model \code{\link{qmatrix.msm}}
+     After fitting a time-inhomogeneous model, \code{\link{qmatrix.msm}}
      can be used to obtain the fitted intensity matrices for each time
      period, for example,
 

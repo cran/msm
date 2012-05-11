@@ -57,6 +57,7 @@ ematrix.msm(x, covariates="mean", ci=c("delta","normal","bootstrap","none"),
 
   \item{B}{Number of bootstrap replicates, or number of normal
     simulations from the distribution of the MLEs}
+
 }
 \value{
   A list with components:

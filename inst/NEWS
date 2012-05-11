@@ -3,6 +3,29 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 1.1.1 (2012-05-11)
+-------------
+
+o Fix of bug in calculation of confidence intervals using "ci=normal".
+  Affected models were those with fixed parameters or HMMs.  Users are
+  advised to check their results with the corrected package -
+  apologies.
+
+o If user supplies an ematrix with all misclassification probabilities
+  zero, this degrades gracefully to a non-misclassification model.
+  Thanks to Sharareh Taghipour for the report.
+
+o Bug fix for error messages when model inconsistent with data, and
+  when subject IDs not adjacent.  Thanks to Kelly Williams-Sieg for
+  the report.
+
+o Bug fix in pearson.msm for models where transitions are only allowed
+  from one state.  Thanks to Gavin Chan for the report.
+
+o qtnorm fixed for p=0 or 1 and upper < lower.  Thanks to Art Owen for
+  the report.
+
+
 Version 1.1 (2011-09-09)
 -------------
 

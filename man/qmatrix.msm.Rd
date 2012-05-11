@@ -8,7 +8,8 @@
 }
 \usage{
 qmatrix.msm(x, covariates="mean", sojourn=FALSE,
-            ci=c("delta","normal","bootstrap","none"), cl=0.95, B=1000)
+            ci=c("delta","normal","bootstrap","none"), cl=0.95,
+            B=1000)
 }
 \arguments{
  
@@ -59,7 +60,7 @@ qmatrix.msm(x, covariates="mean", sojourn=FALSE,
     Defaults to 0.95.}
 
   \item{B}{Number of bootstrap replicates, or number of normal
-    simulations from the distribution of the MLEs}
+    simulations from the distribution of the MLEs.}
 }
 
 \value{

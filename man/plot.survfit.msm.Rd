@@ -6,7 +6,7 @@
   it with the fitted survival probability from a \code{msm} model. 
 }
 \usage{
-plot.survfit.msm(x, from=1, to=NULL, range=NULL, covariates="mean",
+\method{plot}{survfit.msm}(x, from=1, to=NULL, range=NULL, covariates="mean",
                  interp=c("start","midpoint"), ci=c("none","normal","bootstrap"), B=100,
                  legend.pos=NULL, xlab="Time", ylab="Survival probability",
                  lty=1, lwd=1, col="red", lty.ci=2, lwd.ci=1, col.ci="red", 
