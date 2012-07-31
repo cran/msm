@@ -3,6 +3,21 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+
+Version 1.1.2 (2012-07-31)
+-------------
+
+o New Student t distribution for hidden Markov model outcomes.  Thanks
+  to Darren Gillis.
+
+o Removed debugging browser which had been inadvertently left in
+  pearson.msm.  Thanks to Chyi-Hung Hsu.
+
+o Corrected equation 5 in the PDF manual for the likelihood under
+  exact transition times.  The code was unaffected.  Thanks to Simon
+  Bond.
+
+
 Version 1.1.1 (2012-05-11)
 -------------
 

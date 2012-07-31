@@ -186,3 +186,11 @@ hmmMEUnif <- function(lower, upper, sderr, meanerr=0)
                match.call(),
                meanerr=meanerr)
   }
+ 
+hmmT <- function(mean, scale, df)
+  {
+      hmmDIST(label="t",
+              link="identity",
+              r = function(n, rmean=mean) { rmean + scale*rt(n,df) },
+              match.call())
+  }

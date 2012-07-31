@@ -135,3 +135,9 @@ double hmmBeta(double x, double *pars)
     double shape1 = pars[0], shape2 = pars[1];
     return dbeta(x, shape1, shape2, 0);
 }
+
+double hmmT(double x, double *pars)
+{
+    double tmean = pars[0], tscale = pars[1], tdf=pars[2];
+    return (1/tscale)*dt((x-tmean)/tscale, tdf, 0);
+}

@@ -1,3 +1,13 @@
+2012-07-31 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/pearson.R: Browser was still on for pearson.msm.  Thanks to
+	Chyi-Hung Hsu.
+
+2012-05-28 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* (various files): New Student t distribution for hidden Markov
+	model outcomes.  Thanks to Darren Gillis.
+
 2012-05-11 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* R/msm.R(msm.check.times): Bug fix in data consistency checks

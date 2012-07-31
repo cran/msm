@@ -37,7 +37,8 @@ hmmfn HMODELS[] = {
     hmmMETNorm,
     hmmMEUnif,
     hmmNBinom,
-    hmmBeta
+    hmmBeta,
+    hmmT
 };
 
 #define OBS_SNAPSHOT 1

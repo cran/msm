@@ -316,8 +316,6 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
     n.indep.trans <- length(trans$from[trans$to <= nst]) - length(unique(trans$from[trans$to <= nst]))
     ## number of states x categories from which there were zero transitions, excluding states with only one destination (which were already removed in the previous line)
 
-    browser()
-
     ## Bug (Gavin Chan) - example where apply() returns object with dims 3,1,1,1, but 5 dims in subset
     ## obstable has dim 3,1,1,1,4 ,  4=nstcens
 ## psor: dim(obstable) = 2 2 2 1 9, apply returns object with dims (3,2,2,2,1).
