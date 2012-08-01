@@ -231,7 +231,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
             p$foundse <- FALSE
             p$covmat <- p$ci <- NULL
             if (hessian)
-                warning("Could not calculate asymptotic standard errors - Hessian is not positive definite. Optimisation has probably not converged to the maximum likelihood")
+                warning("Could not calculate asymptotic standard errors - Hessian is not positive definite. Optimisation has not converged to the maximum likelihood")
         }
         p$params[p$hmmpars] <- msm.recalc.basep(p$params[p$hmmpars], hmodel$plabs, hmodel$parstate)
         p$params[p$hmmpars] <- msm.mnlogit.transform(p$params[p$hmmpars], hmodel$plabs, hmodel$parstate)

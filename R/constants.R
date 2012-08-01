@@ -2,7 +2,7 @@
 
 ### List of allowed hidden Markov model distributions
 ### and names of parameters for each distribution
-### MUST BE KEPT IN THE SAME ORDER as the C variable HMODELS in lik.c
+### MUST BE KEPT IN THE SAME ORDER as the C variable HMODELS in src/lik.c
 .msm.HMODELPARS <- list(
                         categorical=c("ncats","basecat","prob"),  # vector
                         identity = NULL,
@@ -18,10 +18,11 @@
                         metruncnorm = c("mean", "sd", "lower", "upper", "sderr", "meanerr"),
                         meuniform = c("lower", "upper", "sderr", "meanerr"),
                         nbinom = c("disp","prob"),
-                        beta = c("shape1","shape2")
+                        beta = c("shape1","shape2"),
+                        t = c("mean","scale","df")
                         )
 
-## TODO - beta, non-central beta, cauchy, chisq, noncentral chisq, F,
+## TODO - non-central beta, cauchy, chisq, noncentral chisq, F,
 ## non-central F, geometric, hypergeometric, logistic, t, noncentral
 ## t.
 
@@ -31,7 +32,7 @@
 .msm.LOCPARS <- c(categorical="p", identity=NA, uniform=NA, normal="mean", lognormal="meanlog",
                   exponential="rate", gamma="rate", weibull="scale",
                   poisson="rate", binomial="prob", truncnorm="mean",
-                  metruncnorm="meanerr", meuniform="meanerr", nbinom="prob", beta=NA)
+                  metruncnorm="meanerr", meuniform="meanerr", nbinom="prob", beta=NA, t="mean")
 
 ### Link functions for generalised regressions.
 ### MUST BE KEPT IN SAME ORDER as LINKFNS in lik.c
@@ -49,7 +50,7 @@
                        mean=c(-Inf, Inf), sd=c(0, Inf),
                        meanlog=c(-Inf,Inf), sdlog=c(0, Inf), rate=c(0, Inf), shape=c(0, Inf), shape1=c(0,Inf), shape2=c(0,Inf),
                        prob=c(0, 1), meanerr=c(0, Inf), sderr=c(0, Inf), disp=c(0, Inf),
-                       initp=c(0, 1), initpcov=c(-Inf,Inf)
+                       initp=c(0, 1), initpcov=c(-Inf,Inf), df=c(0, Inf)
                        )
 
 ### Transforms to optimise some parameters on a different scale

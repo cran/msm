@@ -15,6 +15,7 @@
 \alias{hmmMEUnif}
 \alias{hmmNBinom}
 \alias{hmmBeta}
+\alias{hmmT}
 \title{Hidden Markov model constructors}
 
 \description{  
@@ -40,6 +41,7 @@ hmmMETNorm(mean, sd, lower, upper, sderr, meanerr=0)
 hmmMEUnif(lower, upper, sderr, meanerr=0)
 hmmNBinom(disp, prob)
 hmmBeta(shape1,shape2)
+hmmT(mean,scale,df)
 }
 \arguments{
 
@@ -58,6 +60,17 @@ hmmBeta(shape1,shape2)
   negative binomial and beta distributions, respectively, with parameterisations
   the same as the default parameterisations in the corresponding base R
   distribution functions. 
+
+  \code{hmmT} is the Student t distribution with general mean
+  \eqn{mu}{\mu}, scale \eqn{sigma}{\sigma} and degrees of freedom
+  \code{df}.  
+  The variance is \eqn{sigma^2 df/(df + 2)}{\sigma^2 df/(df + 2)}.
+  Note the t distribution in base R \code{\link{dt}} is a standardised one with
+  mean 0 and scale 1.  These allow any positive (integer or non-integer)
+  \code{df}.    By default, all three
+  parameters, including \code{df}, are estimated when fitting a hidden
+  Markov model, but in practice, \code{df} might need to be fixed for identifiability - this can be done
+  using the \code{fixedpars} argument to \code{\link{msm}}. 
   
   The \code{hmmMETNorm} and \code{hmmMEUnif} distributions are
   truncated Normal and Uniform distributions, but with additional Normal measurement error on the
@@ -105,7 +118,10 @@ the truncated Normal distribution.
     distribution (see \code{\link{dbeta}}).}
   
   \item{scale}{ (\code{hmmGamma}) Scale parameter of a Gamma
-    distribution (see \code{\link{dgamma}}). }
+    distribution (see \code{\link{dgamma}}), or unstandardised Student t
+    distribution. }
+
+  \item{df}{Degrees of freedom of the Student t distribution.}
   
   \item{size}{Order of a Binomial distribution (see \code{\link{dbinom}}).}
   

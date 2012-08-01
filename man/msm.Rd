@@ -171,7 +171,9 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 	of the process, or "panel-observed" data). The states are
 	unknown between observation times.}
       \item{2}{An exact transition time, with the state at the previous
-	observation retained until the current observation.}
+	observation retained until the current observation.  An observation may
+    represent a transition to a different state or a repeated observation of
+    the same state (e.g. at the end of follow-up). }
       \item{3}{An exact transition time, but the state at the instant before
 	entering this state is unknown. A common example is death times in
 	studies of chronic diseases.}
@@ -524,13 +526,16 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
   \item{exacttimes}{By default, the transitions of the Markov process
     are assumed to take place at unknown occasions in between the
-    observation times.  If \code{exacttimes} is
-    set to \code{TRUE}, then all observation times are assumed to
-    represent the exact and complete times of transition of the process.
-    This is equivalent to every row of the data having \code{obstype =
-      2}.  See the \code{obstype} argument.   If both \code{obstype} and
-    \code{exacttimes} are specified then \code{exacttimes} is ignored. 
-  }
+    observation times.  If \code{exacttimes} is set to \code{TRUE}, then
+    the observation times are assumed to represent the exact times of
+    transition of the process.    The subject is assumed
+    to be in the same state between these times.  An observation may
+    represent a transition to a different state or a repeated observation of
+    the same state (e.g. at the end of follow-up).  This is equivalent to
+    every row of the data having \code{obstype = 2}.  See the
+    \code{obstype} argument.  If both \code{obstype} and
+    \code{exacttimes} are specified then \code{exacttimes} is ignored.
+    }
 
   \item{cl}{Width of symmetric confidence intervals for maximum
     likelihood estimates, by default 0.95.}
@@ -768,7 +773,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
 }
 \references{
-  Jackson, C. H. (2011). Multi-State Models for Panel Data: The msm Package
+  Jackson, C.H. (2011). Multi-State Models for Panel Data: The msm Package
   for R., Journal of Statistical Software, 38(8), 1-29. URL
   http://www.jstatsoft.org/v38/i08/.
 
@@ -810,7 +815,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 \examples{
 ### Heart transplant data
 ### For further details and background to this example, see
-### the PDF manual in the doc directory.
+### Jackson (2011) or the PDF manual in the doc directory.
 data(cav)
 print(cav[1:10,])
 twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166),
