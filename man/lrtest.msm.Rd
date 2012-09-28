@@ -8,7 +8,7 @@ lrtest.msm(...)
 \arguments{
 
   \item{...}{Two or more fitted multi-state models, as returned by
-    \code{\link{msm}}, supplied in increasing order of complexity.}
+    \code{\link{msm}}, ordered by increasing numbers of parameters.}
 
 }
 \value{

@@ -187,9 +187,13 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
         gr <- if (!hmodel$hidden && cmodel$ncens==0 && use.deriv) deriv.msm else NULL
         opt.method <- match.arg(opt.method)
         if (opt.method == "optim") {
-            opt <- optim(p$inits, lik.msm, hessian=hessian, gr=gr, ...,# arguments to optim
-                         msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
-                         cmodel=cmodel, hmodel=hmodel, paramdata=p)
+            optim.args <- list(...)
+            if (is.null(optim.args$method))                
+                optim.args$method <- if (length(p$inits)==1) "BFGS" else "Nelder-Mead"
+            optim.args <- c(optim.args, list(par=p$inits, fn=lik.msm, hessian=hessian, gr=gr,
+                          msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel, 
+                          cmodel=cmodel, hmodel=hmodel, paramdata=p))
+            opt <- do.call("optim", optim.args)
             p$lik <- opt$value
             p$deriv <- if (!hmodel$hidden && cmodel$ncens==0) deriv.msm(opt$par, msmdata, qmodel, qcmodel, cmodel, hmodel, p) else NULL
             p$params[p$optpars] <- opt$par

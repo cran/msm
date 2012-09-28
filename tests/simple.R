@@ -33,8 +33,9 @@ stopifnot(isTRUE(all.equal(4113.16601901957, cav.msm$minus2loglik, tol=1e-06)))
 
 if (developer.local) {
     system.time(cav.msm <- msm( state ~ years, subject=PTNUM, data = cav,
-                                 qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE, # opt.method="nlm"
-                               method="BFGS", control=list(trace=5, REPORT=1, fnscale=1)
+                               qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE, # opt.method="nlm"
+                               method="BFGS",
+                               control=list(trace=5, REPORT=1, fnscale=1)
                                )
                 )
     stopifnot(isTRUE(all.equal(3968.7978930519, cav.msm$minus2loglik, tol=1e-06)))
@@ -125,11 +126,32 @@ psor.nocen.msm <- msm(state ~ months, subject=ptnum, data=psor,
                     fixedpars=FALSE, center=FALSE, control = list(REPORT=1,trace=2), method="BFGS")
 ## $baseline and component should obey center
 stopifnot(isTRUE(all.equal(psor.nocen.msm$Qmatrices$baseline, qmatrix.msm(psor.nocen.msm, covariates=0, ci="none"))))
+stopifnot(isTRUE(all.equal(psor.nocen.msm$Qmatrices$baseline, qmatrix.msm(psor.nocen.msm, covariates=list(ollwsdrt=0), ci="none"))))
 stopifnot(isTRUE(all.equal(psor.msm$Qmatrices$baseline, qmatrix.msm(psor.msm, covariates="mean", ci="none"))))
 stopifnot(isTRUE(all.equal(psor.nocen.msm$sojourn, sojourn.msm(psor.nocen.msm, covariates=0))))
 stopifnot(isTRUE(all.equal(psor.msm$sojourn, sojourn.msm(psor.msm, covariates="mean"))))
 stopifnot(isTRUE(all.equal(exp(psor.nocen.msm$Qmatrices$logbaseline[c(5,10,15)]), psor.nocen.msm$Qmatrices$baseline[c(5,10,15)])))
 stopifnot(isTRUE(all.equal(exp(psor.msm$Qmatrices$logbaseline[c(5,10,15)]), psor.msm$Qmatrices$baseline[c(5,10,15)])))
+
+## Bug fixed in 1.1.3
+stopifnot(isTRUE(all.equal(qmatrix.msm(psor.nocen.msm, covariates=0)$SE[1,2],
+                           qmatrix.msm(psor.nocen.msm, covariates=list(hieffusn=0, ollwsdrt=0))$SE[1,2])))
+stopifnot(isTRUE(all.equal(qmatrix.msm(psor.nocen.msm, covariates=0)$SE[1,1],
+                           qmatrix.msm(psor.nocen.msm, covariates=list(hieffusn=0, ollwsdrt=0))$SE[1,1])))
+stopifnot(isTRUE(all.equal(qmatrix.msm(psor.nocen.msm, covariates=0)$L[1,2],
+                           qmatrix.msm(psor.nocen.msm, covariates=list(hieffusn=0, ollwsdrt=0))$L[1,2])))
+stopifnot(isTRUE(all.equal(qmatrix.msm(psor.nocen.msm, covariates=0)$L[1,2],
+                           qmatrix.msm(psor.nocen.msm, covariates=list(hieffusn=0))$L[1,2])))
+cm <- psor.nocen.msm$qcmodel$covmeans
+stopifnot(isTRUE(all.equal(qmatrix.msm(psor.nocen.msm, covariates="mean")$SE[1,2],
+                           qmatrix.msm(psor.nocen.msm, covariates=list(hieffusn=cm["hieffusn"], ollwsdrt=cm["ollwsdrt"]))$SE[1,2])))
+                           
+## values not supplied are set to zero, even if center=TRUE (undocumented)
+stopifnot(isTRUE(all.equal(qmatrix.msm(psor.msm, covariates=list(hieffusn=0)),
+                           qmatrix.msm(psor.msm, covariates=list(ollwsdrt=0, hieffusn=0)))))
+stopifnot(isTRUE(all.equal(qmatrix.msm(psor.nocen.msm, covariates=list(hieffusn=0)),
+                           qmatrix.msm(psor.nocen.msm, covariates=list(ollwsdrt=0, hieffusn=0)))))
+
 
 ## No death state
 cav.msm <- msm( state ~ years, subject=PTNUM, data = cav,
