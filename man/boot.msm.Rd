@@ -75,6 +75,12 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
   otherwise \code{boot.msm} will be unable to draw the replicate
   datasets.
 
+  \code{boot.msm} will also fail with an incomprehensible error if the
+  original call to msm used a used-defined object whose name is the same
+  as a built-in R object, or an object in any other loaded package.  For
+  example, if you have called a Q matrix \code{q}, when \code{q()} is
+  the built-in function for quitting R.
+  
   If \code{stat} is \code{NULL}, then \code{B} different \code{msm} model
   objects will be stored in memory. This is unadvisable, as \code{msm}
   objects tend to be large, since they contain the original data used for

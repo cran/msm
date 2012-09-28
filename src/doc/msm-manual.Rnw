@@ -5,6 +5,7 @@
 %% Need to modify Sweave.sty to pass pdftex option to graphicx.
 \usepackage{Sweave-local}
 \usepackage{times}
+\usepackage{url}
 \addtolength{\textwidth}{2cm}
 
 \newcommand{\Exp}{\mathop{\mathrm{Exp}}}
@@ -17,7 +18,7 @@
 \newcommand{\Rclass}[1]{{\textit{#1}}}
 
 <<echo=FALSE>>=
-version <- gsub("Version: +", "", help(package="msm")$info[[1]][2])
+version <- gsub("Version: +", "", packageDescription("msm", lib.loc="~/work/msm")$Version)
 @
 
 \title{Multi-state modelling with R: the {\tt msm} package \vskip 0.2in
@@ -67,6 +68,10 @@ cat(format(Sys.time(), "%d %B, %Y"))
   hidden Markov models, and gives a tutorial in the typical use of the
   \Rpackage{msm} package, illustrated by some typical applications to
   modelling chronic diseases.
+
+  Much of the material in this manual is published, in a more concise
+  form, in Journal of Statistical Software (2011) 38(8):1-29,
+  \url{http://www.jstatsoft.org/v38/i08/}
 
 \end{abstract}
 
@@ -129,7 +134,7 @@ with rate given by $-q_{rr}$, (or
 mean $-1 / q_{rr}$).  The remaining elements of the $r$th row of $Q$
 are \emph{proportional to} the probabilities governing the next state
 after $r$ to which the individual makes a transition.  The probability
-that the individual occupies state $s$ immediately after state $r$ is
+that the individual's next move from state $r$ is to state $s$ is
 $-q_{rs} / q_{rr}$.
 
 
@@ -447,7 +452,7 @@ observation times, then the contributions would be of the form
 
 \begin{equation}
   \label{eq:multi:lik:exact}
-  L_{i, j} =  p_{S(t_j)S(t_{j})}(t_{j+1} - t_j) q_{S(t_j)S(t_{j+1})}
+  L_{i, j} =  \exp(-q_{S(t_j)S(t_{j})}(t_{j+1} - t_j)) q_{S(t_j)S(t_{j+1})}
 \end{equation}
 since the state is assumed to be $S(t_j)$ throughout the interval
 between $t_j$ and $t_{j+1}$ with a known transition to state
@@ -977,7 +982,8 @@ occasions on which a patient was observed in state 1 followed by state
 3, the underlying model specifies that the patient must have passed
 through state 2 in between.  If your data represent the exact and
 complete transition times of the process, then you must specify
-\Rfunarg{exacttimes=TRUE} in the call to \Rfunction{msm}.
+\Rfunarg{exacttimes=TRUE} or \Rfunarg{obstype=2} in the call to
+\Rfunction{msm}.
 
 To tell \Rfunction{msm} what the allowed transitions of our model are,
 we define a matrix of the same size as $Q$, containing zeroes in the
@@ -1023,7 +1029,7 @@ package provides a function \Rfunction{crudeinits.msm} for calculating
 initial values in this way.
 
 <<>>=
-crudeinits.msm(state ~ years, PTNUM, data=cav, qmatrix=twoway4.q)
+twoway4.crude.q  <- crudeinits.msm(state ~ years, PTNUM, data=cav, qmatrix=twoway4.q)
 @
 
 However, if there are are many changes of state in between the
@@ -1033,7 +1039,8 @@ that the mean period in each state before moving to the next is about
 2 years, and there is an equal probability of progression, recovery or
 death.  This gives $q_{rr} = - 0.5$ for $r = 1, 2, 3$, and $q_{12} =
 q_{14} = 0.25$, $q_{21} = q_{23} = q_{24} = 0.166$, $q_{32} = q_{34} =
-0.25$, and the \Robject{twoway4.q} shown above.
+0.25$, and the initial value matrix \Robject{twoway4.q} shown above, 
+which we now use to fit the model. 
 
 %% TODO explain about gen.inits=TRUE here 
 
@@ -1108,8 +1115,9 @@ cav.msm
 From the estimated intensity matrix, we see patients are three times
 as likely to develop symptoms than die without symptoms (first row).
 After disease onset (state 2), progression to severe symptoms (state
-3) is 50\% more likely than recovery, and death from the severe
-disease state is rapid (mean of 1 / -0.44 = 2.3 years in state 3).
+3) is 50\% more likely than recovery.  Once in the severe state, death
+is more likely than recovery, and a mean of 1 / -0.44 = 2.3 years is
+spent in state 3 before death or recovery.
 
 Section \ref{sec:extractor} describes various functions that can be
 used to obtain summary information from the fitted model.
@@ -1168,7 +1176,7 @@ qmatrix.msm(cavsex.msm, covariates=list(sex=0)) # Male
 qmatrix.msm(cavsex.msm, covariates=list(sex=1)) # Female
 @
 
-We may also want to constrain the effect of age to be equal for
+We may also want to constrain the effect of a covariate to be equal for
 certain transition rates, to reduce the number of parameters in the
 model, or to investigate hypotheses on the covariate effects.  A
 \Rfunarg{constraint} argument can be used to indicate which of the
@@ -1182,7 +1190,7 @@ cav3.msm <- msm( state ~ years, subject=PTNUM, data = cav,
                    covariates = ~ sex, constraint = list(sex=c(1,2,3,1,2,3,2)) )
 @
 
-This constrains the effect of age to be equal for the progression
+This constrains the effect of sex to be equal for the progression
 rates $q_{12}, q_{23}$, equal for the death rates $q_{14}, q_{24},
 q_{34}$, and equal for the recovery rates $q_{21}, q_{32}$. The
 intensity parameters are assumed to be ordered by reading across the
@@ -1210,16 +1218,16 @@ be necessary in cases where there is not enough information in the
 data to be able to estimate a proposed model, and we have strong prior
 information about a certain transition rate. To do this, use the
 \Rfunarg{fixedpars} argument to \Rfunction{msm}.  For model 1, the
-following statement fixes the parameters numbered 2, 5, 7, that is,
-$q_{14}$, $q_{24}$, $q_{34}$, to their initial values (0.25, 0.166 and
-0.25, respectively).
+following statement fixes the parameters numbered 6, 7, that is,
+$q_{32}$, $q_{34}$, to their initial values (0.25 and 0.25,
+respectively).
 
 \paragraph{Model 4: fixed parameters}
 <<eval=FALSE>>=
 cav4.msm <- msm( state ~ years, subject=PTNUM, data = cav,
-                    qmatrix = twoway4.q, death = 4,
-                    control = list (trace=2, REPORT=1),
-                    fixedpars = c(2, 5, 7) )
+                qmatrix = twoway4.q, death = 4,
+                control = list(trace=2, REPORT=1),
+                fixedpars = c(6, 7) )
 @
 
 A \Rfunarg{fixedpars} statement can also be useful for fixing covariate
@@ -1278,9 +1286,9 @@ pmatrix.msm(cav.msm, t=10)
   the assumed multivariate normal distribution of the maximum
   likelihood estimates and covariance matrix, and transforming.  If
   \Rfunarg{ci=''boot''} is specified, then a bootstrap confidence
-  interval for the transition probability matrix is calculated.
-  However, both of these are computationally intensive, no confidence
-  interval is calculated by default.
+  interval for the transition probability matrix is calculated (see Section~\ref{sec:boot}) .
+  However, both of these are computationally intensive, particularly 
+  the bootstrap method, so no confidence interval is calculated by default.
 
 \item[Mean sojourn times] The function \Rfunction{sojourn.msm}
   extracts the estimated mean sojourn times in each transient state
@@ -1290,6 +1298,19 @@ pmatrix.msm(cav.msm, t=10)
 
 <<>>=
 sojourn.msm(cav.msm)
+@
+
+\item[Probability that each state is next] The function
+  \Rfunction{pnext.msm} extracts the matrix of probabilities $-q_{rs}
+  / q_{rr}$ that the next state after state $r$ is state $s$, for each
+  $r$ and $s$.  Together with the mean sojourn times, this gives a more
+  intuitive parameterisation of a continuous-time Markov model than 
+  the raw transition intensities $q_{rs}$.  Note these are different from 
+  the transition probabilities in a given time $t$ returned by 
+  \Rfunction{pmatrix.msm}.
+
+<<>>=
+pnext.msm(cav.msm)
 @
 
 \item[Total length of stay] Mean sojourn times describe the
@@ -1467,6 +1488,15 @@ confidence interval.
   apply(q.array, c(1,2), sd)
   apply(q.array, c(1,2), function(x)quantile(x, c(0.025, 0.975)))
 \end{Scode}
+
+Note that when bootstrapping, the refits of the model to the resampled
+datasets may occasionally fail to converge (as discussed in
+Section~\ref{sec:failure}) even if the original model fit did
+converge.  In these cases, a warning is given, but
+\Rfunction{boot.msm} simply discards the failed dataset and moves on
+to the next bootstrap iteration. Unless convergence failure occurs for
+a large proportion of iterations, this should not affect the accuracy
+of the final bootstrap confidence intervals.
 
 
 \subsection{Convergence failure}
@@ -2089,6 +2119,7 @@ parameters of this hidden Markov model would then be
     \Rfunction{hmmBinom}   & Binomial  & \Rfunarg{size, prob}  & $n,p$  & $p$ (logit) & ${n \choose x} p^x (1-p)^{n-x}$  \\
     \Rfunction{hmmNBinom}   & Negative binomial  & \Rfunarg{disp, prob}  & $n,p$  & $p$ (logit) & $\Gamma(x+n)/(\Gamma(n)x!) p^n (1-p)^x$ \\
     \Rfunction{hmmBeta}   & Beta  & \Rfunarg{shape1,shape2}  & $a,b$  & & $ \Gamma(a+b) / (\Gamma(a)\Gamma(b))x^{a-1}(1-x)^{b-1}$ \\
+    \Rfunction{hmmT}   & Student $t$  & \Rfunarg{mean, scale, df}  & $\mu,\sigma,k$  &  $\mu$ (identity) & $\frac{\Gamma\left((k+1)/2\right)}{\Gamma(k/2)}{\sqrt{\frac{1}{k\pi\sigma^2}}}\left\{1 + \frac{1}{k\sigma^2}(x - \mu)^{2} \right\}^{-(k + 1)/2}$ \\
     \Rfunction{hmmTNorm}   & Truncated normal  & \Rfunarg{mean, sd, lower, upper}  & $\mu,\sigma,l,u$  & $\mu$ (identity) &
 \parbox[t]{2in}{$\phi(x, \mu, \sigma) / \\ (\Phi(u, \mu, \sigma) - \Phi(l, \mu, \sigma))$, \\ where $\Phi(x,\mu,\sigma) = \int_{-\infty}^x \phi(u,\mu,\sigma) du$}
  \\

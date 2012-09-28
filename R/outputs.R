@@ -401,7 +401,7 @@ qematrix.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALSE, 
             ## expit(sum covs)  / (1 + expit(sum(covs)))    or   1  /  (1  +  expit(sum(covs)))
             ## Use delta method to find approximate SE of the transform on log scale
             ## Work out a CI for this by assuming normal and transforming back
-            coefs <- if (!is.list(covariates) && (covariates=="mean")) 1 else c(1, unlist(covariates) - covmeans)
+            coefs <- if (nc==0) 1 else c(1, if (x$center) unlist(covariates) - covmeans else unlist(covariates))            
             semat <- lsemat <- lmat <- umat <- matrix(0, nst, nst)
             if (intmisc=="intens") {
                 form <- as.formula(paste("~", expsum(seq(nc + 1), coefs)))
@@ -541,7 +541,7 @@ qmatrix.diagse.msm <- function(x, covariates="mean", sojourn, ni, ivector, nc, c
     cur.i <- 1
     if (covariates == 0 && nc > 0)
     {covariates <- list();  for (i in 1 : nc) covariates[[covlabels[i]]] <- 0}
-    coefs <- if (!is.list(covariates) && (covariates=="mean")) 1 else c(1, unlist(covariates) - covmeans)
+    coefs <- if (nc==0) 1 else c(1, if (x$center) unlist(covariates) - covmeans else unlist(covariates))            
     for (i in 1:nst){
         ## Transformation for delta method is
         ## exp(x1 + x2 (cov1 - covmean1) + x3 (cov2 - covmean2) + ... ) +
