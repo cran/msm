@@ -3,6 +3,13 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 1.1.4 (2012-12-10)
+-------------
+
+o Minor modification of package tests to enable R CMD check to pass
+  with the forthcoming release of mvtnorm.
+
+
 Version 1.1.3 (2012-09-28)
 -------------
 
