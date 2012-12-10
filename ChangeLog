@@ -1,3 +1,8 @@
+2012-12-10 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* tests/simple.R: Modified pmatrix.msm normal bootstrap test
+	output to work with new seeding behaviour of rmvnorm.
+
 2012-09-28 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* src/doc: Remember to copy the up-to-date manual source into src
