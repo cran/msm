@@ -1,3 +1,4 @@
+
 \name{prevalence.msm}
 \title{Tables of observed and expected prevalences}
 \alias{prevalence.msm}
@@ -9,10 +10,10 @@
   forecasts from the fitted model.   
 }
 \usage{
-prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="mean",
+prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="population",
                misccovariates="mean", piecewise.times=NULL, piecewise.covariates=NULL,
 	       ci=c("none","normal","bootstrap"), cl=0.95, B=1000,
-               interp=c("start","midpoint"), plot=FALSE, ...)
+               interp=c("start","midpoint"), censtime=Inf, subset=NULL, plot=FALSE, ...)
 }
 \arguments{
   \item{x}{A fitted multi-state model produced by \code{\link{msm}}.}
@@ -27,19 +28,33 @@ prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="mean",
     The default is those observed in the data.  These should add up to
     the actual number of people in the study at the start. }
   \item{covariates}{Covariate values for which to forecast expected
-    state occupancy.  See \code{\link{qmatrix.msm}}.  Defaults to the
-    mean values of the covariates in the data set.}
-  \item{misccovariates}{(Misclassification models only) Values of covariates on the misclassification
-    probability matrix for which to forecast expected state occupancy.
-    Defaults to the mean values of the covariates in the data set.}
+    state occupancy.  With the default \code{covariates="population"},
+    expected prevalences are produced by summing model predictions over
+    the covariates observed in the original data, for a fair comparison
+    with the observed prevalences.  This may be slow, particularly with
+    continuous covariates.
+    
+    Predictions for fixed covariates can be obtained by supplying
+    covariate values in the standard way, as in
+    \code{\link{qmatrix.msm}}. Therefore if
+    \code{covariates="population"} is too slow, using the mean observed
+    values through \code{covariates="mean"} may give a reasonable
+    approximation. 
+  }
+  \item{misccovariates}{(Misclassification models only)
+    Values of covariates on the misclassification probability matrix
+    for converting expected true to expected misclassified states.
+    Ignored if \code{covariates="population"}, otherwise
+    defaults to the mean values of the covariates in the data set.}
   \item{piecewise.times}{Times at which piecewise-constant intensities
     change. See \code{\link{pmatrix.piecewise.msm}} for how
-    to specify this.  This is only required for time-inhomogeneous
+    to specify this.  Ignored if \code{covariates="population"}.
+    This is only required for time-inhomogeneous
     models specified using explicit time-dependent covariates, and
     should not be used for models specified using "pci". }
   \item{piecewise.covariates}{Covariates on which the piecewise-constant
     intensities depend. See \code{\link{pmatrix.piecewise.msm}} for how
-    to specify this.}
+    to specify this. Ignored if \code{covariates="population"}.}
 
   \item{ci}{If \code{"normal"}, then calculate a confidence interval for
     the expected prevalences by simulating \code{B} random vectors
@@ -73,7 +88,19 @@ prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="mean",
      is assumed to be \eqn{S_{r-1}}, otherwise \eqn{S_{r}}. This is
      generally more reasonable for "progressive" models. 
    }  	    
-
+   
+   \item{censtime}{If the time is greater than \code{censtime} and the
+     patient has reached an absorbing state, then that subject will be
+     removed from the risk set.  For example, if patients have died but
+     would only have been observed up to this time, then this avoids
+     overestimating the proportion of people who are dead at later
+     times.  This can be supplied as a single value, or as a vector with
+     one element per subject (after any \code{subset} has been taken),
+     in the same order as the original data.
+     This is ignored if it is less than the subject's maximum
+     observation time.  }
+   \item{subset}{Subset of subjects to calculate observed prevalences for.} 
+   
    \item{plot}{Generate a plot of observed against expected
      prevalences. See \code{\link{plot.prevalence.msm}}}
 
@@ -103,7 +130,6 @@ The component
 }
 
 \details{
-
   The fitted transition probability matrix is used to forecast expected prevalences from the
   state occupancy at the initial time.  To
   produce the expected number in state \eqn{j} at time \eqn{t} after the
@@ -129,12 +155,6 @@ The component
   predicted underlying state from the Viterbi algorithm
   (\code{\link{viterbi.msm}}).  The goodness of fit of
   these states to the underlying Markov model is tested. 
-
-  Note that this function assumes intensities are the same for all
-  individuals. By default they are taken from the mean values of the
-  covariates in the population.  Piecewise-constant intensities may be
-  assumed, through the arguments \code{piecewise.times} and
-  \code{piecewise.covariates}.
   
   For an example of this approach, see Gentleman \emph{et al.} (1994).
 }
@@ -144,6 +164,10 @@ The component
   Markov models for analysing incomplete disease history data with
   illustrations for HIV disease.  \emph{Statistics in Medicine} (1994) 13(3):
   805--821.
+
+  Titman, A.C., Sharples, L. D.  Model diagnostics for multi-state
+  models. \emph{Statistical Methods in Medical Research} (2010)
+  19(6):621-651. 
 }
 
 \seealso{

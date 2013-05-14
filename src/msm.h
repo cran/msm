@@ -18,8 +18,8 @@
 #define MSM_FREE(var) Free((var))
 #else
 #define MSM_ALLOC(length, type) (type *) S_alloc((length), sizeof(type))
-#define MSM_FREE(var) 
-#endif 
+#define MSM_FREE(var)
+#endif
 
 typedef double * Array3;
 typedef double * Matrix;
@@ -36,6 +36,7 @@ struct msmdata {
     double *covobs;
     int *whichcov;
     int *nocc;
+    int *noccsum;
     int *whicha;
     int *obstype;
     int *obstrue;
@@ -51,6 +52,7 @@ struct msmdata {
     int nobs;
     int n;
     int npts;
+    int ntrans;
 };
 
 struct qmodel {
@@ -88,7 +90,7 @@ struct hmodel {
     int *firstpar;
     int *ncovs;
     double *pars;
-    int totpars; 
+    int totpars;
     double *coveffect;
     int *links;
     double *initp;
@@ -105,10 +107,10 @@ typedef struct hmodel hmodel;
 double qij(int i, int j, vector intens, ivector qvector, int nstates);
 double pijdeath(int r, int s, Matrix pmat, vector intens, ivector qvector, int n);
 void Pmat(Matrix pmat, double t, vector intens, int nintens, int *qvector, int nstates, int exacttimes, int analyticp, int iso, int *perm, int *qperm, int debug);
-void DPmat(Array3 dpmat, double t, vector x, vector intens, vector oldintens, ivector qvector, 
+void DPmat(Array3 dpmat, double t, vector x, vector intens, vector oldintens, ivector qvector,
 	   int n, int np, int ndp, int ndc, ivector qconstr, ivector bconstr, ivector wcov, int exacttimes);
-void dpijdeath(int r, int s, vector x, Array3 dpmat, Matrix pmat, vector intens, vector oldintens, ivector qvector, 
-	       int n, ivector constr, ivector bconstr, int ndp, int ndc, int ncovs, vector dcontrib);
+void dpijdeath(int r, int s, vector x, Array3 dpmat, Matrix pmat, vector intens, vector oldintens, ivector qvector,
+	       int n, ivector constr, ivector bconstr, int ndp, int ndc, int ncovs, Matrix dcontrib);
 int repeated_entries(vector vec, int n);
 
 double logit(double x);

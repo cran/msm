@@ -56,7 +56,8 @@ pmatrix.msm(x, t=1, t1=0, covariates="mean",
     from the asymptotic multivariate normal distribution implied by the
     maximum likelihood estimates (and covariance matrix) of the log
     transition intensities and covariate effects, then calculating the
-    resulting transition probability matrix for each replicate.
+    resulting transition probability matrix for each replicate. See,
+    e.g. Mandel (2013) for a discussion of this approach.
     
     If \code{"bootstrap"} then calculate a confidence interval by
     non-parametric bootstrap refitting.  This is 1-2 orders of magnitude
@@ -106,6 +107,11 @@ returns a list with
   \code{\link{msm}}. For time-inhomogeneous models fitted using "pci",
   \code{pmatrix.msm} can be used, with arguments \code{t} and \code{t1},
   to calculate transition probabilities over any time period. 
+}
+\references{
+  Mandel, M. (2013). "Simulation based confidence intervals for
+  functions with complicated derivatives." The American Statistician (in
+  press).  
 }
 \seealso{
   \code{\link{qmatrix.msm}},  \code{\link{pmatrix.piecewise.msm}}, \code{\link{boot.msm}}

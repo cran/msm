@@ -19,7 +19,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
       est.initprobs=FALSE, initcovariates = NULL, initcovinits = NULL,
       death = FALSE, exacttimes = FALSE, censor=NULL,
       censor.states=NULL, pci=NULL, cl = 0.95, fixedpars = NULL, center=TRUE,
-      opt.method=c("optim","nlm"), hessian=TRUE, use.deriv=TRUE,
+      opt.method=c("optim","nlm","fisher"), hessian=TRUE, use.deriv=TRUE,
       analyticp=TRUE, ... )
 }
 \arguments{
@@ -47,12 +47,19 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     \code{misccovariates}, \code{hcovariates}, \code{obstype} and
     \code{obstrue}.}
 
-  \item{qmatrix}{Initial transition intensity matrix of the Markov
-    chain.  If an instantaneous transition is not allowed  from state
+  \item{qmatrix}{Matrix which indicates the allowed transitions in
+    the continuous-time Markov chain, and optionally also the initial
+    values of those transitions. If an instantaneous transition is not allowed  from state
     \eqn{r} to state \eqn{s}, then \code{qmatrix} should have
-    \eqn{(r,s)} entry 0, otherwise it should be non-zero. Any
-    diagonal entry of \code{qmatrix} is ignored, as it is constrained to
-    be equal to minus the sum of the rest of the row. For example,\cr
+    \eqn{(r,s)} entry 0, otherwise it should be non-zero.
+
+    If supplying initial values yourself, then the non-zero entries
+    should be those values.  If using \code{gen.inits=TRUE} then the
+    non-zero entries can be anything you like (conventionally 1).
+    Any diagonal entry of \code{qmatrix} is ignored, as it is
+    constrained to be equal to minus the sum of the rest of the row.
+
+    For example,\cr
 
     \code{
     rbind(
@@ -62,14 +69,15 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     )
   }\cr
 
-    represents a 'health - disease - death' model, with transition intensities
+    represents a 'health - disease - death' model, with initial transition intensities
     0.1 from health to disease, 0.01 from health to death, 0.1 from disease to health,
-    and 0.2 from disease to death.  The initial intensities given here
-    are with any covariates set to their means in the data (or set to
-    zero, if \code{center} = FALSE). If any intensities are constrained
-    to be equal using \code{qconstraint}, then the initial value is
-    taken from the first of these (reading across rows).
-  }
+    and 0.2 from disease to death.
+
+    The initial intensities given here are with any covariates set to
+    their means in the data (or set to zero, if \code{center =
+    FALSE}). If any intensities are constrained to be equal using
+    \code{qconstraint}, then the initial value is taken from the first
+    of these (reading across rows).  }
 
   \item{gen.inits}{If \code{TRUE}, then initial values for the
     transition intensities are generated automatically using the method
@@ -100,7 +108,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
     represents a model in which misclassifications are only permitted
     between adjacent states.
-
+    
     If any probabilities are constrained to be equal using
     \code{econstraint}, then the initial value is
     taken from the first of these (reading across rows).
@@ -173,7 +181,16 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
       \item{2}{An exact transition time, with the state at the previous
 	observation retained until the current observation.  An observation may
     represent a transition to a different state or a repeated observation of
-    the same state (e.g. at the end of follow-up). }
+    the same state (e.g. at the end of follow-up).  Note that if all
+    transition times are known, more flexible models could be fitted
+    with packages other than \pkg{msm} - see the note under \code{exacttimes}.
+
+    Note also that if the previous state was censored using
+    \code{censor}, for example known only to be state 1 or state 2, then
+    \code{obstype} 2 means that either state 1 is retained or state 2 is
+    retained until the current observation - this does not allow for a
+    change of state in the middle of the observation interval.
+    }
       \item{3}{An exact transition time, but the state at the instant before
 	entering this state is unknown. A common example is death times in
 	studies of chronic diseases.}
@@ -185,7 +202,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
     This is a generalisation of the \code{death} and \code{exacttimes}
     arguments to allow different schemes per observation.
-    \code{obstype} overrides both \code{death} and \code{exacttimes}. 
+    \code{obstype} overrides both \code{death} and \code{exacttimes}.
 
     \code{exacttimes=TRUE} specifies that all observations are of
     obstype 2.
@@ -276,13 +293,16 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     \code{list(..., covnameVALUE1 = c(...), covnameVALUE2 = c(...), ...)}\cr
 
     where \code{covname} is the name of the factor, and \code{VALUE1},
-    \code{VALUE2}, ... are the levels of the factor.
+    \code{VALUE2}, ... are the labels of the factor levels (usually
+    excluding the baseline, if using the default contrasts).
+
     Make sure the \code{contrasts} option is set appropriately, for
     example, the default
 
     \code{options(contrasts=c(contr.treatment, contr.poly))}
 
-    sets the first (baseline) level of unordered factors to zero.
+    sets the first (baseline) level of unordered factors to zero,
+    then the baseline level is ignored in this specification.
 
     To assume no covariate effect on a certain transition, use the
     \code{fixedpars} argument to fix it at its initial value (which
@@ -370,7 +390,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   \item{initprobs}{Currently only used in hidden Markov models.
     Vector of assumed underlying state occupancy probabilities at each
     individual's first observation. If these are estimated (see
-    \code{est.initprobs}), then this defaults to equal probability for
+    \code{est.initprobs}), then this represents an initial value,
+    and defaults to equal probability for
     each state.  Otherwise this defaults to
     \code{c(1, rep(0, nstates-1))}, that is, in state 1 with a
     probability of 1.  Scaled to sum to 1 if necessary.  The state 1
@@ -382,16 +403,10 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     occupancy probabilities at the first observation will be estimated,
     starting from initial values taken from the \code{initprobs}
     argument.  Structural zeroes are allowed: if any of these initial
-    values are zero they will be fixed at zero during optimisation, and
-    no covariate effects on them are estimated.  The exception is
-    state 1, which should have non-zero occupancy probability.
-
-    Be warned that if any of these initial values are 1,
-    then \code{\link{optim}} will give an "non-finite value" error,
-    since these are logit-transformed during estimation.  If you wish to
-    fix any initial probabilities to 1, then that implies all the others are
-    fixed to zero, and there is no need to use \code{est.initprobs} at
-    all.
+    values are zero they will be fixed at zero during optimisation,
+    even if \code{est.initprobs=TRUE}, and no covariate effects on
+    them are estimated.  The exception is state 1, which should have
+    non-zero occupancy probability.
 
     Note that the free parameters during this estimation exclude the state 1
     occupancy probability, which is fixed at one minus the sum of the
@@ -436,7 +451,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     and the previous observation, then you should specify
     \code{obstype=2} for the death times, or \code{exacttimes=TRUE} if
     the state is known at all times, and the \code{death} argument is
-    ignored.  }
+    ignored.
+  }
 
   \item{censor}{ A state, or vector of states, which indicates
     censoring.  Censoring means that the observed state is known only to be
@@ -535,7 +551,15 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     every row of the data having \code{obstype = 2}.  See the
     \code{obstype} argument.  If both \code{obstype} and
     \code{exacttimes} are specified then \code{exacttimes} is ignored.
-    }
+
+    Note that the complete history of the multi-state process is known
+    with this type of data.  The models which \pkg{msm} fits have the
+    strong assumption of constant (or piecewise-constant) transition
+    rates.  Knowing the exact transition times allows
+    potentially more realistic models to be fitted with other
+    packages, such as semi-parametric models with the \pkg{mstate}
+    package.
+  }
 
   \item{cl}{Width of symmetric confidence intervals for maximum
     likelihood estimates, by default 0.95.}
@@ -568,9 +592,16 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     during the maximum likelihood estimation. This usually improves
     stability of the numerical optimisation. }
 
-  \item{opt.method}{Quoted name of the R function to perform
-    minimisation of the minus twice log likelihood.  Either "optim" or
-    "nlm". \code{\link{optim}} is the default. }
+  \item{opt.method}{If "optim" or "nlm", then the corresponding R
+    function will be used for maximum likelihood estimation.
+    \code{\link{optim}} is the default.
+
+    If "fisher", then a specialised Fisher scoring method is used
+    (Kalbfleisch and Lawless, 1985) which can be substantially faster
+    than the generic methods, though less robust.  This is only
+    available for Markov models with panel data (\code{obstype=1}), that is, not
+    for models with censored states, hidden Markov models, exact
+    observation or exact death times (\code{obstype=2,3}).}
 
   \item{hessian}{If \code{TRUE} (the default) then the Hessian matrix is
     computed at the maximum likelihood estimates, to obtain standard
@@ -604,6 +635,14 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     the optimisation takes a long time, intermediate steps can be
     printed using the \code{trace} argument of the control list. See
     \code{\link{optim}} for details.
+
+    For the Fisher scoring method, a \code{control} list can be supplied
+    in the same way, but the only supported options are \code{reltol},
+    \code{trace} and \code{damp}.  The first two are used in the same
+    way as for \code{\link{optim}}.  If the algorithm fails with a
+    singular information matrix, adjust \code{damp} from the
+    default of zero (to, e.g. 1).  This adds a constant identity matrix
+    multiplied by \code{damp} to the information matrix during optimisation.
   }
 }
 \value{

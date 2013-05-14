@@ -4,12 +4,12 @@
 \concept{Simulation}
 \description{Simulate a number of individual realisations from a
   multi-state Markov process. Observations of the process are made at
-  specified arbitrary times for each individual. 
+  specified arbitrary times for each individual, giving panel-observed data. 
 }
 \usage{
 simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
              ematrix=NULL, misccovariates=NULL, hmodel=NULL, hcovariates=NULL,
-             censor.states=NULL)
+             censor.states=NULL, drop.absorb=TRUE)
 }
 
 \arguments{
@@ -43,7 +43,7 @@ simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
   
 }
 
-\item{covariates}{List of covariate effects on log transition
+\item{covariates}{List of linear covariate effects on log transition
   intensities. Each element is a vector of the effects of one
   covariate on all the transition intensities. The intensities are ordered
   by reading across rows of the intensity matrix, starting with the
@@ -100,6 +100,8 @@ simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
 \item{censor.states}{Set of simulated states which should be replaced by a
   censoring indicator at censoring times.  By default this is all
   transient states (representing alive, with unknown state).}
+\item{drop.absorb}{Drop repeated observations in the absorbing state,
+  retaining only one.} 
 }
 \value{A data frame with columns,
   \item{subject}{Subject identification indicators}

@@ -39,12 +39,12 @@ if (developer.local) {
                                )
                 )
     stopifnot(isTRUE(all.equal(3968.7978930519, cav.msm$minus2loglik, tol=1e-06)))
-    
+
     pnext.msm(cav.msm)
     pnext.msm(cav.msm, ci="normal")
     pnext.msm(cav.msm, ci="bootstrap", B=3)
     if (0)
-        pnext.msm(cav.msm, ci="bootstrap")   
+        pnext.msm(cav.msm, ci="bootstrap")
 }
 
 ## No death state.
@@ -111,8 +111,9 @@ if (developer.local) {
 data(psor)
 psor.q <- rbind(c(0,0.1,0,0),c(0,0,0.1,0),c(0,0,0,0.1),c(0,0,0,0))
 system.time(psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
-                qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn, # covinits=list(hieffusn = c(0.5, 0.1, 0), ollwsdrt=c(0.2, 0.1, -0.1)),
-                 constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)), 
+                qmatrix = psor.q,
+                            covariates = ~ollwsdrt+hieffusn, #covinits=list(hieffusn = c(0.5, 0.1, 0), ollwsdrt=c(0.2, 0.1, -0.1)),
+                constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
                 fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS"))
 stopifnot(isTRUE(all.equal(1114.89946121717, psor.msm$minus2loglik, tol=1e-06)))
 stopifnot(isTRUE(all.equal(0.0953882330391683, qmatrix.msm(psor.msm)$estimates[1,2], tol=1e-03)))
@@ -122,7 +123,7 @@ pn <- pnext.msm(psor.msm)
 ## center=FALSE
 psor.nocen.msm <- msm(state ~ months, subject=ptnum, data=psor,
                     qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn,
-                    constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)), 
+                    constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
                     fixedpars=FALSE, center=FALSE, control = list(REPORT=1,trace=2), method="BFGS")
 ## $baseline and component should obey center
 stopifnot(isTRUE(all.equal(psor.nocen.msm$Qmatrices$baseline, qmatrix.msm(psor.nocen.msm, covariates=0, ci="none"))))
@@ -145,7 +146,7 @@ stopifnot(isTRUE(all.equal(qmatrix.msm(psor.nocen.msm, covariates=0)$L[1,2],
 cm <- psor.nocen.msm$qcmodel$covmeans
 stopifnot(isTRUE(all.equal(qmatrix.msm(psor.nocen.msm, covariates="mean")$SE[1,2],
                            qmatrix.msm(psor.nocen.msm, covariates=list(hieffusn=cm["hieffusn"], ollwsdrt=cm["ollwsdrt"]))$SE[1,2])))
-                           
+
 ## values not supplied are set to zero, even if center=TRUE (undocumented)
 stopifnot(isTRUE(all.equal(qmatrix.msm(psor.msm, covariates=list(hieffusn=0)),
                            qmatrix.msm(psor.msm, covariates=list(ollwsdrt=0, hieffusn=0)))))
@@ -158,18 +159,18 @@ cav.msm <- msm( state ~ years, subject=PTNUM, data = cav,
                  qmatrix = twoway4.q, death = FALSE, fixedpars=TRUE)
 stopifnot(isTRUE(all.equal(4833.0064065267, cav.msm$minus2loglik, tol=1e-06)))
 
-## how big a dataset can 
-if (0) { 
+## how big a dataset can
+if (0) {
   c3.df <- NULL
   for (i in 1:10) {c22.df <- c2.df; c22.df$PTNUM <- c2.df$PTNUM + 120000*(i-1); c3.df <- rbind(c3.df, c22.df)}
   length(unique(c2.df$PTNUM))
   length(unique(c3.df$PTNUM))
   qx <- rbind( c(0, 0.005, 0, 0, 0), c(0, 0, 0.01, 0.02,0), c(0, 0, 0, 0.04, 0.03), c(0, 0, 0, 0, 0), c(0, 0, 0, 0, 0))
   c2.msm <- msm(state~years, subject=PTNUM, data=c2.df,
-                qmatrix=qx, death=c(4, 5), method="BFGS", 
+                qmatrix=qx, death=c(4, 5), method="BFGS",
                 control=list(trace=1, REPORT=1, fnscale=100000))
   c3.msm <- msm(state~years, subject=PTNUM, data=c3.df,
-                qmatrix=qx, death=c(4, 5), method="BFGS", 
+                qmatrix=qx, death=c(4, 5), method="BFGS",
                 control=list(trace=1, REPORT=1, fnscale=100000))
 }
 
@@ -280,7 +281,14 @@ if (interactive())
       plot.prevalence.msm(psor.msm)
       plot.prevalence.msm(psor.msm, col.obs="green", col.exp="brown", lty.obs=2, lty.exp=3, lwd.obs=2, lwd.exp=4, cex.axis=2)
 
-      ##
+      ## censtime facility in prevalence.msm
+      try(plot.prevalence.msm(psor.msm, censtime=c(2,3)))
+      try(plot.prevalence.msm(psor.msm, censtime="foo"))
+      plot.prevalence.msm(psor.msm, censtime=5)
+      plot.prevalence.msm(psor.msm, censtime=10)
+      ## 1 month after last obs time
+      plot.prevalence.msm(psor.msm, censtime = psor$months[tapply(1:nrow(psor), psor$ptnum, max)] + 1)
+
       plotprog.msm(state ~ months, subject=ptnum, data=psor, legend.pos=c(20,0.99), lwd=3, xlab="Months")
       plotprog.msm(state ~ months, subject=ptnum, data=psor, legend.pos=c(20,0.99), lwd=1, mark.time=FALSE, xlab="Months")
       plot.survfit.msm(psor.msm, lwd=3, xlab="Months")

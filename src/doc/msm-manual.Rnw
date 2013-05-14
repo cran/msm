@@ -18,7 +18,8 @@
 \newcommand{\Rclass}[1]{{\textit{#1}}}
 
 <<echo=FALSE>>=
-version <- gsub("Version: +", "", packageDescription("msm", lib.loc="~/work/msm")$Version)
+version <- gsub("Version: +", "",
+                packageDescription("msm", lib.loc="../../..")$Version)
 @
 
 \title{Multi-state modelling with R: the {\tt msm} package \vskip 0.2in
@@ -32,7 +33,7 @@ cat(format(Sys.time(), "%d %B, %Y"))
 @
 }}
 \author{Christopher Jackson\\Medical Research Council Biostatistics Unit\\Cambridge, U.K.\\ \texttt{chris.jackson@mrc-bsu.cam.ac.uk}}
-\date{} 
+\date{}
 %% label with date when Rnw is compiled, not when tex is compiled. should be release date of package
 
 \bibliographystyle{unsrt}
@@ -128,7 +129,7 @@ introduction to the theory of continuous-time Markov chains.
   \end{center}
 \end{figure}
 
-In a continuous-time Markov model, a single period of occupancy (or
+In a time-homogeneous continuous-time Markov model, a single period of occupancy (or
 \emph{sojourn time}) in state $r$ has an exponential distribution,
 with rate given by $-q_{rr}$, (or
 mean $-1 / q_{rr}$).  The remaining elements of the $r$th row of $Q$
@@ -145,18 +146,18 @@ applications to disease modelling.  Many chronic diseases have a
 natural interpretation in terms of staged progression. Multi-state
 Markov models in continuous time are often used to model the course of
 diseases. A commonly-used model is illustrated in
-Figure~\ref{fig:disease}.  This represents a series of successively
+Figure \ref{fig:disease}.  This represents a series of successively
 more severe disease stages, and an `absorbing' state, often death.
 The patient may advance into or recover from adjacent disease stages,
 or die at any disease stage.  Observations of the state $S_i(t)$ are
 made on a number of individuals $i$ at arbitrary times $t$, which may
 vary between individuals.  The stages of disease may be modelled as a
 homogeneous continuous-time Markov process, with a transition matrix
-$Q$, pictured below Figure~\ref{fig:disease}.
+$Q$, pictured below Figure \ref{fig:disease}.
 
 A commonly-used model is the \emph{illness-death} model, with three
 states representing health, illness and death
-(Figure~\ref{fig:multi:illdeath}).  Transitions are permitted from
+(Figure \ref{fig:multi:illdeath}).  Transitions are permitted from
 health to illness, illness to death and health to death.  Recovery
 from illness to health is sometimes also considered.
 
@@ -224,7 +225,7 @@ observations may be censored.  For example, at the end of a study, an
 individual may be known only to be alive, and in an unknown state.
 
 A typical sampling situation is illustrated in
-Figure~\ref{fig:multi:sampling}. The individual is observed at four
+Figure \ref{fig:multi:sampling}. The individual is observed at four
 occasions through 10 months. The final occasion is the death date
 which is recorded to within a day. The only other information
 available is the occupation of states 2, 2, and 1 at respective times
@@ -251,7 +252,7 @@ schemes include:
 \item patient {\em self-selection}. A patient may decide to visit the
   doctor on occasions when they are in a poor condition.
 \end{itemize}
-Gr\"uger \etal~\cite{gruger:valid} discussed conditions under
+Gr\"uger \etal \cite{gruger:valid} discussed conditions under
 which sampling times are \emph{informative}. If a multi-state model is
 fitted, ignoring the information available in the sampling times, then
 inference may be biased.  Mathematically, because the sampling
@@ -264,7 +265,9 @@ the parameters of the sampling scheme.
 
 In particular, they showed that fixed, random and doctor's care
 observation policies are not informative, whereas patient
-self-selection is informative.
+self-selection is informative.   Note that \Rpackage{msm} does not
+deal with informative sampling times. See, e.g. \cite{sweeting:inform:msm}
+for some methods in this case, which require specialised programming.
 
 \begin{figure}[p]
   \begin{center}
@@ -282,11 +285,11 @@ self-selection is informative.
 \label{sec:multi:likelihood}
 
 Kalbfleisch and Lawless\cite{kalbfleisch:lawless} and later
-Kay~\cite{kay:mark} described a general method for evaluating the
+Kay \cite{kay:mark} described a general method for evaluating the
 likelihood for a general multi-state model in continuous time,
 applicable to any form of transition matrix. The only available
 information is the observed state at a set of times, as in
-Figure~\ref{fig:multi:sampling}.  The sampling times are assumed to be
+Figure \ref{fig:multi:sampling}.  The sampling times are assumed to be
 non-informative.
 
 \paragraph{Transition probability matrix}
@@ -298,7 +301,7 @@ anything about the time of transition from $r$ to $s$, indeed the
 process may have entered other states between times $u$ and $t+u$.
 $P(t)$ can be calculated by taking the matrix exponential of the
 scaled transition intensity matrix (see, for example, Cox and
-Miller~\cite{cox:miller}).
+Miller \cite{cox:miller}).
 \begin{equation}
   \label{eq:exptq}
   P(t) = \Exp(tQ)
@@ -309,7 +312,7 @@ The exponential of a matrix is defined by the same "power series"
 $\Exp(X) = 1 + X^2/2! + X^3/3! + ...$ as the scalar exponential,
 except that each term $X^k$ in the series is defined by matrix products,
 not element-wise scalar multiplication.  It is notoriously difficult
-to calculate reliably, as discussed by Moler and van Loan~\cite{matrixexp}.
+to calculate reliably, as discussed by Moler and van Loan \cite{matrixexp}.
 For simpler models, it is feasible to calculate an analytic expression
 for each element of $P(t)$ in terms of $Q$.  This is generally faster
 and avoids the potential numerical instability of calculating the
@@ -354,10 +357,10 @@ q_{12}te^{(-(q_{12} + q_{13})t} &  (q_{12} + q_{13} = q_{23})
 \end{eqnarray*}
 The \Rpackage{msm} package calculates $P(t)$ analytically for selected
 2, 3, 4 and 5-state models. These models are illustrated in
-Figures~\ref{fig:anp2}--\ref{fig:anp5}.  For other models, $P(t)$ is
+Figures \ref{fig:anp2}--\ref{fig:anp5}.  For other models, $P(t)$ is
 determined from the matrix exponential, calculated using eigensystem
 decomposition (if eigenvalues are distinct) or a method based on
-Pad\'e approximants with scaling and squaring~\cite{matrixexp} (if
+Pad\'e approximants with scaling and squaring \cite{matrixexp} (if
 there are repeated eigenvalues). Notice that the states are not
 labelled in these figures.  Each graph can correspond to several
 different $Q$ matrices, depending on how the states are labelled.  For
@@ -431,7 +434,7 @@ The full likelihood $L(Q)$ is the product of all such terms $L_{i,j}$
 over all individuals and all transitions. It depends on the unknown
 transition matrix $Q$, which was used to determine $P(t)$.
 
-\paragraph{Death states}
+\paragraph{Exactly-observed death times}
 In observational studies of chronic diseases, it is common that the
 time of death is known, but the state on the previous instant before
 death is unknown. If $S(t_{j+1}) = D $ is such a death state, then the
@@ -458,7 +461,7 @@ since the state is assumed to be $S(t_j)$ throughout the interval
 between $t_j$ and $t_{j+1}$ with a known transition to state
 $S(t_{j+1})$ at $t_{j+1}$.  \Rpackage{msm} is restricted to Markov
 models, but much richer models are possible for this type of data. For
-example, Putter \etal~\cite{putter:mstate} discussed the
+example, Putter \etal \cite{putter:mstate} discussed the
 \Rpackage{mstate} software for semi-parametric multi-state models with
 non-parametric baseline hazards and Cox regression.  The Markov
 assumption is restrictive but necessary in general to compute a
@@ -472,7 +475,7 @@ still alive, since the death time is known to be greater than the end
 time.  In multi-state models for intermittently-observed processes,
 the times of changes of state are usually \emph{interval censored},
 known to be within bounded intervals.  This leads to a likelihood
-based on equation~\ref{eq:multi:lik:contrib}.
+based on equation \ref{eq:multi:lik:contrib}.
 
 In some circumstances, \emph{states} may be censored as well as
 \emph{event times}.  For example, at the end of some chronic disease
@@ -486,7 +489,7 @@ likelihood is
 \end{equation}
 Note that this special likelihood is not needed if the state is known
 at the end of the study.  In this case,
-likelihood~\ref{eq:multi:lik:contrib} applies.  Although the
+likelihood \ref{eq:multi:lik:contrib} applies.  Although the
 \emph{survival time} is censored, the \emph{state} at the end of the
 study is not censored.
 
@@ -511,8 +514,8 @@ $p_{c^{(j-1)}_r c^{(j)}_s}(t_j - t_{j-1})$, and $\mathbf{1}$ is the
 vector of ones.
 
 The \Rpackage{msm} package allows multi-state models to be fitted to
-data from processes with arbitrary observation times, exactly-observed
-transition times, ``death'' states and censored states, or a mixture
+data from processes with arbitrary observation times (panel data), exactly-observed
+transition times, exact death times and censored states, or a mixture
 of these schemes.
 
 
@@ -523,7 +526,7 @@ The relation of constant or time-varying characteristics of
 individuals to their transition rates is often of interest in a
 multi-state model.  Explanatory variables for a particular transition
 intensity can be investigated by modelling the intensity as a function
-of these variables.  Marshall and Jones~\cite{retino2} described a
+of these variables.  Marshall and Jones \cite{retino2} described a
 form of a {\em proportional hazards} model, where the transition
 intensity matrix elements $q_{rs}$ which are of interest can be
 replaced by
@@ -544,7 +547,7 @@ assumed that the covariate is a step function which remains constant
 between its observation times.  If the main response (the state of the
 Markov process) is not observed at the times when the covariate
 changes, it could be considered as a "censored" state (as in
-Section~\ref{sec:multi:likelihood}).
+Section \ref{sec:multi:likelihood}).
 
 The \Rpackage{msm} package allows individual-specific or time
 dependent covariates to be fitted to transition intensities.  In order
@@ -555,7 +558,7 @@ called \emph{time-inhomogeneous}. An important special case handled by
 \Rpackage{msm} is the model in which intensities change at a series of
 times common to each individual.
 
-Marshall and Jones~\cite{retino2} described likelihood ratio and Wald
+Marshall and Jones \cite{retino2} described likelihood ratio and Wald
 tests for covariate selection and testing hypotheses, for example
 whether the effect of a covariate is the same for all forward
 transitions in a disease progression model, or whether the effect on
@@ -575,7 +578,7 @@ are not observed. The observed data are governed by some probability
 distribution (the \emph{emission} distribution) conditionally on the
 unobserved state.  The evolution of the underlying Markov chain is
 governed by a transition intensity matrix $Q$ as before.
-(Figure~\ref{fig:multi:hidden}).  Hidden Markov models are mixture
+(Figure \ref{fig:multi:hidden}).  Hidden Markov models are mixture
 models, where observations are generated from a certain number of
 unknown distributions.  However the distribution changes through time
 according to states of a hidden Markov chain.  This class of model is
@@ -627,7 +630,7 @@ the condition of interest is absent, the test produces a negative
 result.
 
 As an extension to the simple multi-state model described in
-section~\ref{sec:multistate}, the \Rpackage{msm} package can fit a
+section \ref{sec:multistate}, the \Rpackage{msm} package can fit a
 general multi-state model with misclassification.  For patient $i$,
 observation time $t_{ij}$, observed states $O_{ij}$ are generated
 conditionally on true states $S_{ij}$ according to a {\em
@@ -705,7 +708,7 @@ conditionally independent given the values of the underlying states.
 Also assume the Markov property, $Pr(S_{ij}|S_{i,j-1}, \ldots, S_{i1})
 = Pr(S_{ij}|S_{i,j-1})$.  Then the contribution $L_i$ can be written
 as a product of matrices, as follows. To derive this matrix product,
-decompose the overall sum in equation~\ref{eq:multi:hiddencontrib}
+decompose the overall sum in equation \ref{eq:multi:hiddencontrib}
 into sums over each underlying state. The sum is accumulated over the
 unknown first state, the unknown second state, and so on until the
 unknown final state:
@@ -744,21 +747,21 @@ previous instant before death.  The $(r,s)$ entry of $T_{ij}$ is then
 \[
 p_{rs}(t_{j} - t_{j-1}) q_{s, D}
 \]
-Section~\ref{sec:fitting:hmm:misc} describes how to fit multi-state
+Section \ref{sec:fitting:hmm:misc} describes how to fit multi-state
 models with misclassification using the \Rpackage{msm} package, and
-Section~\ref{sec:fitting:hmm:general} describes how to apply general
+Section \ref{sec:fitting:hmm:general} describes how to apply general
 hidden Markov models.
 
 
 \subsubsection{Example of a general hidden Markov model}
 \label{sec:hmm:example:fev}
 
-Jackson and Sharples~\cite{jackson:sharples:2002} described a model
+Jackson and Sharples \cite{jackson:sharples:2002} described a model
 for FEV$_1$ (forced expiratory volume in 1 second) in recipients of
 lung transplants.  These patients were at risk of BOS (bronchiolitis
 obliterans syndrome), a progressive, chronic deterioration in lung
 function.  In this example, BOS was modelled as a discrete, staged
-process, a model of the form illustrated in Figure~\ref{fig:disease},
+process, a model of the form illustrated in Figure \ref{fig:disease},
 with 4 states.  State 1 represents absence of BOS. State 1 BOS is
 roughly defined as a sustained drop below 80\% below baseline FEV$_1$,
 while state 2 BOS is a sustained drop below 65\% baseline.  FEV$_1$ is
@@ -775,9 +778,9 @@ appropriate as onset is often sudden.
 
 
 \paragraph{Model 1}
-Jackson~\cite{my:phd} considered models for these data where
+Jackson \cite{my:phd} considered models for these data where
 FEV$_1$ were Normally distributed, with an unknown mean and variance
-conditionally each state~(\ref{eq:fev:normal}).  This model seeks the
+conditionally each state (\ref{eq:fev:normal}).  This model seeks the
 most likely location for the within-state FEV$_1$ means.
 
 \begin{equation}
@@ -787,11 +790,11 @@ most likely location for the within-state FEV$_1$ means.
 
 
 \paragraph{Model 2}
-Jackson and Sharples~\cite{jackson:sharples:2002} used a more complex
+Jackson and Sharples \cite{jackson:sharples:2002} used a more complex
 two-level model for FEV$_1$ measurements. Level
-1~(\ref{eq:fev:level1}) represents the short-term fluctuation error of
+1 (\ref{eq:fev:level1}) represents the short-term fluctuation error of
 the marker around its underlying continuous value $y^{hid}_{ij}$.
-Level 2~(\ref{eq:fev:level2}) represents the distribution of
+Level 2 (\ref{eq:fev:level2}) represents the distribution of
 $y^{hid}_{ij}$ conditionally on each underlying state, as follows.
 \begin{equation}
   \label{eq:fev:level1}
@@ -814,9 +817,9 @@ $y^{hid}_{ij}$ conditionally on each underlying state, as follows.
 
 Integrating over $y^{hid}_{ij}$ gives an explicit distribution for
 $y_{ij}$ conditionally on each underlying state (given in
-Section~\ref{sec:fitting:hmm:general}, Table~\ref{tab:hmm:dists}).
+Section \ref{sec:fitting:hmm:general}, Table \ref{tab:hmm:dists}).
 Similar distributions were originally applied by Satten and
-Longini~\cite{sattlong} to modelling the progression through discrete,
+Longini \cite{sattlong} to modelling the progression through discrete,
 unobserved HIV disease states using continuous CD4 cell counts.  The
 \Rpackage{msm} package includes density, quantile, cumulative density
 and random number generation functions for these distributions.
@@ -826,7 +829,7 @@ fluctuation of the marker in terms of acute events. $x_{ij}$ is an
 indicator for the occurrence of an acute rejection or infection
 episode within 14 days of the observation of FEV$_1$.
 
-Section~\ref{sec:fitting:hmm:general} describes how these and more
+Section \ref{sec:fitting:hmm:general} describes how these and more
 general hidden Markov models can be fitted with the \Rpackage{msm}
 package.
 
@@ -899,9 +902,14 @@ If the data do not also contain
 then all the observations are assumed to be from the same subject.
 The subject ID does not need to be numeric, but data must be grouped
 by subject, and observations must be ordered by time within subjects.
+If the model includes variables with missing values, then the corresponding
+observations  are omitted by \Rfunction{msm} with a warning.  If you have missing data,
+as in any statistical model, it is recommended to ensure these do not
+result in biases.
+
 An example data set, taken from monitoring a set of heart transplant
 recipients, is provided with \Rpackage{msm}.  Sharples
-\etal~\cite{my:cav} studied the progression of coronary allograft
+\etal \cite{my:cav} studied the progression of coronary allograft
 vasculopathy (CAV), a post-transplant deterioration of the arterial
 walls, using these data.  Risk factors and the accuracy of the
 screening test were investigated using multi-state Markov and hidden
@@ -960,7 +968,7 @@ transplant example, there are four possible states through which the
 patient can move, corresponding to CAV-free, mild/moderate CAV, severe
 CAV and death.  We assume that the patient can advance or recover from
 consecutive states while alive, and die from any state. Thus the model
-is illustrated by Figure~\ref{fig:disease} with four states, and we
+is illustrated by Figure \ref{fig:disease} with four states, and we
 have
 
 \[
@@ -977,7 +985,7 @@ Q = \left(
 It is important to remember that this defines which
 \emph{instantaneous} transitions can occur in the Markov process, and
 that the data are \emph{snapshots} of the process (see
-section~\ref{sec:arbitr-observ-times}).  Although there were 44
+section \ref{sec:arbitr-observ-times}).  Although there were 44
 occasions on which a patient was observed in state 1 followed by state
 3, the underlying model specifies that the patient must have passed
 through state 2 in between.  If your data represent the exact and
@@ -1039,10 +1047,10 @@ that the mean period in each state before moving to the next is about
 2 years, and there is an equal probability of progression, recovery or
 death.  This gives $q_{rr} = - 0.5$ for $r = 1, 2, 3$, and $q_{12} =
 q_{14} = 0.25$, $q_{21} = q_{23} = q_{24} = 0.166$, $q_{32} = q_{34} =
-0.25$, and the initial value matrix \Robject{twoway4.q} shown above, 
-which we now use to fit the model. 
+0.25$, and the initial value matrix \Robject{twoway4.q} shown above,
+which we now use to fit the model.
 
-%% TODO explain about gen.inits=TRUE here 
+%% TODO explain about gen.inits=TRUE here
 
 \subsection{Running \Rfunction{msm}}
 \label{sec:running}
@@ -1062,17 +1070,16 @@ cav.msm <- msm( state ~ years, subject=PTNUM, data = cav,
 In this example the day of death is assumed to be recorded exactly, as
 is usual in studies of chronic diseases.  At the previous instant
 before death the state of the patient is unknown.  Thus we specify
-\Rfunarg{death = 4}, to indicate to \Rfunction{msm} that state 4 is a
-``death'' state.  In terms of the multi-state model, a ``death'' state
-is assumed to have a known entry time, but the individual is in an
-unknown transient state at the previous instant.  If the model had
-five states and states 4 and 5 were two competing causes of death with
-death times recorded exactly, then we would specify \Rfunarg{death =
+\Rfunarg{death = 4}, to indicate to \Rfunction{msm} that the
+entry times into state 4 are observed in this manner.
+If the model had
+five states, and states 4 and 5 were two competing causes of death with
+times recorded exactly in this way, then we would specify \Rfunarg{death =
   c(4,5)}.
 
 By default, the data are assumed to represent snapshots of the process
 at arbitrary times.  However, observations can also represent exact
-times of transition, ``death'' times, or a mixture of these. See the
+times of transition, ``exact death times'', or a mixture of these. See the
 \Rfunarg{obstype} argument to \Rfunction{msm}.
 
 While the \Rfunction{msm} function runs, it searches for the maximum
@@ -1169,7 +1176,7 @@ patients. To extract separate intensity matrices for male and female
 patients ($z = 0$ and $1$ respectively), use the function
 \Rfunction{qmatrix.msm}, as shown below.  This and similar summary
 functions will be described in more detail in
-section~\ref{sec:extractor}.
+section \ref{sec:extractor}.
 
 <<>>=
 qmatrix.msm(cavsex.msm, covariates=list(sex=0)) # Male
@@ -1247,7 +1254,7 @@ extracting interesting features of the fitted model.
 \item[Intensity matrices] The function \Rfunction{qmatrix.msm}
   extracts the estimated transition intensity matrix and its confidence intervals
   for a given set of covariate values, as shown in
-  section~\ref{sec:msm:covariates}.  Confidence intervals are
+  section \ref{sec:msm:covariates}.  Confidence intervals are
   calculated from the covariance matrix of the estimates by assuming
   the distribution is symmetric on the log scale.  Standard errors for
   the intensities are also available from the object returned by
@@ -1259,7 +1266,7 @@ extracting interesting features of the fitted model.
   confidence intervals are also available for \Rfunction{qmatrix.msm}
   and for most output functions; these are often more accurate, at the
   cost of computational time.  For more about bootstrapping in
-  \Rpackage{msm}, see Section~\ref{sec:boot}.
+  \Rpackage{msm}, see Section \ref{sec:boot}.
 
 \item[Transition probability matrices] The function
   \Rfunction{pmatrix.msm} extracts the estimated transition probability
@@ -1286,8 +1293,8 @@ pmatrix.msm(cav.msm, t=10)
   the assumed multivariate normal distribution of the maximum
   likelihood estimates and covariance matrix, and transforming.  If
   \Rfunarg{ci=''boot''} is specified, then a bootstrap confidence
-  interval for the transition probability matrix is calculated (see Section~\ref{sec:boot}) .
-  However, both of these are computationally intensive, particularly 
+  interval for the transition probability matrix is calculated (see Section \ref{sec:boot}) .
+  However, both of these are computationally intensive, particularly
   the bootstrap method, so no confidence interval is calculated by default.
 
 \item[Mean sojourn times] The function \Rfunction{sojourn.msm}
@@ -1304,9 +1311,9 @@ sojourn.msm(cav.msm)
   \Rfunction{pnext.msm} extracts the matrix of probabilities $-q_{rs}
   / q_{rr}$ that the next state after state $r$ is state $s$, for each
   $r$ and $s$.  Together with the mean sojourn times, this gives a more
-  intuitive parameterisation of a continuous-time Markov model than 
-  the raw transition intensities $q_{rs}$.  Note these are different from 
-  the transition probabilities in a given time $t$ returned by 
+  intuitive parameterisation of a continuous-time Markov model than
+  the raw transition intensities $q_{rs}$.  Note these are different from
+  the transition probabilities in a given time $t$ returned by
   \Rfunction{pmatrix.msm}.
 
 <<>>=
@@ -1338,6 +1345,10 @@ Bootstrap and asymptotic confidence intervals are available, as for
 <<>>=
 totlos.msm(cav.msm)
 @
+
+\item[Expected first passage times] The function \Rfunction{efpt.msm} estimates
+  the expected time until the process first enters a given state or set of states,
+  also called the ``hitting time''.  See its help page for further details.
 
 \item[Ratio of transition intensities] The function
   \Rfunction{qratio.msm} estimates a ratio of two entries of the
@@ -1451,7 +1462,7 @@ function \Rfunction{boot.msm} to enable bootstrap refitting of
 For non-hidden Markov models, a bootstrap dataset is drawn by
 resampling pairs of consecutive states from the full data, i.e.
 \emph{transitions}.  These are assumed to be independent when
-calculating the likelihood (Section~\ref{sec:multi:likelihood}).  For
+calculating the likelihood (Section \ref{sec:multi:likelihood}).  For
 hidden Markov models and models with censoring, a bootstrap dataset is
 drawn by resampling complete series from independent subjects.  The
 bootstrap datasets have the same number of transitions, or subjects,
@@ -1491,7 +1502,7 @@ confidence interval.
 
 Note that when bootstrapping, the refits of the model to the resampled
 datasets may occasionally fail to converge (as discussed in
-Section~\ref{sec:failure}) even if the original model fit did
+Section \ref{sec:failure}) even if the original model fit did
 converge.  In these cases, a warning is given, but
 \Rfunction{boot.msm} simply discards the failed dataset and moves on
 to the next bootstrap iteration. Unless convergence failure occurs for
@@ -1554,6 +1565,11 @@ maximum likelihood, or it may be close to the maximum.
   consider using a quasi-Newton algorithm such as
   the ``BFGS'' method of \Rfunction{optim}, which can make use of
   analytic derivatives, for example, \Rfunarg{method = ``BFGS'', use.deriv = TRUE}.
+  Or use the \Rfunction{nlm} R function via \Rfunarg{msm(..., opt.method = "nlm" , ...)}
+  Note also the Fisher scoring method available for non-hidden Markov
+  models for panel data, via  \Rfunarg{msm(..., opt.method = "fisher", ...)},
+  is expected to be faster than the generic methods, but less robust to
+  bad initial values.
 
 \item[Model simplification]
 
@@ -1569,7 +1585,7 @@ maximum likelihood, or it may be close to the maximum.
   there are not many observed `transitions' from state 2 to state 4,
   for example, then the data may be insufficient to estimate $q_{24}$.
 
-  For a staged disease model (Figure~\ref{fig:disease}), the number of
+  For a staged disease model (Figure \ref{fig:disease}), the number of
   disease states should be low enough that all transition rates can be
   estimated.  Consecutive states of disease severity should be merged
   if necessary.  If it is realistic, consider applying constraints on
@@ -1578,7 +1594,7 @@ maximum likelihood, or it may be close to the maximum.
 
   Be careful to use a observation scheme and transition matrix
   appropriate to your data (see
-  Section~\ref{sec:arbitr-observ-times}). By default, \Rfunction{msm}
+  Section \ref{sec:arbitr-observ-times}). By default, \Rfunction{msm}
   assumes that the data represent snapshots of the process, and the
   true state is unknown between observation times.  In such
   circumstances, it is rarely feasible to estimate an intensity matrix
@@ -1618,7 +1634,9 @@ A set of expected counts can be produced if the process begins at a
 common time for all individuals.  Suppose at this time, each
 individual is in state 0.  Then given $n(t)$ individuals are under
 observation at time $t$, the expected number of individuals in state
-$r$ at time $t$ is $n(t) P(t)_{0,r}$.
+$r$ at time $t$ is $n(t) P(t)_{0,r}$.   If the covariates on which 
+$P(t)$ depends vary between individuals, then this can be 
+averaged over the covariates observed in the data. 
 
 For example, we calculate the observed and expected numbers and
 percentages at two-yearly intervals up to 20 years after transplant,
@@ -1651,19 +1669,31 @@ argument to \Rfunction{msm} can be used to automatically construct
 models with transition intensities which are piecewise-constant in
 time.
 
-In this example, it is likely that the hazard of death increases with
-age, so the model underestimates the number of deaths when forecasting
-far into the future.  Another cause of poor model fit may sometimes be
-the failure of the Markov assumption.  That is, the transition
-intensities may depend on the time spent in the current state (a
-semi-Markov process) or other characteristics of the process history.
-Accounting for the process history is difficult as the process is only
-observed through a series of snapshots.  For a multi-state model with
-one-way progression through states, and frequent observations, we may
-be able to estimate the time spent in each state by each individual.
+In this example, the hazard of death may increase with age, so that
+the model underestimates the number of deaths when forecasting far
+into the future.  Another cause of poor model fit may sometimes be the
+failure of the Markov assumption.  That is, the transition intensities
+may depend on the time spent in the current state (a semi-Markov
+process) or other characteristics of the process history.  Accounting
+for the process history is difficult as the process is only observed
+through a series of snapshots.  For a multi-state model with one-way
+progression through states, and frequent observations, we may be able
+to estimate the time spent in each state by each individual.
+
+However, if it is known that individuals who died would not have been
+followed up after a certain time, had they survived to that time, then
+they should not be included in the observed prevalence of the death
+state after that time.  This can be accounted for by passing a vector
+of maximum potential follow-up times, one for each individual in the
+same order as the original data, in the \Rfunarg{censtime} argument to
+\Rfunction{prevalence.msm}.  Ignoring the potential follow-up times is
+likely to have resulted in overestimates of the number of deaths
+at later times in the CAV example, though these times are not
+available in the data supplied with \Rpackage{msm}.
+
 
 \paragraph{Pearson-type goodness-of-fit test}
-\label{sec:pearson} 
+\label{sec:pearson}
 
 Suppose that the true transition times are unknown, and data consist
 of observations of the process at arbitrary times which differ between
@@ -1673,7 +1703,7 @@ points by some form of interpolation. This is only advisable if
 observation times are close together.  An alternative method of
 assessing goodness-of-fit is to construct tables of observed and
 expected numbers of transitions, as described by Aguirre-Hernandez and
-Farewell~\cite{ahf}.  This leads to a formal test of goodness-of-fit,
+Farewell \cite{ahf}.  This leads to a formal test of goodness-of-fit,
 analogous to the classical Pearson $\chi^2$ test for contingency
 tables. The tables are constructed as follows.  Each pair of
 successive observations in the data (\emph{transition}) is classified
@@ -1712,15 +1742,17 @@ the number of estimated parameters $p$. But the null distribution of
 $T$ is not exactly $\chi^2$, since the time intervals are
 non-identical, therefore the observed transitions are realizations
 from a set of independent but non-identical multinomial distributions.
-Aguirre-Hernandez and Farewell~\cite{ahf} showed that $\chi^2_{n-p}$
+Titman \cite{titman:asympnull} showed that the null distribution
+of $T$ is asymptotically approximated by a weighted sum of $\chi^2_1$
+random variables.   Aguirre-Hernandez and Farewell \cite{ahf} also showed that $\chi^2_{n-p}$
 is a good approximation if there are no fitted covariates. For models
 with covariates, the null mean of $T$ is higher than $n - p$, but
 lower than $n$.  Therefore, upper and lower bounds for the true
 $p$-value of the statistic can be obtained from the $\chi^2_{n-p}$ and
-$\chi^2_n$ distributions.  Aguirre-Hernandez and Farewell~\cite{ahf}
-described a bootstrap procedure for obtaining an accurate $p$-value.
+$\chi^2_n$ distributions.  Aguirre-Hernandez and Farewell \cite{ahf}
+also described a bootstrap procedure for obtaining an accurate $p$-value.
 
-Titman and Sharples~\cite{titman:sharples} described modifications to
+Titman and Sharples \cite{titman:sharples} described modifications to
 the test to correct for the biases introduced where in addition to the
 panel-data observation scheme:
 \begin{itemize}
@@ -1733,7 +1765,7 @@ panel-data observation scheme:
 \item An individual's final observation is censored, so that they are
   only known to be alive at that point.
 
-\item States are misclassified. 
+\item States are misclassified.
 \end{itemize}
 
 The \Rpackage{msm} package provides the function
@@ -1741,11 +1773,11 @@ The \Rpackage{msm} package provides the function
 three groups are used for each of $h$, $l_h$ and $c$.  Often the
 number of groups will need to be reduced in cases where the resulting
 contingency tables are sparse (thus there are several low expected
-counts and the variance of $T$ is inflated). 
+counts and the variance of $T$ is inflated).
 
 The test is now performed on the model \Robject{cav.msm} for the heart
 transplant dataset (a version of which was also analysed by
-Titman and Sharples~\cite{titman:sharples}). The default three interval groups are used,
+Titman and Sharples \cite{titman:sharples}). The default three interval groups are used,
 and two groups of the time since the start of the process. The
 \Rfunarg{transitions} argument groups the transitions from state 3 to
 each of states 1, 2 and 3 (the 9th, 10th and 11th transitions)
@@ -1786,15 +1818,20 @@ $\chi^2_{42}$ distribution, therefore the model does not fit well.  It
 is not clear from the table of deviances which aspects of the fit are
 most influental to the test statistic.  However, the two-way Markov
 model itself is not biologically plausible, as discussed in
-Section~\ref{sec:fitting:hmm:misc}.
+Section \ref{sec:fitting:hmm:misc}.
 
+For non-hidden Markov models for panel data, \Rfunction{pearson.msm}
+also presents the accurate analytic p-value of
+Titman \cite{titman:asympnull}.  For all models,
+\Rfunction{pearson.msm} provides an option for parametric
+bootstrapping to obtain an accurate p-value.
 
 
 \subsection{Fitting misclassification models with \Rpackage{msm}}
 \label{sec:fitting:hmm:misc}
 
 In fact, in the heart transplant example from
-section~\ref{sec:datain}, it is not medically realistic for patients
+section \ref{sec:datain}, it is not medically realistic for patients
 to recover from a diseased state to a healthy state.  Progression of
 coronary artery vasculopathy is thought to be an irreversible process.
 The angiography scan for CAV is actually subject to error, which leads
@@ -1859,7 +1896,7 @@ than the default Nelder-Mead simplex-based algorithm.  An optional
 argument \Rfunarg{initprobs} could also have been given here,
 representing the vector of the probabilities of occupying each true
 state at the initial observation
-(equation~\ref{eq:multi:hidden:matprod}).  If not given, all
+(equation \ref{eq:multi:hidden:matprod}).  If not given, all
 individuals are assumed to be in true state 1 at their initial
 observation.  If \Rfunarg{est.initprobs=TRUE} is specified, then these
 probabilites are estimated as part of the model fit, using
@@ -1927,7 +1964,7 @@ false negatives.
 
 \subsection{Extractor functions}
 
-As well as the functions described in section~\ref{sec:extractor} for
+As well as the functions described in section \ref{sec:extractor} for
 extracting useful information from fitted models, there are a number
 of extractor functions specific to models with misclassification.
 
@@ -1959,7 +1996,7 @@ odds.msm(cavmiscsex.msm)
   goodness of fit of the hidden Markov model for the \emph{observed}
   states to the data.  Tables of observed prevalences of observed
   states are calculated as described in
-  section~\ref{sec:model-assessment}, by assuming that observed states
+  section \ref{sec:model-assessment}, by assuming that observed states
   are retained between observation times.
 
   The expected numbers of individuals in each observed state are
@@ -1980,7 +2017,7 @@ odds.msm(cavmiscsex.msm)
   from any cause as people become older.
 
 \item[Goodness-of-fit test] The Pearson-type goodness-of-fit test is
-  performed, as in Section~\ref{sec:pearson}.  The table of deviances
+  performed, as in Section \ref{sec:pearson}.  The table of deviances
   indicates that there are more 1-3 and 1-4 transitions than expected
   in short intervals, and fewer in long intervals.  This may indicate
   some time-dependence in the transition rates. Indeed, Titman
@@ -1988,7 +2025,7 @@ odds.msm(cavmiscsex.msm)
   transition intensities gave a greatly improved fit to these data.
 <<>>=
 pearson.msm(cavmisc.msm, timegroups=2, transitions=c(1,2,3,4,5,6,7,8,9,9,9,10))
-@ 
+@
 
 
 \end{description}
@@ -2000,9 +2037,9 @@ In speech recognition and signal processing, {\em decoding} is the
 procedure of determining the underlying states that are most likely to
 have given rise to the observations. The most common method of
 reconstructing the most likely state path is the {\em Viterbi}
-algorithm. Originally proposed by Viterbi~\cite{viterbi}, it is also
-described by Durbin \etal~\cite{biolog:seq} and Macdonald and
-Zucchini~\cite{macdonald:zucchini} for discrete-time hidden Markov
+algorithm. Originally proposed by Viterbi \cite{viterbi}, it is also
+described by Durbin \etal \cite{biolog:seq} and Macdonald and
+Zucchini \cite{macdonald:zucchini} for discrete-time hidden Markov
 chains.  For continuous-time models it proceeds as follows. Suppose
 that a hidden Markov model has been fitted and a Markov transition
 matrix $P(t)$ and misclassification matrix $E$ are known.  Let
@@ -2062,7 +2099,7 @@ outcomes is specified using the argument \Rfunarg{hmodel} to
 state, in order.  Each element of the list should be an object
 returned by a hidden Markov model \emph{constructor function}.  The
 HMM constructor functions provided with \Rpackage{msm} are listed in
-Table~\ref{tab:hmm:dists}.  There is a separate constructor function
+Table \ref{tab:hmm:dists}.  There is a separate constructor function
 for each class of outcome distribution, such as uniform, normal or
 gamma.
 
@@ -2155,7 +2192,7 @@ the covariate vector $x_{ij}$ at the same observation time.
   g(\theta_1) & = & \alpha + \beta^T x_{ij}
 \end{eqnarray*}
 Specifically, parameters named as the ``Location'' parameter in
-Table~\ref{tab:hmm:dists} can be modelled in terms of covariates, with
+Table \ref{tab:hmm:dists} can be modelled in terms of covariates, with
 the given link function.
 
 The \Rfunarg{hcovariates} argument to \Rfunction{msm} specifies the
@@ -2273,7 +2310,7 @@ equations \ref{eq:fev:level1}--\ref{eq:fev:level2}. The
 \Rfunction{hmmMETNorm} constructor defines the truncated normal
 outcome with an additional normal measurement error.  The explicit
 probability density for this distribution is given in
-Table~\ref{tab:hmm:dists}.
+Table \ref{tab:hmm:dists}.
 
 Our initial values are again 100 and 54 for the means of the
 within-state distribution of \emph{underlying} FEV$_1$, and 16 and 18
@@ -2346,7 +2383,7 @@ respectively, where $n$ is the length of \Rfunarg{prob}.  All outcome
 probabilities with an initial value of zero are assumed to be fixed at
 zero.  \Rfunarg{prob} is scaled if necessary to sum to one.
 
-The model in section~\ref{sec:fitting:hmm:misc} specifies that an
+The model in section \ref{sec:fitting:hmm:misc} specifies that an
 individual occupying underlying state 1 can be observed as states 2
 (and 1), underlying state 2 can be observed as states 1, 2 or 3, and
 state 3 can be observed as states 2 or 3, and underlying state 4
@@ -2372,7 +2409,7 @@ cavmisc.msm
 \subsubsection{Defining a new hidden Markov model distribution}
 
 Suppose the hidden Markov model outcome distributions supplied with
-\Rpackage{msm} (Table~\ref{tab:hmm:dists}) are insufficient.  We want
+\Rpackage{msm} (Table \ref{tab:hmm:dists}) are insufficient.  We want
 to define our own univariate distribution, called
 \Rfunction{hmmNewDist}, taking two parameters \Robject{location} and
 \Robject{scale}.  Download the source package, for example
@@ -2513,7 +2550,7 @@ For a detailed list of the changes in recent versions of
 \Rpackage{msm}, see the \texttt{NEWS} file in the top-level directory
 of the installed package.  The \texttt{Changelog} file in the
 top-level directory of the source package contains more technical
-detail about these changes. 
+detail about these changes.
 
 \section{Get in touch}
 
