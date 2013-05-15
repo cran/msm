@@ -137,8 +137,8 @@ msm.emodel2hmodel <- function(emodel, qmodel)
       if (emodel$misc) {
           hidden <- TRUE
           nepars <- rowSums(emodel$imatrix)
-          npars <- ifelse(nepars > 0, 2 + nst, 1)
-          models <- ifelse(nepars > 0, 1, 2)
+          models <- ifelse(apply(emodel$ematrix,1,function(x)any(x==1)), 2, 1)
+          npars <- ifelse(models==1, 2 + nst, 1)
           pars <- plabs <- vector(nst, mode="list")
           parstate <- rep(1:nst, npars)
           names(pars) <- names(plabs) <- paste("state", 1:nst, sep=".")
@@ -154,7 +154,7 @@ msm.emodel2hmodel <- function(emodel, qmodel)
               }
               else {
                   plabs[[i]] <- "which"
-                  pars[[i]] <- i
+                  pars[[i]] <- which(emodel$ematrix[i,]==1)
               }
           }
           firstpar <- c(0, cumsum(npars)[-qmodel$nstates])
@@ -165,7 +165,6 @@ msm.emodel2hmodel <- function(emodel, qmodel)
           links <- match(links, .msm.LINKFNS)
           labels <- .msm.HMODELS[models]
           locpars <- which(plabs == rep(.msm.LOCPARS[labels], npars))
-
           hmod <- list(hidden=TRUE, fitted=FALSE, nstates=nst, models=models, labels=labels,
                        npars=npars, totpars=sum(npars), links=links, locpars=locpars,
                        pars=pars, plabs=plabs, parstate=parstate, firstpar=firstpar, nipars=emodel$nipars, initprobs=emodel$initprobs)

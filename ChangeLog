@@ -1,7 +1,101 @@
+2013-05-14 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* DESCRIPTION: Version 1.2 released
+
+2013-05-08 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R,R/outputs.R: Misclassification models where some
+	off-diagonal misclassification probabilities are 1 are now handled
+	properly.  Thanks to Howard Thom for uncovering this.
+
+2013-04-19 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: prevalence.msm can now produce expected values by
+	integrating model predictions over the covariate histories
+	observed in the data.
+
+	* R/msm.R(msm.form.data): Drop subjects with only one observation
+	remaining after dropping missing data (e.g. psor data).  This gives
+	a more appropriate measure of the numbers at risk in prevalence.msm.
+
+2013-04-18 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R(summary.msm): Allow arguments to be passed through
+	summary.msm to prevalence.msm.
+
+	* R/outputs.R(pmatrix.piecewise.msm): Allow this to be used for
+	time-homogeneous models with change point vector "times" of length
+	0.
+
+2013-04-15 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: New function efpt.msm for expected first passage
+	times for time-homogeneous models.  Thanks to Howard Thom for the
+	research.
+
+	* R/outputs.R: totlos.msm now passes options to integrate() to
+	bootstrapping functions.
+
+2013-04-10 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.form.data: firstobs was wrong with missing data.
+
+2013-04-08 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/simul.R, R/pearson.R: Function boot.param.msm renamed to
+	simfitted.msm and made user-accessible.
+
+2013-04-05 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/pearson.R: Accurate p-values from Titman (Lifetime Data
+	Analysis, 2009).
+
+	* R/pearson.R: Degrees of freedom were being calculated
+	incorrectly (via "n.zerofrom" variable) when user-defined groups
+	included from-states.
+
+	* R/simul.R: Include an option to simmulti.msm (and getobs.msm) to
+	not drop absorbing-absorbing transitions.
+
+2013-03-22 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/pearson.R: Fix of bug in Pearson test introduced in version
+	0.9.5, which affected the expected transitions to the final state
+	(and resulting test statistics) for panel data without exact death
+	times.
+
+	* src/lik.c, src/pijt.c: Implement the Fisher information for
+	non-hidden models without censored states.
+
+	* R/msm.R: Implement a Fisher scoring algorithm which uses this
+	expected information.
+
+2013-02-02 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R(observed.msm): Add a censoring time facility to
+	optionally remove subjects from the risk set a certain time after
+	they have reached an absorbing state.  Thanks to Andrew Titman.
+
+2013-02-02 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* src/lik.c: Bug fix for Viterbi with obstrue. Thanks to Linda
+	Sharples.
+
+	* R/outputs.R(print.msm): Don't print message about baseline
+	covariate values in misclassification model outputs if there are
+	no covariates.
+
+2013-01-14 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R(observed.msm): Bug fix for interp="midpoint" method
+	in observed prevalence calculation.  Thanks to Erica Liu.
+
 2012-12-10 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* tests/simple.R: Modified pmatrix.msm normal bootstrap test
 	output to work with new seeding behaviour of rmvnorm.
+
+	* DESCRIPTION: Version 1.1.4 released
 
 2012-09-28 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 

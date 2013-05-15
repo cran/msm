@@ -83,13 +83,13 @@ collapse.covs <- function(covs)
 }
 
 ### Given a simulated Markov model, get the current state at various observation times
-### Only keep one observation in the absorbing state
+### By default, only keep one observation in the absorbing state
 
-getobs.msm <- function(sim, obstimes, death=FALSE, tunit=1.0)
+getobs.msm <- function(sim, obstimes, death=FALSE, drop.absorb=TRUE)
 {
     absorb <- absorbing.msm(qmatrix=sim$qmatrix)
                                         # Only keep one observation in the absorbing state
-    if (any(sim$states %in% absorb)) {
+    if (drop.absorb && any(sim$states %in% absorb)) {
         if (any(sim$states %in% death))
             keep <- which(obstimes < max(sim$times))
         else {
@@ -124,10 +124,11 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
                                         # but with unknown transient state at previous instant
                          start,         # starting states of the process, defaults to all 1.
                          ematrix = NULL,# misclassification matrix
-                         misccovariates = NULL, # covariates on misclassification probabilities 
+                         misccovariates = NULL, # covariates on misclassification probabilities
                          hmodel = NULL,  # hidden Markov model formula
                          hcovariates = NULL,   # covariate effects on hidden Markov model response distribution
-                         censor.states = NULL
+                         censor.states = NULL,
+                         drop.absorb = TRUE
                          )
 {
 
@@ -199,7 +200,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
     if (missing(start)) start <- rep(1, n)
     else if (length(start) != n)
         stop("Supplied ", length(start), " starting states, expected ", n)
-    
+
     nq <- length(qmatrix[qmatrix > 0])
     misspeccovs <- covnames[sapply(covariates, length) != nq]
     if (length(misspeccovs) > 0)
@@ -226,7 +227,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
     for (pt in 1:n)
     {
         sim.mod <- sim.msm(qmatrix, max(times[[pt]]), covs[[pt]], beta, times[[pt]], start[pt], min(times[[pt]]))
-        obsd <- getobs.msm(sim.mod, times[[pt]], death)
+        obsd <- getobs.msm(sim.mod, times[[pt]], death, drop.absorb)
         pt.data <- cbind(subj[[pt]][obsd$keep], obsd$time, obsd$state, cens[[pt]][obsd$keep])
         if (!is.null(covnames)) pt.data <- cbind(pt.data, covs[[pt]][obsd$keep,,drop=FALSE])
         if (!is.null(misccovnames)) pt.data <- cbind(pt.data, misccovs[[pt]][obsd$keep,,drop=FALSE])
@@ -254,7 +255,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
     else
       keep.data$state <- ifelse(keep.data$cens > 0 & keep.data$state %in% censor.states, keep.data$cens, keep.data$state)
     keep.data$cens <- NULL
-    
+
     attr(keep.data, "keep") <- obsd$keep
     keep.data
 }
@@ -278,7 +279,7 @@ simmisc.msm <- function(state, ematrix, beta, misccovs)
         for (i in 1:nstates)
           if (any(state==i)) {
                 n <- length(state[state==i])
-                if (!is.null(beta)) { # covariates on misclassification probabilities 
+                if (!is.null(beta)) { # covariates on misclassification probabilities
                     X <- as.matrix(misccovs[state==i,])
                     b <- beta[,beta.states == i,drop=FALSE]
                     p <- matrix(rep(ematrix[i,], n), nrow=n, byrow=TRUE)
@@ -325,4 +326,42 @@ simhidden.msm <- function(state, hmodel, nstates, beta=NULL, x=NULL)
             }
         }
     y
+}
+
+
+### Simulate data from fitted model with same observation scheme
+### Used for parametric bootstrap in pearson.msm
+
+simfitted.msm <- function(x, drop.absorb=TRUE, drop.pci.imp=TRUE){
+    dat <- x$data
+    dat$cens <- ifelse(x$data$state %in% 1:x$qmodel$nstates, 0, x$data$state) # 0 if not censored, cens indicator if censored, so that censoring is retained in simulated data
+    sim.df <- as.data.frame(dat[c("subject","time","cens")])
+    sim.df$obstrue <- dat$obstrue # NULL if not HMM
+    sim.df$obstype <- if (!is.null(dat$obstype.obs)) dat$obstype.obs else dat$obstype
+    sim.df$pci.imp <- dat$pci.imp
+    if (x$qcmodel$ncovs > 0) {
+        sim.df <- cbind(sim.df, dat$cov[,x$qcmodel$covlabels,drop=FALSE])
+        sim.df <- cbind(sim.df, dat$cov.orig[,x$qcmodel$covlabels.orig,drop=FALSE])
+        cov.effs <- lapply(x$Qmatrices, function(y)t(y)[t(x$qmodel$imatrix)==1])[x$qcmodel$covlabels]
+    }
+    else cov.effs <- NULL
+    if (x$ecmodel$ncovs > 0) {
+        sim.df <- cbind(sim.df, dat$cov[,setdiff(x$ecmodel$covlabels,x$qcmodel$covlabels),drop=FALSE])
+        sim.df <- cbind(sim.df, dat$cov.orig[,setdiff(x$ecmodel$covlabels.orig,x$qcmodel$covlabels.orig),drop=FALSE])
+        misccov.effs <- lapply(x$Ematrices, function(y)t(y)[t(x$emodel$imatrix)==1])[x$ecmodel$covlabels]
+    }
+    else misccov.effs <- NULL
+    boot.df <- simmulti.msm(data=sim.df,
+                            qmatrix=qmatrix.msm(x, covariates=0, ci="none"),
+                            covariates=cov.effs,
+                            death=FALSE,
+                            ematrix=ematrix.msm(x, covariates=0, ci="none"),
+                            misccovariates=misccov.effs,
+                            drop.absorb=drop.absorb
+                            )
+    if (drop.pci.imp) {
+        boot.df <- boot.df[!boot.df$pci.imp,]
+        boot.df$pci.imp <- NULL
+    }
+    boot.df
 }

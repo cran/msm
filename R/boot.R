@@ -138,8 +138,14 @@ pmatrix.piecewise.ci.msm <- function(x, t1, t2, times, covariates="mean", cl=0.9
     aperm(p.ci, c(2,3,1))
 }
 
-totlos.ci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean", cl=0.95, B=1000) {
-    t.list <- boot.msm(x, function(x)totlos.msm(x, start, end, fromt, tot, covariates), B)
+totlos.ci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean", cl=0.95, B=1000,...) {
+    t.list <- boot.msm(x, function(x)totlos.msm(x, start, end, fromt, tot, covariates, ci="none",...), B)
+    t.array <- do.call("rbind", t.list)
+    apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
+}
+
+efpt.ci.msm <- function(x, qmatrix=NULL, tostate, covariates="mean", cl=0.95, B=1000) {
+    t.list <- boot.msm(x, function(x)efpt.msm(x, qmatrix, tostate, covariates, ci="none"), B)
     t.array <- do.call("rbind", t.list)
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
 }
@@ -241,6 +247,12 @@ pmatrix.piecewise.normci.msm <- function(x, t1, t2, times, covariates="mean", cl
 
 totlos.normci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean", cl=0.95, B=1000, ...) {
     t.list <- normboot.msm(x, function(x)totlos.msm(x, start, end, fromt, tot, covariates, ci="none", ...), B)
+    t.array <- do.call("rbind", t.list)
+    apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
+}
+
+efpt.normci.msm <- function(x, qmatrix=NULL, tostate, covariates="mean", cl=0.95, B=1000, ...) {
+    t.list <- normboot.msm(x, function(x)efpt.msm(x, qmatrix, tostate, covariates, ci="none", ...), B)
     t.array <- do.call("rbind", t.list)
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
 }

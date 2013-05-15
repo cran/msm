@@ -41,7 +41,8 @@ deltamethod(g, mean, cov, ses=TRUE)
   
   \deqn{ Cov(g(X)) = g'(\mu) Cov(X) [g'(\mu)]^T }{ Cov(g(X)) = g'(mu) Cov(X) [g'(mu)]^T }
 
-  where \eqn{\mu}{mu} is an estimate of the mean of \eqn{X}.
+  where \eqn{\mu}{mu} is an estimate of the mean of \eqn{X}.  This
+  function uses symbolic differentiation via \code{\link{deriv}}.
 
   A limitation of this function is that variables created by the user
   are not visible within the formula \code{g}.  To work around this, it

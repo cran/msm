@@ -44,44 +44,6 @@ hmmBeta(shape1,shape2)
 hmmT(mean,scale,df)
 }
 \arguments{
-
-  \code{hmmCat} represents a categorical response distribution on the
-  set \code{1, 2, \dots, length(prob)}.  The
-  Markov model with misclassification is an example of this type of model. The
-  categories in this case are (some subset of) the underlying states. 
-  
-  The \code{hmmIdent} distribution is used for underlying states which are
-  observed exactly without error.
-
-  \code{hmmUnif}, \code{hmmNorm}, \code{hmmLNorm}, \code{hmmExp},
-  \code{hmmGamma}, \code{hmmWeibull}, \code{hmmPois}, \code{hmmBinom}, 
-   \code{hmmTNorm}, \code{hmmNBinom} and \code{hmmBeta} represent Uniform, Normal,
-   log-Normal, exponential, Gamma, Weibull, Poisson, Binomial, truncated Normal,
-  negative binomial and beta distributions, respectively, with parameterisations
-  the same as the default parameterisations in the corresponding base R
-  distribution functions. 
-
-  \code{hmmT} is the Student t distribution with general mean
-  \eqn{mu}{\mu}, scale \eqn{sigma}{\sigma} and degrees of freedom
-  \code{df}.  
-  The variance is \eqn{sigma^2 df/(df + 2)}{\sigma^2 df/(df + 2)}.
-  Note the t distribution in base R \code{\link{dt}} is a standardised one with
-  mean 0 and scale 1.  These allow any positive (integer or non-integer)
-  \code{df}.    By default, all three
-  parameters, including \code{df}, are estimated when fitting a hidden
-  Markov model, but in practice, \code{df} might need to be fixed for identifiability - this can be done
-  using the \code{fixedpars} argument to \code{\link{msm}}. 
-  
-  The \code{hmmMETNorm} and \code{hmmMEUnif} distributions are
-  truncated Normal and Uniform distributions, but with additional Normal measurement error on the
-  response. These are generalisations of the distributions proposed by
-Satten and Longini (1996) for modelling the progression of CD4 cell
-counts in monitoring HIV disease.  See \code{\link{medists}} for
-density, distribution, quantile and random generation functions for
-these distributions.   See also \code{\link{tnorm}} for
-density, distribution, quantile and random generation functions for
-the truncated Normal distribution.  
-
   \item{prob}{ (\code{hmmCat}) Vector of probabilities of observing
     category \code{1, 2, \dots, length(prob)} respectively.  Or
     the probability governing a binomial or negative binomial
@@ -149,7 +111,44 @@ the truncated Normal distribution.
    the given distribution. 
 }
 \details{
-  See the PDF manual  \file{msm-manual.pdf} in the \file{doc}
+  \code{hmmCat} represents a categorical response distribution on the
+  set \code{1, 2, \dots, length(prob)}.  The
+  Markov model with misclassification is an example of this type of model. The
+  categories in this case are (some subset of) the underlying states. 
+  
+  The \code{hmmIdent} distribution is used for underlying states which are
+  observed exactly without error.
+
+  \code{hmmUnif}, \code{hmmNorm}, \code{hmmLNorm}, \code{hmmExp},
+  \code{hmmGamma}, \code{hmmWeibull}, \code{hmmPois}, \code{hmmBinom}, 
+   \code{hmmTNorm}, \code{hmmNBinom} and \code{hmmBeta} represent Uniform, Normal,
+   log-Normal, exponential, Gamma, Weibull, Poisson, Binomial, truncated Normal,
+  negative binomial and beta distributions, respectively, with parameterisations
+  the same as the default parameterisations in the corresponding base R
+  distribution functions. 
+
+  \code{hmmT} is the Student t distribution with general mean
+  \eqn{\mu}{mu}, scale \eqn{\sigma}{sigma} and degrees of freedom
+  \code{df}.  
+  The variance is \eqn{\sigma^2 df/(df + 2)}{sigma^2 df/(df + 2)}.
+  Note the t distribution in base R \code{\link{dt}} is a standardised one with
+  mean 0 and scale 1.  These allow any positive (integer or non-integer)
+  \code{df}.    By default, all three
+  parameters, including \code{df}, are estimated when fitting a hidden
+  Markov model, but in practice, \code{df} might need to be fixed for identifiability - this can be done
+  using the \code{fixedpars} argument to \code{\link{msm}}. 
+  
+  The \code{hmmMETNorm} and \code{hmmMEUnif} distributions are
+  truncated Normal and Uniform distributions, but with additional Normal measurement error on the
+  response. These are generalisations of the distributions proposed by
+Satten and Longini (1996) for modelling the progression of CD4 cell
+counts in monitoring HIV disease.  See \code{\link{medists}} for
+density, distribution, quantile and random generation functions for
+these distributions.   See also \code{\link{tnorm}} for
+density, distribution, quantile and random generation functions for
+the truncated Normal distribution.
+
+See the PDF manual  \file{msm-manual.pdf} in the \file{doc}
   subdirectory for algebraic definitions of all these distributions.
   New hidden Markov model response distributions can be added to
   \pkg{msm} by following the instructions in Section 2.17.1.

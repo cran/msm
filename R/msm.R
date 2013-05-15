@@ -34,7 +34,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                 cl = 0.95, # width of confidence intervals
                 fixedpars = NULL, # specify which parameters to fix. TRUE for all parameters
                 center = TRUE, # center covariates at their means during optimisation
-                opt.method = c("optim","nlm"),
+                opt.method = c("optim","nlm","fisher"),
                 hessian = TRUE,
                 use.deriv = TRUE,
                 analyticp = TRUE,
@@ -56,7 +56,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
     }
     else emodel <- list(misc=FALSE, npars=0, ndpars=0)
     if (emodel$npars==0) emodel <- list(misc=FALSE, npars=0, ndpars=0) # user supplied degenerate ematrix with no misclassification
-    
+
 ### GENERAL HIDDEN MARKOV MODEL
     if (!missing(hmodel)) {
         msm.check.hmodel(hmodel, qmodel$nstates)
@@ -81,6 +81,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
 ### CENSORING MODEL
     cmodel <- msm.form.cmodel(censor, censor.states, qmodel$qmatrix)
 
+### READ DATA FROM SUPPLIED FORMULAE, DROP MISSING
     msmdata.obs <- msm.form.data(formula, subject, obstype, obstrue, covariates, data,
                                  hcovariates, misccovariates, initcovariates,
                                  qmodel, emodel, hmodel, cmodel, dmodel, exacttimes, center)
@@ -175,6 +176,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
     if (p$fixed) {
         p$lik <- lik.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p)
         p$deriv <- if (!hmodel$hidden && cmodel$ncens==0) deriv.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p) else NULL
+        p$information <- if (!hmodel$hidden && cmodel$ncens==0) information.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p) else NULL
         p$params.uniq <- p$allinits[!duplicated(abs(p$constr))]
         p$params <- p$allinits[!duplicated(abs(p$constr))][abs(p$constr)]*sign(p$constr)
         p$foundse <- FALSE
@@ -186,16 +188,15 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
         p$params <- p$allinits
         gr <- if (!hmodel$hidden && cmodel$ncens==0 && use.deriv) deriv.msm else NULL
         opt.method <- match.arg(opt.method)
+        optim.args <- list(...)
         if (opt.method == "optim") {
-            optim.args <- list(...)
-            if (is.null(optim.args$method))                
+            if (is.null(optim.args$method))
                 optim.args$method <- if (length(p$inits)==1) "BFGS" else "Nelder-Mead"
             optim.args <- c(optim.args, list(par=p$inits, fn=lik.msm, hessian=hessian, gr=gr,
-                          msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel, 
+                          msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
                           cmodel=cmodel, hmodel=hmodel, paramdata=p))
             opt <- do.call("optim", optim.args)
             p$lik <- opt$value
-            p$deriv <- if (!hmodel$hidden && cmodel$ncens==0) deriv.msm(opt$par, msmdata, qmodel, qcmodel, cmodel, hmodel, p) else NULL
             p$params[p$optpars] <- opt$par
         }
         else if (opt.method == "nlm") {
@@ -209,9 +210,47 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
             }
             opt <- nlm(nlmfn, p$inits, hessian=hessian, ...)
             p$lik <- opt$minimum
-            p$deriv <- if (!hmodel$hidden && cmodel$ncens==0) deriv.msm(opt$estimate, msmdata, qmodel, qcmodel, cmodel, hmodel, p) else NULL
             p$params[p$optpars] <- opt$estimate
         }
+        else if (opt.method == "fisher") {
+            if (hmodel$hidden)
+                stop("Fisher scoring not supported for hidden Markov models or censored states")
+            if (cmodel$ncens > 0)
+                stop("Fisher scoring not supported with censored states")
+            if (any(msmdata$obstype==2))
+                stop("Fisher scoring not supported with exact transition times")
+            if (any(msmdata$obstype==3))
+                stop("Fisher scoring not supported with exact death times")
+            if (is.null(optim.args$control$reltol)) reltol <- sqrt(.Machine$double.eps)
+            damp <- if (is.null(optim.args$control$damp)) 0 else optim.args$control$damp
+            theta <- p$inits
+            lik.old <- -lik.msm(theta, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
+                               cmodel=cmodel, hmodel=hmodel, paramdata=p)
+            converged <- FALSE
+            while(!converged) {
+                if (!is.null(optim.args$control$trace) && optim.args$control$trace > 0)
+                    cat("-2loglik=",-lik.old,", pars=",theta,"\n")
+                VI <- information.msm(theta, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
+                                      cmodel=cmodel, hmodel=hmodel, paramdata=p)
+                V <- -VI$deriv
+                Info <- VI$info + diag(damp, nrow(VI$info))
+                theta <- theta + solve(Info, V)
+                lik.new <- -lik.msm(theta, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
+                                   cmodel=cmodel, hmodel=hmodel, paramdata=p)
+                if (abs(lik.old - lik.new) < reltol*(abs(lik.old) + reltol))
+                    converged <- TRUE
+                else lik.old <- lik.new
+            }
+            p$lik <- -lik.new
+            p$params[p$optpars] <- theta
+            opt <- list(minimum=-lik.new, estimate=theta)
+            opt$hessian <- optimHess(par=theta, fn=lik.msm,
+                                 gr=if (!hmodel$hidden && cmodel$ncens==0 && use.deriv) deriv.msm else NULL,
+                                 msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
+                                 cmodel=cmodel, hmodel=hmodel, paramdata=p)
+        }
+        p$deriv <- if (!hmodel$hidden && cmodel$ncens==0) deriv.msm(p$params[p$optpars], msmdata, qmodel, qcmodel, cmodel, hmodel, p) else NULL
+        p$information <- if (!hmodel$hidden && cmodel$ncens==0) information.msm(p$params[p$optpars], msmdata, qmodel, qcmodel, cmodel, hmodel, p) else NULL
         p$opt <- opt
         ## Replicate constrained pars. (Replicate pr, not log(pr/pbase), then recalculate baseline)
         p$params[p$hmmpars] <- msm.mninvlogit.transform(p$params[p$hmmpars], hmodel$plabs, hmodel$parstate)
@@ -235,7 +274,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
             p$foundse <- FALSE
             p$covmat <- p$ci <- NULL
             if (hessian)
-                warning("Could not calculate asymptotic standard errors - Hessian is not positive definite. Optimisation has not converged to the maximum likelihood")
+                warning("Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. ")
         }
         p$params[p$hmmpars] <- msm.recalc.basep(p$params[p$hmmpars], hmodel$plabs, hmodel$parstate)
         p$params[p$hmmpars] <- msm.mnlogit.transform(p$params[p$hmmpars], hmodel$plabs, hmodel$parstate)
@@ -421,7 +460,13 @@ msm.form.emodel <- function(ematrix, econstraint=NULL, initprobs=NULL, est.initp
 {
     msm.check.ematrix(ematrix, qmodel$nstates)
     diag(ematrix) <- 0
-    imatrix <- ifelse(ematrix > 0 & ematrix < 1, 1, 0)
+##    imatrix <- ifelse(ematrix > 0 & ematrix < 1, 1, 0)
+    imatrix <- ifelse(ematrix > 0, 1, 0)
+
+### FIXME if off-diagonal 1s, then use HMM likelihood.
+### npars=0 uses simple lik.
+### Proposal: change imatrix as commented
+    
     diag(ematrix) <- 1 - rowSums(ematrix)
     if (is.null(rownames(ematrix)))
         rownames(ematrix) <- colnames(ematrix) <- paste("State", seq(qmodel$nstates))
@@ -437,6 +482,10 @@ msm.form.emodel <- function(ematrix, econstraint=NULL, initprobs=NULL, est.initp
         if (!is.numeric(initprobs)) stop("initprobs should be numeric")
         if (length(initprobs) != qmodel$nstates) stop("initprobs of length ", length(initprobs), ", should be ", qmodel$nstates)
         initprobs <- initprobs / sum(initprobs)
+        if (est.initprobs && any(initprobs==1)) {
+            est.initprobs <- FALSE
+            warning("Not estimating initial state occupancy probabilities, since some are fixed to 1")
+        }
     }
     nipars <- qmodel$nstates - 1
     if (!is.null(econstraint)) {
@@ -447,7 +496,7 @@ msm.form.emodel <- function(ematrix, econstraint=NULL, initprobs=NULL, est.initp
     }
     else
         constr <- seq(length=npars)
-    ndpars <- if(npars>0) max(constr) else 0 # handle degenerate ematrix with no misclassification
+    ndpars <- if(npars>0) max(constr) else 0
     emodel <- list(misc=TRUE, npars=npars, nstates=nstates, imatrix=imatrix, ematrix=ematrix, inits=inits,
                    constr=constr, ndpars=ndpars, nipars=nipars, initprobs=initprobs)
     class(emodel) <- "msmemodel"
@@ -529,6 +578,12 @@ msm.form.data <- function(formula, subject=NULL, obstype=NULL, obstrue=NULL, cov
                 final.rows <- intersect(final.rows, hcovdata[[i]]$covrows.kept)
     if (icovdata$ncovs > 0)
         final.rows <- intersect(final.rows, icovdata$covrows.kept)
+
+    ## Drop subjects with only one observation remaining after dropping missing data
+    subj.num <- factor(match(subject,unique(subject))) # avoid problems with factor subjects with empty levels
+    nobspt <- table(subj.num[final.rows])[subj.num]
+    final.rows <- intersect(final.rows, which(nobspt>1))
+    
     subject <- subject[final.rows]
     time <- subset(time, statetimerows.kept %in% final.rows)
     state <- subset(state, statetimerows.kept %in% final.rows)
@@ -564,10 +619,10 @@ msm.form.data <- function(formula, subject=NULL, obstype=NULL, obstrue=NULL, cov
     nobs <- length(final.rows)
     nmiss <- n - nobs
     plural <- if (nmiss==1) "" else "s"
-    if (nmiss > 0) warning(nmiss, " record", plural, " dropped due to missing values")
+    if (nmiss > 0) warning(nmiss, " record", plural, " dropped due to missing values or subjects with only one record")
     dat <- list(state=state, time=time, subject=subject, obstype=obstype, obstrue=obstrue,
                 nobs=nobs, n=nobs, npts=length(unique(subject)),
-                firstobs = c(1, which(subject[2:n] != subject[1:(n-1)]) + 1, n+1),
+                firstobs = c(1, which(subject[2:nobs] != subject[1:(nobs-1)]) + 1, nobs+1),
                 ncovs=length(all.covlabels), covlabels=all.covlabels, covlabels.orig=orig.covlabels,
                 covdata=covdata, misccovdata=misccovdata, hcovdata=hcovdata, icovdata=icovdata,
                 covmat=covmat, # covariates including factors as 0/1 contrasts
@@ -597,6 +652,7 @@ msm.check.state <- function(nstates, state=NULL, censor)
 msm.check.times <- function(time, subject, state=NULL)
 {
 ### Check if any individuals have only one observation (after excluding missing data)
+### Note this shouldn't happen after 1.2 addition to msm.form.data
     subj.num <- match(subject,unique(subject)) # avoid problems with factor subjects with empty levels
     nobspt <- table(subj.num)
     if (any (nobspt == 1)) {
@@ -804,10 +860,16 @@ msm.aggregate.data <- function(dat)
     if (dat$ncovs > 0) apaste2 <- paste(apaste2,  do.call("paste", msmdata$covmat))
     ## which unique timelag/cov combination each row of aggregated data corresponds to
     ## lik.c needs this to know when to recalculate the P matrix.
-    msmdata$whicha <- match(apaste2, unique(apaste2))
-    msmdata <- as.list(msmdata[order(apaste2),])
+    msmdata$whicha <- match(apaste2, sort(unique(apaste2)))
+    msmdata <- as.list(msmdata[order(apaste2,msmdata$fromstate,msmdata$tostate),])
+    ## for Fisher information: number of obs over timelag/covs starting in
+    ## fromstate, replicated for all tostates.
+    apaste2 <- paste(msmdata$fromstate, apaste2)
+    msmdata$noccsum <- tapply(msmdata$nocc, apaste2, sum)[apaste2]
     msmdata <- c(msmdata, dat[c("covdata", "hcovdata", "npts", "covlabels")])
     msmdata$nobs <- length(msmdata[[1]])
+    ## number of disaggregated transitions
+    msmdata$ntrans <- nrow(dat2)
     class(msmdata) <- "msmaggdata"
     msmdata
 }
@@ -1142,7 +1204,7 @@ msm.form.params <- function(qmodel, qcmodel, emodel, hmodel, fixedpars, est.init
     paramdata
 }
 
-### Wrapper for the C code which evaluates the -2*log-likelihood for a Markov multi-state model with misclassification
+### Wrapper for the C code which evaluates the -2*log-likelihood and related quantities
 ### This is optimised by optim
 
 likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmodel, paramdata)
@@ -1171,7 +1233,7 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
     initprobs <- c(1 - sum(pars[plabs=="initp"]), pars[plabs %in% c("initp","initp0")])
     initprobs <- initprobs / initprobs[1] ## initprobs[1] documented as not allowed to be zero.
 
-    if (!do.what %in% c(0,1,3)) stop("deriv should be 0, 1 or 3")
+    if (!do.what %in% c(0,1,2,3,5)) stop("do.what should be 0, 1, 2, 3 or 5") # 4 is Viterbi in outputs.R
     lik <- .C("msmCEntry",
               as.integer(do.what),
               as.integer(as.vector(t(qmodel$imatrix))),
@@ -1188,8 +1250,9 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
               as.double(unlist(msmdata$cov)), # covariate matrix by observation (non-HMM and calculating derivs by individual)
               as.integer(msmdata$covdata$whichcov), # this is really part of the model
               as.integer(msmdata$nocc),
+              as.integer(msmdata$noccsum),
               as.integer(msmdata$whicha),
-              as.integer(if(do.what==3) msmdata$obstype.obs else msmdata$obstype), # need per-observation obstype when doing derivs by subject.
+              as.integer(if(do.what%in% c(3,5)) msmdata$obstype.obs else msmdata$obstype), # need per-observation obstype when doing derivs by subject.
 
               ## data for HMM or censored
               as.integer(match(msmdata$subject, unique(msmdata$subject))),
@@ -1221,9 +1284,10 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
               as.integer(qmodel$npars),
               as.integer(qmodel$ndpars),
               as.integer(qcmodel$ndpars),
-              as.integer(msmdata$nobs), # number of aggregated observations
+              as.integer(msmdata$nobs), # number of aggregated transitions
               as.integer(msmdata$n), # number of observations
               as.integer(msmdata$npts),  # HMM only
+              as.integer(msmdata$ntrans), # number of (disaggregated) transitions
               as.integer(rep(qcmodel$ncovs, qmodel$npars)),
 
               as.integer(cmodel$ncens),
@@ -1236,31 +1300,55 @@ likderiv.msm <- function(params, deriv=0, msmdata, qmodel, qcmodel, cmodel, hmod
               as.integer(qcmodel$constr),
               as.integer(qcmodel$whichdcov),
 
-              returned = double(if (deriv==1) qmodel$ndpars + qcmodel$ndpars
-              else if (deriv==3) msmdata$npts*(qmodel$ndpars + qcmodel$ndpars)
+              returned = double(
+              if (do.what %in% c(1,2)) qmodel$ndpars + qcmodel$ndpars
+              else if (do.what==3) msmdata$npts*(qmodel$ndpars + qcmodel$ndpars)
+              else if (do.what==5) msmdata$ntrans*qmodel$nstates*(qmodel$ndpars + qcmodel$ndpars)
               else 1),
+
+              returned2 = double(
+              if (do.what==2) (qmodel$ndpars + qcmodel$ndpars) ^ 2
+              else 1),
+
               ## so that Inf values are allowed for parameters denoting truncation points of truncated distributions
               NAOK = TRUE
 #              ,
 #              PACKAGE = "msm"
               )
     ## transform derivatives wrt Q to derivatives wrt log Q
-    if (deriv==1) {
-        lik$returned[1:qmodel$ndpars] <-
-            if (length(params)==0) lik$returned[1:qmodel$ndpars]*exp(p$allinits[!duplicated(p$constr)][1:qmodel$ndpars])
-            else lik$returned[1:qmodel$ndpars]*exp(params[1:qmodel$ndpars])
-        lik$returned <- lik$returned[setdiff(seq(along=lik$returned), p$constr[p$fixedpars])]
+    qp <- 1:qmodel$ndpars
+    ## ugh. TODO comment this constraint operation.
+    tpars <- if(length(params)==0) p$allinits[!duplicated(p$constr)][qp] else params[qp]
+    spars <- setdiff(seq(length=qmodel$ndpars+qcmodel$ndpars), p$constr[p$fixedpars])
+    if (do.what %in% c(1,2)) {
+        lik$returned[qp] <- lik$returned[qp]*exp(tpars)
+        lik$returned <- lik$returned[spars]
     }
-
+    ## Fisher information matrix
+    if (do.what==2) {
+        lik$returned2 <- matrix(lik$returned2, nrow=qmodel$ndpars + qcmodel$ndpars)
+        lik$returned2[qp,qp] <- lik$returned2[qp,qp]*outer(exp(tpars),exp(tpars))
+        if (qcmodel$ndpars > 0) {
+            qcp <- (qmodel$ndpars + 1):(qmodel$ndpars + qcmodel$ndpars)
+            lik$returned2[qp,qcp] <- lik$returned2[qp,qcp]*exp(tpars)
+            lik$returned2[qcp,qp] <- lik$returned2[qcp,qp]*rep(exp(tpars),each=qcmodel$ndpars)
+        }
+        lik$returned2 <- lik$returned2[spars,spars]
+    }
     ## subject-specific derivatives, to use for score residuals
-    else if (deriv==3) {
+    if (do.what==3) {
         lik$returned <- matrix(lik$returned, nrow=msmdata$npts)
-        lik$returned[,1:qmodel$ndpars] <-
-            if (length(params)==0) lik$returned[,1:qmodel$ndpars]*rep(exp(p$allinits[!duplicated(p$constr)][1:qmodel$ndpars]), each=msmdata$npts)
-            else lik$returned[,1:qmodel$ndpars]*rep(exp(params[1:qmodel$ndpars]), each=msmdata$npts)
-        lik$returned <- lik$returned[,setdiff(seq(length=ncol(lik$returned)), p$constr[p$fixedpars])]
+        lik$returned[,qp] <- lik$returned[,qp]*rep(exp(tpars), each=msmdata$npts)
+        lik$returned <- lik$returned[,spars]
     }
-    lik$returned
+    ## transition-specific derivatives of P matrix, to use for Pearson test
+    if (do.what==5) {
+        lik$returned <- array(lik$returned, dim=c(msmdata$ntrans, qmodel$nstates, qmodel$ndpars+qcmodel$ndpars))
+        tpars <- if(length(params)==0) p$allinits[!duplicated(p$constr)][qp] else params[qp]
+        lik$returned[,,qp] <- lik$returned[,,qp]*rep(exp(tpars), each=msmdata$ntrans*qmodel$nstates)
+        lik$returned <- lik$returned[,,spars]
+    }
+    if (do.what==2) list(deriv=lik$returned, info=lik$returned2) else lik$returned
 }
 
 lik.msm <- function(params, ...)
@@ -1273,6 +1361,11 @@ deriv.msm <- function(params, ...)
     likderiv.msm(params, deriv=1, ...)
 }
 
+information.msm <- function(params, ...)
+{
+    likderiv.msm(params, deriv=2, ...)
+}
+
 ## Convert vector of MLEs into matrices
 
 msm.form.output <- function(whichp, model, cmodel, p)
@@ -1280,21 +1373,25 @@ msm.form.output <- function(whichp, model, cmodel, p)
     Matrices <- MatricesSE <- MatricesL <- MatricesU <- list()
     for (i in 0:cmodel$ncovs) {
         matrixname <- if (i==0) "logbaseline" else cmodel$covlabels[i] # name of the current output matrix.
-        mat <- t(model$imatrix) # I fill matrices by row, while R fills them by column. Is this sensible...?
+        mat <- t(model$imatrix) # state matrices filled by row, while R fills them by column.
         if (whichp=="intens")
             parinds <- if (i==0) which(p$plabs=="qbase") else which(p$plabs=="qcov")[(i-1)*model$npars + 1:model$npars]
         if (whichp=="misc")
             parinds <- if (i==0) which(p$plabs=="p") else which(p$plabs=="hcov")[i + cmodel$ncovs*(1:model$npars - 1)]
-        mat[t(model$imatrix)==1] <- p$params[parinds]
+        if (any(parinds)) mat[t(model$imatrix)==1] <- p$params[parinds]
+        else mat[mat==1] <- Inf ## if no parinds are "p", then there are off-diag 1s in ematrix
         mat <- t(mat)
         dimnames(mat) <- dimnames(model$imatrix)
         if (p$foundse && !p$fixed){
             intenscov <- p$covmat[parinds, parinds]
             intensse <- sqrt(diag(as.matrix(intenscov)))
             semat <- lmat <- umat <- t(model$imatrix)
-            semat[t(model$imatrix)==1] <- intensse
-            lmat[t(model$imatrix)==1] <- p$ci[parinds,1]
-            umat[t(model$imatrix)==1] <- p$ci[parinds,2]
+            if (any(parinds)){
+                semat[t(model$imatrix)==1] <- intensse
+                lmat[t(model$imatrix)==1] <- p$ci[parinds,1]
+                umat[t(model$imatrix)==1] <- p$ci[parinds,2]
+            }
+            else semat[semat==1] <- lmat[lmat==1] <- umat[umat==1] <- Inf
             semat <- t(semat); lmat <- t(lmat); umat <- t(umat)
             diag(semat) <- diag(lmat) <- diag(umat) <- 0
             dimnames(semat)  <- dimnames(mat)
