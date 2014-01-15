@@ -14,13 +14,13 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
       ematrix=NULL, hmodel=NULL, obstype=NULL, obstrue=NULL,
       covariates = NULL, covinits = NULL, constraint = NULL,
       misccovariates = NULL, misccovinits = NULL, miscconstraint = NULL,
-      hcovariates = NULL, hcovinits = NULL, hconstraint = NULL,
+      hcovariates = NULL, hcovinits = NULL, hconstraint = NULL, hranges=NULL,
       qconstraint=NULL, econstraint=NULL, initprobs = NULL,
       est.initprobs=FALSE, initcovariates = NULL, initcovinits = NULL,
       death = FALSE, exacttimes = FALSE, censor=NULL,
       censor.states=NULL, pci=NULL, cl = 0.95, fixedpars = NULL, center=TRUE,
-      opt.method=c("optim","nlm","fisher"), hessian=TRUE, use.deriv=TRUE,
-      analyticp=TRUE, ... )
+      opt.method=c("optim","nlm","fisher"), hessian=NULL, use.deriv=TRUE,
+      use.expm=TRUE, analyticp=TRUE, ... )
 }
 \arguments{
   \item{formula}{ A formula giving the vectors containing the observed
@@ -83,7 +83,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     transition intensities are generated automatically using the method
     in \code{\link{crudeinits.msm}}. The non-zero
     entries of the supplied \code{qmatrix} are assumed to indicate the
-    allowed transitions of the model.}
+    allowed transitions of the model.   This is not available for hidden
+    Markov models, including models with misclassified states.}
 
   \item{ematrix}{
     If misclassification between states is to be modelled, this should
@@ -108,7 +109,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
     represents a model in which misclassifications are only permitted
     between adjacent states.
-    
+
     If any probabilities are constrained to be equal using
     \code{econstraint}, then the initial value is
     taken from the first of these (reading across rows).
@@ -224,11 +225,22 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   \emph{misclassified}.
   }
 
-  \item{covariates}{Formula representing the covariates on the
-  transition intensities via a log-linear model. For example,
+  \item{covariates}{A formula or a list of formulae representing the
+    covariates on the transition intensities via a log-linear model. If
+    a single formula is supplied, like
 
-    \code{~ age + sex + treatment}
+    \code{covariates = ~ age + sex + treatment}
 
+    then these covariates are assumed to apply to all intensities.  If a
+    named list is supplied, then this defines a potentially different
+    model for each named intensity.  For example,
+
+    \code{covariates = list("1-2" = ~ age, "2-3" = ~ age + treatment)}
+
+    specifies an age effect on the state 1 - state 2 transition,
+    additive age and treatment effects on the state 2 - state 3
+    transition, but no covariates on any other transitions that are
+    allowed by the \code{qmatrix}.
   }
 
   \item{covinits}{Initial values for log-linear effects of covariates on the
@@ -314,6 +326,12 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     misclassification probabilities, analogously to \code{covariates},
     via multinomial logistic regression. Only used if the model is
     specified using \code{ematrix}, rather than \code{hmodel}.
+
+    This must be a single formula - lists are not supported, unlike
+    \code{covariates}.  If a different model on each probability is
+    required, include all covariates in this formula, and use
+    \code{fixedpars} to fix some of their effects (for particular
+    probabilities) at their default initial values of zero.
   }
 
   \item{misccovinits}{Initial values for the covariates on the
@@ -366,6 +384,39 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     to be equal for states 1 and 2, specify
 
     \code{hconstraint = list(sd = c(1,1), acute=c(1,1))}
+
+    Note this excludes initial state occupancy probabilities and
+    covariate effects, which cannot be constrained.
+    }
+
+    \item{hranges}{Range constraints for hidden Markov model parameters.
+      Supplied as a named list, with each element corresponding to the
+      named hidden Markov model parameter.  This element is itself a
+      list with two elements, vectors named "lower" and "upper".  These
+      vectors each have length equal to the number of times that class
+      of parameter appears in the whole model, and give the
+      corresponding mininum amd maximum allowable values for that
+      parameter.  Maximum likelihood estimation is performed with these
+      parameters constrained in these ranges (through a log or logit transformation).
+      Lower bounds of \code{-Inf} and upper bounds of \code{Inf} can
+      be given if the parameter is unbounded above or below.
+
+      For example, in the three-state model above, to constrain the mean
+      for state 1 to be between 0 and 6, and the mean of state 2 to be
+      between 7 and 12, supply
+
+      \code{hranges=list(mean=list(lower=c(0, 7), upper=c(6, 12)))}
+
+      These default to the natural ranges, e.g. the positive real line
+      for variance parameters, and [0,1] for probabilities.  Therefore
+      \code{hranges} need not be specified for such parameters unless an
+      even stricter constraint is desired.  If only one limit is
+      supplied for a parameter, only the first occurrence of that
+      parameter is constrained.
+
+      Initial values should be strictly within any ranges, and not on
+      the range boundary, otherwise optimisation will fail with a
+      "non-finite value" error.
     }
 
   \item{qconstraint}{A vector of indicators specifying which baseline
@@ -387,21 +438,23 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     equal.      Only used if the model is specified using \code{ematrix}, rather
     than \code{hmodel}.  }
 
-  \item{initprobs}{Currently only used in hidden Markov models.
-    Vector of assumed underlying state occupancy probabilities at each
-    individual's first observation. If these are estimated (see
-    \code{est.initprobs}), then this represents an initial value,
-    and defaults to equal probability for
-    each state.  Otherwise this defaults to
-    \code{c(1, rep(0, nstates-1))}, that is, in state 1 with a
-    probability of 1.  Scaled to sum to 1 if necessary.  The state 1
-    occupancy probability should be non-zero.
-  }
+  \item{initprobs}{Only used in hidden Markov models.  Underlying state
+    occupancy probabilities at each subject's first observation.  Can
+    either be a vector of \eqn{nst} elements with common probabilities
+    to all subjects, or a \eqn{nsubj} by \eqn{nst} matrix of
+    subject-specific probabilities.
+
+    If these are estimated (see \code{est.initprobs}), then this
+    represents an initial value, and defaults to equal probability for
+    each state.  Otherwise this defaults to \code{c(1, rep(0,
+    nstates-1))}, that is, in state 1 with a probability of 1.  Scaled
+    to sum to 1 if necessary.  The state 1 occupancy probability should
+    be non-zero.  }
 
   \item{est.initprobs}{Only used in hidden Markov models.
     If \code{TRUE}, then the underlying state
     occupancy probabilities at the first observation will be estimated,
-    starting from initial values taken from the \code{initprobs}
+    starting from a vector of initial values supplied in the \code{initprobs}
     argument.  Structural zeroes are allowed: if any of these initial
     values are zero they will be fixed at zero during optimisation,
     even if \code{est.initprobs=TRUE}, and no covariate effects on
@@ -446,7 +499,11 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     default) indicates that there is no state of this kind.
 
     The \code{death} argument is overridden by \code{obstype} or
-    \code{exacttimes}.  Note that times of death do not necessarily have
+    \code{exacttimes}.
+
+    Note that you do not always supply a \code{death} argument, even if
+    there are states that correspond to deaths, because they do
+    not necessarily have
     \code{obstype=3}.  If the state is known between the time of death
     and the previous observation, then you should specify
     \code{obstype=2} for the death times, or \code{exacttimes=TRUE} if
@@ -498,7 +555,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
   \item{pci}{Model for piecewise-constant intensities.  Vector of cut
      points defining the times, since the start of the process, at
-     which intensities change.  For example
+     which intensities change for all subjects.  For example
 
      \code{pci = c(5, 10)}
 
@@ -538,6 +595,12 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
      states with inserted censored observations and time period
      indicators.  These can be used to construct such models.
 
+     Note that you do not need to use \code{pci} in order to model the
+     effect of a time-dependent covariate in the data.  \code{msm} will
+     automatically assume that covariates are piecewise-constant and
+     change at the times when they are observed.  \code{pci} is for when
+     you want all intensities to change at the same pre-specified times
+     for all subjects.
      }
 
   \item{exacttimes}{By default, the transitions of the Markov process
@@ -557,8 +620,10 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     strong assumption of constant (or piecewise-constant) transition
     rates.  Knowing the exact transition times allows
     potentially more realistic models to be fitted with other
-    packages, such as semi-parametric models with the \pkg{mstate}
-    package.
+    packages.  For example parametric models with sojourn distributions
+    more flexible than the exponential can be fitted with the \pkg{survival} package,
+    or semi-parametric models can be implemented with \pkg{survival} in
+    conjunction with \pkg{mstate}.
   }
 
   \item{cl}{Width of symmetric confidence intervals for maximum
@@ -603,9 +668,14 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     for models with censored states, hidden Markov models, exact
     observation or exact death times (\code{obstype=2,3}).}
 
-  \item{hessian}{If \code{TRUE} (the default) then the Hessian matrix is
-    computed at the maximum likelihood estimates, to obtain standard
-    errors and confidence intervals.}
+  \item{hessian}{If \code{TRUE} then the Hessian matrix is computed at
+    the maximum likelihood estimates, to obtain standard errors and
+    confidence intervals. This is the default when maximum likelihood
+    estimation is performed.  If all parameters are fixed at their
+    initial values and no optimisation is performed, then this defaults
+    to \code{FALSE}.  If requested, the actual Hessian is returned in
+    \code{x$paramdata$opt$hessian}, where \code{x} is the fitted model
+    object.}
 
   \item{use.deriv}{If \code{TRUE} then analytic first derivatives are
     used in the optimisation of the likelihood, when an appropriate
@@ -614,10 +684,17 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     which cannot use derivatives. However, these derivatives, if
     supplied, are always used to calculate the Hessian. }
 
+  \item{use.expm}{If \code{TRUE} then any matrix exponentiation needed to
+    calculate the likelihood is done using the \pkg{expm} package.
+    Otherwise the original routines used in \pkg{msm} 1.2.4 and earlier
+    are used.  Set to \code{FALSE} for backward compatibility, and let
+    the package maintainer know if this gives any substantive differences.}
+
   \item{analyticp}{By default, the likelihood for certain simpler 3, 4
     and 5 state models is calculated using an analytic expression for
-    the transition probability (P) matrix.  To revert to the original method
-    of using the matrix exponential, specify \code{analyticp=FALSE}. See
+    the transition probability (P) matrix. For all other models, matrix
+    exponentiation is used to obtain P. To revert to the original method
+    of using the matrix exponential for all models, specify \code{analyticp=FALSE}. See
     the PDF manual for a list of the models for which analytic P
     matrices are implemented. }
 
@@ -740,13 +817,16 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     or if \code{center=FALSE}, with covariates fixed to zero.
   }
   \item{cmodel}{A list of objects specifying any model for censoring.}
+  \item{paramdata}{A list of objects giving information about the model
+    parameters and their eatimation.}
+  \item{cl}{The width of the confidence interval defining
+    \code{QmatricesL} and similar objects mentioned above.}
 
   Printing a \code{msm} object by typing the object's name at the
   command line implicitly invokes \code{print.msm}.  This
   formats and prints the important information in the model fit.
-  This includes the fitted transition intensity matrix, matrices
-  containing covariate effects on intensities, and mean sojourn times
-  from a fitted \code{\link{msm}} model.  When there is a hidden Markov
+  This includes estimates and confidence intervals for the transition intensities and (log) hazard
+  ratios for the corresponding covariates. When there is a hidden Markov
   model, the chief information in the
   \code{hmodel} component is also formatted and printed. This includes
   estimates and confidence intervals for each
@@ -805,10 +885,9 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   known at a series of snapshots, are particularly susceptible to
   non-identifiability, especially when combined with a complex
   transition matrix.
-
   Choosing an appropriate set of initial values for the optimisation can
   also be important.  For flat likelihoods, 'informative' initial values
-  will often be required.
+  will often be required.   See the PDF manual for other tips.
 
 }
 \references{
@@ -862,7 +941,7 @@ c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
 statetable.msm(state, PTNUM, data=cav)
 crudeinits.msm(state ~ years, PTNUM, data=cav, qmatrix=twoway4.q)
 cav.msm <- msm( state ~ years, subject=PTNUM, data = cav,
-                 qmatrix = twoway4.q, death = 4,
+                 qmatrix = twoway4.q, death = 4, method="BFGS",
                  control = list ( trace = 2, REPORT = 1 )  )
 cav.msm
 qmatrix.msm(cav.msm)

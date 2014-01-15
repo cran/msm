@@ -12,7 +12,7 @@
 \concept{Measurement error}
 \description{
   Truncated Normal and Uniform distributions, where the response is also
-  subject to a Normally distributed measurement error. 
+  subject to a Normally distributed measurement error.
 }
 \usage{
      dmenorm(x, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0,
@@ -42,7 +42,7 @@
   \item{sderr}{Standard deviation of measurement error distribution.}
   \item{meanerr}{Optional shift for the measurement error distribution.}
   \item{log, log.p}{logical; if TRUE, probabilities \eqn{p} are given as
-    \eqn{\log(p)}{log(p)}.}
+    \eqn{\log(p)}{log(p)}, or log density is returned.}
   \item{lower.tail}{logical; if TRUE (default), probabilities are \eqn{P[X <= x]},
     otherwise, \eqn{P[X > x]}.}
 }
@@ -50,7 +50,7 @@
   \code{dmenorm}, \code{dmeunif} give the density, \code{pmenorm}, \code{pmeunif} give the distribution
   function, \code{qmenorm}, \code{qmeunif} give the quantile
   function, and \code{rmenorm}, \code{rmeunif} generate random
-  deviates, for the Normal and Uniform versions respectively. 
+  deviates, for the Normal and Uniform versions respectively.
 }
 \details{
   The normal distribution with measurement error has density
@@ -60,12 +60,12 @@
       \sigma_3)}{\Phi(u, \mu_0, \sigma_0) - \Phi(l, \mu_0, \sigma_0)}
     \phi(x, \mu_0 + \mu_\epsilon, \sigma_2)
   }{(Phi(upper, mu2, sigma3) - Phi(lower, mu2, sigma3)) / (Phi(upper, mean, sd) - Phi(lower, mean, sd)) * phi(x, mean + meanerr, sigma2)}
-  where 
+  where
   \deqn{\sigma_2^2 = \sigma_0^2 + \sigma_\epsilon^2,}{sigma2*sigma2 = sd*sd + sderr*sderr,}
   \deqn{\sigma_3 = \sigma_0 \sigma_\epsilon / \sigma_2,}{sigma3 = sd*sderr / sigma2,}
   \deqn{\mu_2 = (x - \mu_\epsilon) \sigma_0^2 + \mu_0
     \sigma_\epsilon^2,}{mu2 = (x - meanerr)*sd*sd + mean*sderr*sderr,}
-  
+
   \eqn{\mu_0}{mean} is the mean of the original Normal distribution before
   truncation, \cr
   \eqn{\sigma_0}{sd} is the corresponding standard deviation, \cr
@@ -78,7 +78,7 @@
   distribution, and \cr
   \eqn{\Phi(x)}{Phi(x)} is the distribution function of the corresponding normal
   distribution.
-  
+
   The uniform distribution with measurement error has density
 
   \deqn{(\Phi(x, \mu_\epsilon+l, \sigma_\epsilon) - \Phi(x, \mu_\epsilon+u, \sigma_\epsilon))
@@ -93,8 +93,8 @@
 
   If \code{sderr} and \code{meanerr} are not specified they assume the
   default values of 0, representing no measurement error variance, and no
-  constant shift in the measurement error, respectively. 
-  
+  constant shift in the measurement error, respectively.
+
   Therefore, for example with no other arguments, \code{dmenorm(x)}, is
   simply equivalent to \code{dtnorm(x)}, which in turn is
   equivalent to \code{dnorm(x)}.
@@ -108,8 +108,8 @@
   These distribution functions are just provided for convenience, and are not
   optimised for numerical accuracy or speed.  To fit a hidden Markov model with these response distributions, use a
   \code{\link{hmmMETNorm}} or \code{\link{hmmMEUnif}} constructor. See
-  the \code{\link{hmm-dists}} help page for further details.  
-  
+  the \code{\link{hmm-dists}} help page for further details.
+
 }
 \seealso{
   \code{\link{dnorm}}, \code{\link{dunif}}, \code{\link{dtnorm}}
@@ -119,7 +119,7 @@
   estimating the 'true' course of a marker of the progression of human
   immunodeficiency virus disease (with discussion) \emph{Applied
     Statistics} 45(3): 275-309 (1996)
-  
+
   Jackson, C.H. and Sharples, L.D. Hidden Markov models for the
   onset and progression of bronchiolitis obliterans syndrome in lung
   transplant recipients \emph{Statistics in Medicine}, 21(1): 113--128

@@ -1,3 +1,223 @@
+2014-01-15 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* DESCRIPTION: Version 1.3 released to CRAN.
+
+2014-01-09 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* inst/doc/msm-manual.Rnw: Fixed error in analytic p13(t) in
+	section 1.4.
+
+2013-12-04 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: Experimental new print method available as
+	printnew.msm.
+
+	* srcR/pijt.c(MatrixExpPade): Fix for int coercion from special
+	values, to pass CRAN UBSanitizer check.
+
+	* src/analyticp.c: Some algebra rearranged to fix potential
+	division by zeros.
+
+	* src/analyticp.c, R/msm.R(msm.form.qmodel): Corrected permutation
+	for Q matrix, fixing bug from 1.2.3 which broke models with
+	non-standard state ordering.
+
+	* R/outputs.R: New "start" argument to efpt.msm, allowing
+	averaging over a set of starting states.
+
+	* DESCRIPTION: Datasets now lazy loaded so data() not required.
+
+2013-10-07 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* DESCRIPTION: Version 1.2.7 released to r-forge.
+
+2013-10-04 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R(observed.msm): Don't use Viterbi imputed states at
+	change points when computing observed prevalences in "pci" models
+	with piecewise-constant intensities.
+
+2013-10-01 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R(msm.mninvlogit.transform): Fix for bug with
+	misclassification models with only one misclassification
+	probability.
+
+	* src/lik.c: Match Q matrices with covariates from start of
+	transition, not end, in likelihoods and derivatives by subject.
+
+2013-09-13 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R: "missing" for some null default arguments in msm()
+	changed to is.null.
+
+	* DESCRIPTION: Version 1.2.6 released to r-forge.
+
+2013-08-30 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R(msm.R): Give an informative error if trying to use
+	gen.inits with a HMM, and document that this is not supported.
+
+2013-08-20 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R(msm.check.times): Row numbers reported in error message
+	about different states at the same time corrected to account for
+	missing data.  Thanks to Lucy Leigh for the report.
+
+2013-07-30 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: formula for totlos.msm implemented, which is vastly
+	more efficient than the numerical integration used previously.
+	Debugging outputs left in 1.2.3 also removed.
+
+	* R/msm.R, src/*.c: Likelihood calculations use expm from the expm
+	package by default where matrix exponentiation is required.  As a
+	result msm now depends on the expm package.
+
+	* R/utils.R: MatrixExp now uses expm from the expm package by
+	default.
+
+	* R/various: some fixes for bugs introduced by the range facility.
+
+	* DESCRIPTION: Version 1.2.5 released to r-forge.
+
+2013-07-22 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/(various): Range constraints can now be given for HMM outcome
+	parameters, through a new argument "hranges" to msm(). This may
+	improve HMM identifiability.  Thanks to Soon-Ee Cheah for the
+	suggestion.
+
+	* R/constants.R: Scale parameters of Weibull and t HMM outcome
+	distributions now restricted properly to be positive in estimation.
+
+	* DESCRIPTION: Version 1.2.4 released to r-forge.
+
+2013-07-04 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/utils.R: MatrixExp rewritten to use C code for series method
+	and analytic solutions for Markov models, avoiding code
+	duplication.
+
+2013-07-02 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R: If available, loglikelihood derivatives, expected and
+	(if requested) observed information are returned in paramdata
+	component for all models. If all parameters fixed, these are over
+	all parameters.  If some are fixed, than these are just over the
+	parameters that are optimised.
+
+	* R/outputs.R: surface.msm fixed for models fitted with Fisher
+	scoring.
+
+2013-06-06 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: totlos.msm was calculating the wrong thing for
+	fromt > 0.
+
+	* DESCRIPTION: Version 1.2.3 released to r-forge.
+
+2013-06-04 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/pearson.R: Corrected data rows mismatch in bootstrapping with
+	imputed sampling times after deaths in Pearson statistic.
+
+	* src/lik.c: Memory crash bug in Viterbi fixed.
+
+2013-06-03 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* (Most R and C files): Major restructuring of the internals.
+	Main change is to adjust all parameters for covariates in R rather
+	than C, making for much tidier code. New R functions for applying
+	transformations and inverse transformations.
+
+	* src/pijt.c: Derivatives of the likelihood for non-hidden models
+	now work properly with negative constraints.
+
+	* R/msm.R: Initial state occupancy probabilities are estimated on
+	the multivariate logit scale, rather than univariate logit, and
+	confidence intervals are calculated using the normal simulation
+	method.  Probability for the baseline category "initpbase" is now
+	a labelled parameter.
+
+	* R/msm.R: When centering covariates around their means for the
+	default likelihood calculation, the means used are now after
+	dropping missing values and subjects with one observation, not
+	before.  Thanks to Howard Thom for the report.
+
+	* Relatedly, the covariate values for subjects' last observations
+	are not included in this mean, since they don't contribute to the
+	likelihood, so interpretation of initial values for the qmatrix,
+	and outputs for covariates="mean", will now be very slightly
+	different.
+
+2013-05-28 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* inst/doc/msm-manual.Rnw: Likelihood for exact times still had
+	wrong sign for qii (see version 1.1.2).
+
+2013-05-25 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* inst/doc/msm-manual.Rnw: Added advice about "function cannot be
+	evaluated at initial parameters".
+
+2013-05-24 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R: New interface for supplying different covariates on
+	different transition intensities.
+
+	* R/msm.R: Redundant constraint check and factor warning fixed and
+	cleaned.
+
+2013-05-23 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R(msm.form.covdata): checks on constraints and covinits
+	separated into new functions.
+
+	* R/msm.R(msm.form.covmodel): wrong names in error message for
+	constraint length checking.
+
+2013-05-21 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R(msm.form.data): Handle factor states (with levels
+	1:nstates) by converting to numeric.
+
+	* R/msm.R, src/lik.c: Can now print subject-specific
+	log-likelihoods at the MLE via logLik.msm().
+
+	* DESCRIPTION: Version 1.2.2 released to r-forge.
+
+2013-05-19 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/utils.R: qtnorm, qmenorm, qmeunif and qpexp changed to use
+	qgeneric. Their results should be the same.
+
+	* R/utils.R: long-redundant identity function finally removed.
+
+2013-05-18 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/utils.R: qgeneric function copied from flexsurv
+	package and modified to handle argument clashes.
+
+	* R/utils.R: Return NaN for all dpqr(tnorm,menorm,meunif) if lower
+	bound greater than upper bound.
+
+2013-05-17 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R: Don't warn if not all states observed in data for
+	misclassification models (typo bugfix in msm.form.data).
+
+2013-05-16 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R,R/hmm.R,src/lik.c: Allow matrix by patient to be
+	supplied for the initial state occupancy probabilities.
+
+	* DESCRIPTION: Version 1.2.1 released to r-forge.
+
+2013-05-15 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R: move gen.inits from msm.form.qmodel to main function.
+
 2013-05-14 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* DESCRIPTION: Version 1.2 released

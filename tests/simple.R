@@ -72,17 +72,19 @@ cav.msm <- msm( state ~ years, subject=PTNUM, data = cav,
                  qmatrix = twoway4.q, death = TRUE, fixedpars=TRUE,
                  covariates = ~ sex, covinits = list(sex=rep(0.01, 7)), # , dage=rep(0, 7)),
                  method="BFGS", control=list(trace=5, REPORT=1))
-stopifnot(isTRUE(all.equal(4909.08442586298, cav.msm$minus2loglik, tol=1e-06)))
+#stopifnot(isTRUE(all.equal(4909.08442586298, cav.msm$minus2loglik, tol=1e-06))) # pre-1.2.3
+stopifnot(isTRUE(all.equal(4909.17147259115, cav.msm$minus2loglik, tol=1e-06)))
 
 if (developer.local) {
     system.time(cav.msm <- msm( state ~ years, subject=PTNUM, data = cav,
                                  qmatrix = twoway4.q, death = TRUE, fixedpars=FALSE,
                                  covariates = ~ sex, method="BFGS", control=list(trace=5, REPORT=1))) # 44.13 on new, 260.14 on old
-    stopifnot(isTRUE(all.equal(3954.77699876128, cav.msm$minus2loglik, tol=1e-06)))
-    qmat <- qmatrix.msm(cav.msm)[c("estimates","SE")]
-    stopifnot(isTRUE(all.equal(c(0.226768225214069, -0.583572966218831, 0.337068668450776, 0.0197360725539862), as.numeric(qmat$estimates[2,]), tol=1e-06)))
-    stopifnot(isTRUE(all.equal(c(0.0341912476474469, 0.177757314782152, 0.0383135782775986, 0.171176619065207), as.numeric(qmat$SE[2,]), tol=1e-02)))   ### SEs slightly different on different machines.
-    stopifnot(isTRUE(all.equal(5.29003443121721, sojourn.msm(cav.msm)[1,3], tol=1e-06)))
+    stopifnot(isTRUE(all.equal(3954.77700438268, cav.msm$minus2loglik, tol=1e-06)))
+    qe <- qmatrix.msm(cav.msm)$estimates
+    qs <- qmatrix.msm(cav.msm)$SE
+    stopifnot(isTRUE(all.equal(c(0.226450552615405, -0.584026638746574, 0.336930416760987, 0.020645669370182), as.numeric(qe[2,]), tol=1e-06)))
+    stopifnot(isTRUE(all.equal(c(0.0341171992593031, 0.175716249521246, 0.0382673443326932, 0.169135307385501), as.numeric(qs[2,]), tol=1e-02)))   ### SEs slightly different on different machines.
+    stopifnot(isTRUE(all.equal(5.27959017253062, sojourn.msm(cav.msm)[1,3], tol=1e-06)))
 }
 
 if (developer.local) {
@@ -93,9 +95,9 @@ if (developer.local) {
                                  method="BFGS", control=list(trace=2, REPORT=1)
                                  )) # 3.22 on new, 17.55 on old
     stopifnot(isTRUE(all.equal(4116.22686367935, cav.msm$minus2loglik, tol=1e-06)))
-
-    qmat <- qmatrix.msm(cav.msm)[c("estimates","SE")]
-    stopifnot(isTRUE(all.equal(0.171691686850913, qmat$estimates[2,1], tol=1e-06)))
+    qe <- qmatrix.msm(cav.msm)$estimates
+    qs <- qmatrix.msm(cav.msm)$SE
+    stopifnot(isTRUE(all.equal(0.171691686850913, qe[2,1], tol=1e-06)))
     stopifnot(isTRUE(all.equal(2.96494230954565, sojourn.msm(cav.msm)[3,1], tol=1e-06)))
 
     ## Covariate constraints.
@@ -103,8 +105,8 @@ if (developer.local) {
                                  covariates = ~ sex, covinits = list(sex=rep(0.01, 7)), constraint=list(sex=c(1,2,3,1,2,3,2)),
                                  method="BFGS", control=list(trace=1, REPORT=1))) # 21.2 on new, 86.58 on old
     stopifnot(isTRUE(all.equal(3959.35551766943, cav.msm$minus2loglik, tol=1e-06)))
-    qmat <- qmatrix.msm(cav.msm)[c("estimates","SE")]
-    stopifnot(isTRUE(all.equal(0.228458428847816, qmat$estimates[2,1], tol=1e-06)))
+    qe <- qmatrix.msm(cav.msm)$estimates
+    stopifnot(isTRUE(all.equal(0.228073357604585, qe[2,1], tol=1e-06)))
 }
 
 ## Constraints with psoriatic arthritis data
@@ -116,7 +118,7 @@ system.time(psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
                 constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
                 fixedpars=FALSE, control = list(REPORT=1,trace=2), method="BFGS"))
 stopifnot(isTRUE(all.equal(1114.89946121717, psor.msm$minus2loglik, tol=1e-06)))
-stopifnot(isTRUE(all.equal(0.0953882330391683, qmatrix.msm(psor.msm)$estimates[1,2], tol=1e-03)))
+stopifnot(isTRUE(all.equal(0.0959350004999946, qmatrix.msm(psor.msm)$estimates[1,2], tol=1e-03)))
 
 pn <- pnext.msm(psor.msm)
 
@@ -176,7 +178,7 @@ if (0) {
 
 ## Multiple death states (Jean-Luc's data)
 if (developer.local) {
-    c2.df <- read.table("~/msm/tests/jeanluc/donneesaveccancerPT.txt", header=TRUE)
+    c2.df <- read.table("~/work/msm/tests/jeanluc/donneesaveccancerPT.txt", header=TRUE)
     qx <- rbind( c(0, 0.005, 0, 0, 0), c(0, 0, 0.01, 0.02,0), c(0, 0, 0, 0.04, 0.03), c(0, 0, 0, 0, 0), c(0, 0, 0, 0, 0))
     c2.msm <- msm(state~years, subject=PTNUM, data=c2.df,
                   qmatrix=qx, death=c(4, 5), method="BFGS", fixedpars = 1:5,
@@ -200,7 +202,7 @@ if (developer.local) {
     stopifnot(isTRUE(all.equal(62915.1638036017, c2.msm$minus2loglik, tol=1e-06)))
 
 ### G Marshall's diabetic retinopathy data
-    marsh.df <- read.table("~/msm/tests/markov/test.dat", col.names=c("subject","eyes","time","duration","hba1"))
+    marsh.df <- read.table("~/work/msm/tests/markov/test.dat", col.names=c("subject","eyes","time","duration","hba1"))
     marsh.df$hba1 <- marsh.df$hba1 - mean(marsh.df$hba1)
     marsh.msm <-
       msm(eyes ~ time, subject=subject, qmatrix = rbind(c(0,0.02039,0,0), c(0.007874,0,0.01012,0), c(0,0.01393,0,0.01045), c(0,0,0,0)),
@@ -209,8 +211,8 @@ if (developer.local) {
     system.time(marsh.msm <-
       msm(eyes ~ time, subject=subject, qmatrix = rbind(c(0,0.02039,0,0), c(0.007874,0,0.01012,0), c(0,0.01393,0,0.01045), c(0,0,0,0)),
           covariates = ~ hba1, data = marsh.df))
-    stopifnot(isTRUE(all.equal(310.989863258621, marsh.msm$minus2loglik, tol=1e-06)))
-    stopifnot(isTRUE(all.equal(-0.0496235211442196, qmatrix.msm(marsh.msm, covariates=0)$estimates[1,1], tol=1e-06)))
+    stopifnot(isTRUE(all.equal(310.386917624764, marsh.msm$minus2loglik, tol=1e-06)))
+    stopifnot(isTRUE(all.equal(-0.0566956605634377, qmatrix.msm(marsh.msm, covariates=0)$estimates[1,1], tol=1e-06)))
 }
 
 
@@ -220,8 +222,9 @@ if (developer.local) {
 ##########    OUTPUT FUNCTIONS    ###################
 
 qmatrix.msm(psor.msm)
-stopifnot(isTRUE(all.equal(c(-0.0953882330391683, 0, 0, 0, 0.0953882330391683, -0.163370011525553, 0, 0, 0, 0.163370011525553, -0.255229343798597, 0, 0, 0, 0.255229343798597, 0), as.numeric(qmatrix.msm(psor.msm)$estimates), tol=1e-03)))
-stopifnot(isTRUE(all.equal(c(0.0115507014188511, 0, 0, 0, 0.0115507014188511, 0.0195265275850904, 0, 0, 0, 0.0195265275850904, 0.0378507662232158, 0, 0, 0, 0.0378507662232158, 0), as.numeric(qmatrix.msm(psor.msm)$SE), tol=1e-03)))
+stopifnot(isTRUE(all.equal(c(-0.0959350004999946, 0, 0, 0, 0.0959350004999946, -0.164306508892574, 0, 0, 0, 0.164306508892574, -0.254382807485639, 0, 0, 0, 0.254382807485639, 0), as.numeric(qmatrix.msm(psor.msm)$estimates), tol=1e-03)))
+stopifnot(isTRUE(all.equal(c(0.0115942726096754, 0, 0, 0, 0.0115942726096754, 0.0196169975000406, 0, 0, 0, 0.0196169975000406, 0.0375066077515386, 0, 0, 0, 0.0375066077515386, 0), as.numeric(qmatrix.msm(psor.msm)$SE), tol=1e-03)))
+
 qmat <- qmatrix.msm(psor.msm, covariates=list(ollwsdrt=0.1, hieffusn=0.4))
 stopifnot(isTRUE(all.equal(c(-0.121430585652200, 0, 0, 0, 0.121430585652200, -0.207972362475868, 0, 0, 0, 0.207972362475868, -0.257535341208494, 0, 0, 0, 0.257535341208494, 0), as.numeric(qmat$estimates), tol=1e-03)))
 stopifnot(isTRUE(all.equal(c(0.0162156605802465, 0, 0, 0, 0.0162156605802465, 0.0266727053124233, 0, 0, 0, 0.0266727053124233, 0.0364321127089265, 0, 0, 0, 0.0364321127089265, 0), as.numeric(qmat$SE), tol=1e-04)))
@@ -238,7 +241,7 @@ stopifnot(isTRUE(all.equal(c(8.23515751512713, 4.80833120370037, 3.8829622191170
 soj <- sojourn.msm(psor.msm, covariates=list(ollwsdrt=0.1, hieffusn=0.4), cl=0.99)
 stopifnot(isTRUE(all.equal(5.83830234564607, soj[1,"L"], tol=1e-04)))
 
-stopifnot(isTRUE(all.equal(0.148036812842411, pmatrix.msm(psor.msm, ci="none", t=10)[1,3], tol=1e-04)))
+stopifnot(isTRUE(all.equal(0.149287738928777, pmatrix.msm(psor.msm, ci="none", t=10)[1,3], tol=1e-04)))
 try(pmatrix.msm(psor.msm, t=10, covariates=list(hieffusn=0.1))) # deliberate error
 p <- pmatrix.msm(psor.msm, t=10, covariates=list(ollwsdrt=0.1, hieffusn=0.2))
 stopifnot(isTRUE(all.equal(0.18196160265907, p[1,3], tol=1e-04)))
@@ -268,12 +271,14 @@ if (interactive())
       surface.msm(psor.msm, type="filled")
       surface.msm(psor.msm, c(3,5), type="filled")
       surface.msm(psor.msm, c(3,4))
-      x <- psor.msm$paramdata$params.uniq
+      x <- psor.msm$paramdata$opt$par
       x[6] <- 0
+
       surface.msm(psor.msm, c(3,4), point=x)
       surface.msm(psor.msm, c(3,4), point=x, xrange=c(-2, -0.6))
       surface.msm(psor.msm, c(3,4), point=x, yrange=c(-1.2, 0.1))
       surface.msm(psor.msm, c(3,4), point=x, np = 5)
+
       contour(psor.msm)
       persp(psor.msm)
       persp(psor.msm, np=5)

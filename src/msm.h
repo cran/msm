@@ -6,7 +6,8 @@
 /* index to treat a vector as a matrix. ith row, jth column. Fills columns first, as in R */
 #define MI(i, j, nrows) ( (int) ((j)*(nrows) + (i)) )
 /* index to treat a vector as a 3-dimensional array. Left-most index varies fastest, as in R */
-#define MI3(i, j, k, n1, n2) ( (int) ((k)*(n1*n2) + (j)*(n1) + (i)) )
+#define MI3(i, j, k, n1, n2) ( (int) ((k)*((n1)*(n2)) + (j)*(n1) + (i)) )
+#define MI4(i, j, k, m, n1, n2, n3) ( (int) ((m)*((n1)*(n2)*(n3)) + (k)*((n1)*(n2)) + (j)*(n1) + (i)) )
 
 /* Macros to switch quickly between C and S memory handling. Currently not used */
 
@@ -22,6 +23,7 @@
 #endif
 
 typedef double * Array3;
+typedef double * Array4;
 typedef double * Matrix;
 typedef int * iMatrix;
 typedef double * vector;
@@ -47,7 +49,6 @@ struct msmdata {
     double *obs; /* observed state or any other HMM observation */
     int *firstobs;
     int *whichcovh;
-    int *whichcovi;
 
     int nobs;
     int n;
@@ -59,21 +60,14 @@ struct qmodel {
     int nst;
     int npars;
     int ndpars;
+    int ncpars;
     int *ivector;
     double *intens;
-    int analyticp;
+    double *dintens;
     int iso;
     int *perm;
     int *qperm;
-    int *constr;
-};
-
-struct qcmodel {
-    int *ncovs;
-    double *coveffect;
-    int *constr;
-    int ndpars;
-    int *wcov;
+    int expm;
 };
 
 struct cmodel {
@@ -94,32 +88,21 @@ struct hmodel {
     double *coveffect;
     int *links;
     double *initp;
-    int *nicovs;
-    double *icoveffect;
 };
 
 typedef struct msmdata msmdata;
 typedef struct qmodel qmodel;
-typedef struct qcmodel qcmodel;
 typedef struct cmodel cmodel;
 typedef struct hmodel hmodel;
 
-double qij(int i, int j, vector intens, ivector qvector, int nstates);
-double pijdeath(int r, int s, Matrix pmat, vector intens, ivector qvector, int n);
-void Pmat(Matrix pmat, double t, vector intens, int nintens, int *qvector, int nstates, int exacttimes, int analyticp, int iso, int *perm, int *qperm, int debug);
-void DPmat(Array3 dpmat, double t, vector x, vector intens, vector oldintens, ivector qvector,
-	   int n, int np, int ndp, int ndc, ivector qconstr, ivector bconstr, ivector wcov, int exacttimes);
-void dpijdeath(int r, int s, vector x, Array3 dpmat, Matrix pmat, vector intens, vector oldintens, ivector qvector,
-	       int n, ivector constr, ivector bconstr, int ndp, int ndc, int ncovs, Matrix dcontrib);
 int repeated_entries(vector vec, int n);
-
 double logit(double x);
 double expit(double x);
 double identity(double x);
 int all_equal(double x, double y);
-void relative2absolutep(double *relative, double *absolute, int n, int baseline);
-
 void MatrixExpPadeR(double *ExpAt, double *A, int *n, double *t);
-
-void AnalyticP(Matrix pmat, double t, int nstates, int iso, int *perm, int *qperm, vector intens, int nintens, int *degen);
-
+void AnalyticP(Matrix pmat, double t, int nstates, int iso, int *perm, int *qperm, Matrix qmat, int *degen);
+double pijdeath(int r, int s, Matrix pmat, Matrix qmat, int n);
+void Pmat(Matrix pmat, double t, Matrix qmat, int nstates, int exacttimes, int iso, int *perm, int *qperm, int expm);
+void DPmat(Array3 dpmat, double t, Array3 dqmat, Matrix qmat, int n, int np, int exacttimes);
+void dpijdeath(int r, int s, Array3 dpmat, Matrix pmat, Array4 dqmat, Matrix qmat, int n, int npars, Matrix dcontrib);

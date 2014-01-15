@@ -144,8 +144,8 @@ totlos.ci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="me
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
 }
 
-efpt.ci.msm <- function(x, qmatrix=NULL, tostate, covariates="mean", cl=0.95, B=1000) {
-    t.list <- boot.msm(x, function(x)efpt.msm(x, qmatrix, tostate, covariates, ci="none"), B)
+efpt.ci.msm <- function(x, qmatrix=NULL, tostate, start, covariates="mean", cl=0.95, B=1000) {
+    t.list <- boot.msm(x, function(x)efpt.msm(x, qmatrix, start, tostate, covariates, ci="none"), B)
     t.array <- do.call("rbind", t.list)
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
 }
@@ -251,8 +251,8 @@ totlos.normci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
 }
 
-efpt.normci.msm <- function(x, qmatrix=NULL, tostate, covariates="mean", cl=0.95, B=1000, ...) {
-    t.list <- normboot.msm(x, function(x)efpt.msm(x, qmatrix, tostate, covariates, ci="none", ...), B)
+efpt.normci.msm <- function(x, qmatrix=NULL, tostate, start, covariates="mean", cl=0.95, B=1000, ...) {
+    t.list <- normboot.msm(x, function(x)efpt.msm(x, qmatrix, tostate, start, covariates, ci="none", ...), B)
     t.array <- do.call("rbind", t.list)
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
 }

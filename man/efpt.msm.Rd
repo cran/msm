@@ -6,8 +6,8 @@
   in a Markov model.
 }
 \usage{
-efpt.msm(x=NULL, qmatrix=NULL, tostate, covariates="mean",
-           ci=c("none","normal","bootstrap"), cl=0.95, B=1000)
+efpt.msm(x=NULL, qmatrix=NULL, tostate, start="all", covariates="mean",
+           ci=c("none","normal","bootstrap"), cl=0.95, B=1000, \dots)
 }
 \arguments{
   \item{x}{A fitted multi-state model, as returned by
@@ -17,6 +17,20 @@ efpt.msm(x=NULL, qmatrix=NULL, tostate, covariates="mean",
   intensity matrix in \code{qmatrix}.}
 
   \item{tostate}{State, or set of states supplied as a vector, for which to estimate the first passage time into.}
+
+  \item{start}{Starting state.  By default (\code{start="all"}),
+    this will return a vector of expected passage times from each
+    state in turn.
+
+    Alternatively, this can be used to obtain the expected first passage
+    time from a \emph{set} of states, rather than single states.  To
+    achieve this, \code{state} is set to a vector of weights, with
+    length equal to the number of states in the model.  These weights
+    should be proportional to the probability of starting in each of the
+    states in the desired set, so that weights of zero are supplied for
+    other states.  The function will calculate the weighted average of
+    the expected passage times from each of the corresponding states.
+  }
 
   \item{covariates}{Covariate values defining the intensity matrix for
   the fitted model \code{x}, as supplied to \code{\link{qmatrix.msm}}.}
@@ -39,6 +53,8 @@ efpt.msm(x=NULL, qmatrix=NULL, tostate, covariates="mean",
   \item{cl}{Width of the symmetric confidence interval, relative to 1.}
 
   \item{B}{Number of bootstrap replicates.}
+
+  \item{...}{Arguments to pass to \code{\link{MatrixExp}}.}
 }
 \value{
   A vector of expected first passage times, or "hitting times", from each state to the
@@ -59,8 +75,8 @@ efpt.msm(x=NULL, qmatrix=NULL, tostate, covariates="mean",
   between the "from" and "to" states in a unidirectional model.
   If there is non-zero chance of reaching an absorbing state
   before reaching \code{tostate}, then it is infinite.  It is
-  trivially zero if the "from" state equals \code{tostate}. 
-  
+  trivially zero if the "from" state equals \code{tostate}.
+
   This function currently only handles time-homogeneous Markov models.
   For time-inhomogeneous models it will assume that \eqn{Q} equals the
   average intensity matrix over all times and observed covariates.
@@ -77,7 +93,7 @@ efpt.msm(x=NULL, qmatrix=NULL, tostate, covariates="mean",
   (see the example below).
 }
 \references{
-Norris, J. R. (1997) Markov Chains. Cambridge University Press. 
+Norris, J. R. (1997) Markov Chains. Cambridge University Press.
 }
 \seealso{
   \code{\link{sojourn.msm}}, \code{\link{totlos.msm}}, \code{\link{boot.msm}}.
@@ -106,7 +122,7 @@ Q <- twoway4.q[1:3,1:3]; diag(Q) <- 0; diag(Q) <- -rowSums(Q)
 Q[3,] <- 0
 MatrixExp(Q, t=10)[,3]
 # Given in state 1 at time 0, P(hit 3 by time 10) = 0.479
-MatrixExp(Q, t=50)[,3]  # P(hit 3 by time 50) = 0.98 
+MatrixExp(Q, t=50)[,3]  # P(hit 3 by time 50) = 0.98
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{models}

@@ -45,7 +45,6 @@ hmmDIST <- function(label, link, r, call, ...)
     hdist
 }
 
-## Check for initial values outside defined ranges
 hmmCheckInits <- function(pars)
   {
       for (i in names(pars)) {
@@ -55,18 +54,9 @@ hmmCheckInits <- function(pars)
               if (!identical(all.equal(pars[i], round(pars[i])), TRUE))
                 stop("Value of ", i, " should be integer")
           }
-          else if (i %in% names(.msm.PARRANGES))
-            if (!in.range(pars[i], .msm.PARRANGES[[i]]))
-              stop("Initial value ", pars[i], " of parameter ", i, " outside allowed range ",
-                   "[", paste(.msm.PARRANGES[[i]], collapse=","), "]")
+          ## Range check now done in msm.form.hranges
       }
   }
-
-in.range <- function(x, interval) {
-    if (!is.numeric(interval) || length(interval)!=2) stop("interval should be a numeric vector of length 2")
-    if (!is.numeric(x)) stop("x should be numeric")
-    ( (x >= interval[1]) & (x <= interval[2]) )
-}
 
 hmmIdent <- function(x)
 {
@@ -186,7 +176,7 @@ hmmMEUnif <- function(lower, upper, sderr, meanerr=0)
                match.call(),
                meanerr=meanerr)
   }
- 
+
 hmmT <- function(mean, scale, df)
   {
       hmmDIST(label="t",

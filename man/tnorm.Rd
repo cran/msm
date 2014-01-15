@@ -9,7 +9,7 @@
      Density, distribution function, quantile function and random
      generation for the truncated Normal distribution with mean equal to \code{mean}
      and standard deviation equal to \code{sd} before truncation, and
-     truncated on the interval \code{[lower, upper]}. 
+     truncated on the interval \code{[lower, upper]}.
 }
 \usage{
      dtnorm(x, mean=0, sd=1, lower=-Inf, upper=Inf, log = FALSE)
@@ -29,8 +29,8 @@
   \item{sd}{vector of standard deviations.}
   \item{lower}{lower truncation point.}
   \item{upper}{upper truncation point.}
-  \item{log, log.p}{logical; if TRUE, probabilities p are given as
-    log(p).}
+  \item{log}{logical; if TRUE, return log density or log hazard.}
+  \item{log.p}{logical; if TRUE, probabilities p are given as log(p).}
   \item{lower.tail}{logical; if TRUE (default), probabilities are P[X <= x],
     otherwise, P[X > x].}
 }
@@ -45,7 +45,7 @@
   \deqn{  f(x, \mu, \sigma) = \phi(x, \mu, \sigma) / (\Phi(u, \mu, \sigma) - \Phi(l, \mu, \sigma))
   }{  f(x, mu, sigma) = phi(x, mu, sigma) / (Phi(upper, mu, sigma) - Phi(lower, mu, sigma))
     }
-    for \eqn{l <= x <= u}{lower <= x <= upper}, and 0 otherwise. 
+    for \eqn{l <= x <= u}{lower <= x <= upper}, and 0 otherwise.
 
   \eqn{\mu}{mean} is the mean of the original Normal distribution before
   truncation, \cr
@@ -56,22 +56,22 @@
     distribution, and \cr
     \eqn{\Phi(x)}{Phi(x)} is the distribution function of the corresponding normal
     distribution.
-  
+
   If \code{mean} or \code{sd} are not specified they assume the default values
   of \code{0} and \code{1}, respectively.
 
   If \code{lower} or \code{upper} are not specified they assume the default values
   of \code{-Inf} and \code{Inf}, respectively, corresponding to no
   lower or no upper truncation.
-  
+
   Therefore, for example, \code{dtnorm(x)}, with no other arguments, is
   simply equivalent to \code{dnorm(x)}.
-  
+
   Only \code{rtnorm} is used in the \code{msm} package, to simulate
   from hidden Markov models with truncated normal
   distributions. This uses the rejection sampling algorithms described
   by Robert (1995).
-  
+
   These functions are merely provided for completion,
   and are not optimized for numerical stability or speed.  To fit a hidden Markov
   model with a truncated Normal response distribution, use a
