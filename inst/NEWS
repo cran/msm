@@ -3,6 +3,122 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 1.3  (2014-01-15)
+-------------
+
+o CRAN release.  Includes the changes below from R-forge versions
+  1.2.1 up to 1.2.7, plus:
+
+o Fix of bug introduced in 1.2.3 which broke models with non-standard
+  state ordering.
+
+o Datasets now lazy loaded so data() not required. 
+
+o New "start" argument to efpt.msm, allowing averaging over a set of
+  starting states.
+
+
+Version 1.2.7 (2013-10-07)
+-------------
+
+o R-forge only release
+
+o Fix of bug for logLik.msm with by.subject=TRUE.
+
+
+Version 1.2.6 (2013-09-13)
+-------------
+
+o R-forge only release
+
+o Row numbers reported in error message about different states at the
+  same time corrected to account for missing data.  Thanks to Lucy
+  Leigh for the report.
+
+o An informative error is now shown if trying to use gen.inits with a
+  hidden Markov model, and it is now documented that this is not
+  supported.
+
+
+Version 1.2.5 (2013-07-30)
+-------------
+
+o R-forge only release
+
+o Analytic formula for totlos.msm implemented, which is vastly more
+  efficient than the numerical integration used previously.  Debugging
+  outputs left in 1.2.3 also removed.
+
+o Matrix exponentials, in MatrixExp and non-analytic likelihood
+  calculations, are now calculated using expm from the expm package by
+  default.  As a result msm now depends on the expm package.
+
+
+Version 1.2.4 (2013-07-23)
+-------------
+
+o R-forge only release
+
+o Range constraints can now be given for HMM outcome parameters,
+  through a new argument "hranges" to msm. This may improve HMM
+  identifiability.
+
+
+Version 1.2.3 (2013-06-06)
+-------------
+
+o R-forge only release
+
+o New interface for easily specifiying different covariates for each
+  transition intensity, through a named list in the "covariates"
+  argument to msm.  Previously this required "fixedpars".
+
+o Major restructuring of the internal code, mainly so that parameters
+  are adjusted for covariates in R rather than C.  There should be no
+  differences visible to the user.
+
+o Initial state occupancy probabilities are estimated on the
+  multivariate logit scale, not univariate, and confidence intervals
+  are calculated using a simulation-based method (with 10000
+  simulations, so there will be a small Monte Carlo error).
+
+o When centering covariates around their means for the default
+  likelihood calculation, the means used are now after dropping
+  missing values and subjects with one observation, not before. Thanks
+  to Howard Thom for the report.
+
+o Relatedly, the covariate values for subjects' last observations are
+  not included in this mean, since they don't contribute to the
+  likelihood, so interpretation of initial values for the qmatrix, and
+  outputs for covariates="mean", will now be very slightly different.
+
+o Bug fix in totlos.msm: calculations were wrong for fromt > 0.
+
+o Memory bug in Viterbi, which could crash R, fixed.
+
+
+Version 1.2.2 (2013-05-21)
+-------------
+
+o R-forge only release
+
+o Can now examine subject-specific -2 log likelihoods at the maximum
+  likelihood estimates, via logLik.msm().
+
+o The state can now be a factor with levels (1:nstates), as well as
+  numeric.  Previously supplying a factor state led to unpredictable
+  behaviour and potential crashes.
+
+
+Version 1.2.1 (2013-05-16)
+-------------
+
+o R-forge only release
+
+o A matrix of fixed patient-specific initial state distributions can
+  now be supplied as "initprobs" in hidden Markov models.
+
+
 Version 1.2 (2013-05-14)
 -----------
 
@@ -665,7 +781,7 @@ o time-dependent covariate values now taken from the start instead of
   end of the transition under hidden Markov models.
 
 
-Version 0.41 (January 28, 2005)
+Version 0.41 (2005-01-28)
 ------------
 
 o Censored outcomes in misclassification models are assumed to be not
@@ -674,7 +790,7 @@ o Censored outcomes in misclassification models are assumed to be not
 o A couple of bug fixes for exact transition times.
 
 
-Version 0.4 (January 7, 2005)
+Version 0.4 (2005-01-07)
 -----------
 
 o Censored observations are now supported, via new "censor" and
@@ -686,14 +802,14 @@ half of 2005. This will support hidden Markov models with general
 response distributions.
 
 
-Version 0.3.3 (September 18, 2004)
+Version 0.3.3 (2004-09-18)
 -------------
 
 o Maintenance release with minor fixes and enhancements ready for
 R-2.0.0.
 
 
-Version 0.3.2 (March 25, 2003)
+Version 0.3.2 (2003-03-25)
 -------------
 
 o More than one death state is now permitted, through the "death"
@@ -709,7 +825,7 @@ times.
 o Cleanups of the manual and minor fixes, as detailed in ChangeLog.
 
 
-Version 0.3.1 (October 14, 2003)
+Version 0.3.1 (2003-10-14)
 -------------
 
 o Bug fix. The likelihood was being wrongly calculated in cases when
@@ -723,7 +839,7 @@ within one day, and all other times exactly accurate.
 o More memory problems should be fixed.
 
 
-Version 0.3 (September 29, 2003)
+Version 0.3 (2003-09-29)
 -------------
 
 o Two errors in the calculation of the likelihood for a multi-state
@@ -747,7 +863,7 @@ as covariate effects. Specified by new arguments "qconstraint" or
 o The memory allocation problems of version 0.2 have been fixed.
 
 
-Version 0.22 (June 30, 2003)
+Version 0.22 (2003-06-30)
 --------------
 
 o Fixed some minor bugs, as detailed in ChangeLog.
@@ -757,7 +873,7 @@ probability matrices for processes with piecewise-constant
 intensities.
 
 
-Version 0.21 (June 3, 2003)
+Version 0.21 (2003-06-03)
 --------------
 
 o Fixed a handful of minor bugs, as detailed in ChangeLog.
@@ -767,7 +883,7 @@ o Minor edits and additions to the manual.
 o The subject ID can now be factor or character.
 
 
-Version 0.2 (January 2003)
+Version 0.2 (2003-01)
 -------------
 
 o A full manual in PDF format is included in the doc directory. This
@@ -810,7 +926,7 @@ that all the examples given in the manual can be run by the user.
 o Tidying of the help pages.
 
 
-Version 0.1 (November 2002)
+Version 0.1 (2002-11)
 -------------
 
 o First release.

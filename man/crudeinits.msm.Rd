@@ -4,7 +4,7 @@
 \description{
   Calculates crude initial values for transition intensities by assuming
   that the data represent the exact transition times of the Markov
-  process. 
+  process.
 }
 \usage{
 crudeinits.msm(formula, subject, qmatrix, data=NULL, censor=NULL, censor.states=NULL)
@@ -16,7 +16,8 @@ crudeinits.msm(formula, subject, qmatrix, data=NULL, censor=NULL, censor.states=
     \code{state ~ time}
 
     Observed states should be in the set \code{1, \dots, n},
-    where \code{n} is the number of states.
+    where \code{n} is the number of states.  Note hidden Markov models
+    are not supported by this function.
   }
   \item{subject}{Vector of subject identification numbers for the data
     specified by \code{formula}. If missing, then all observations

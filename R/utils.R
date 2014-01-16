@@ -40,48 +40,39 @@ deltamethod <- function(g,       # a formula or list of formulae (functions) giv
 ### Matrix exponential
 ### If a vector of multipliers t is supplied then a list of matrices is returned.
 
-MatrixExp <- function(mat, t = 1, n = 20, k = 3, method="pade")
-{
-    if (!is.matrix(mat) || (nrow(mat)!= ncol(mat))) stop("\"mat\" must be a square matrix")
-    nr <- nrow(mat)
-    ev <- eigen(mat)
-    if (length(t) > 1) res <- array(dim=c(dim(mat), length(t)))
-    if (any ( duplicated(ev$values)  ) || is.complex(ev$values) || det(ev$vectors) == 0) {
-        for (i in seq(along=t)) { 
-            if (method=="series") {
-                ## series approximation
-                ## adapted from mexp in Jim Lindsey's rmutil x
-                matt <- mat*t[i] / 2^k
-                sum <- power <- diag(nr)
-                for (r in 1:n) {
-                    power <- matt %*% power / r
-                    sum <- sum + power
-                }
-                for (s in 1:k)
-                    sum <- sum %*% sum
-                resi <- sum
-            }
-            else if (method == "pade") {
-                ## C function adapted from JAGS by Martyn Plummer
-                resi <- .C("MatrixExpPadeR", res=double(length(mat)), as.double(mat),
-                          as.integer(nr), as.double(t[i]))$res
-                resi <- matrix(resi, nrow=nrow(mat))
-            }
-            else stop("Method should be \"pade\" or \"series\"")
-            if (length(t)==1) res <- resi
-            else res[,,i] <- resi
-        }
+MatrixExp <- function(mat, t = 1, method=NULL,...){
+    if (!is.matrix(mat) || (nrow(mat)!= ncol(mat)))
+        stop("\"mat\" must be a square matrix")
+    qmodel <- if (is.qmatrix(mat) && !is.null(method) && method=="analytic") msm.form.qmodel(mat) else list(iso=0, perm=0, qperm=0)
+    if (!is.null(method) && method=="analytic") {
+        if (!is.qmatrix(mat))
+            warning("Analytic method not available since matrix is not a Markov model intensity matrix. Using \"pade\".")
+        else if (qmodel$iso==0) warning("Analytic method not available for this Markov model structure. Using \"pade\".")
+
     }
-    else {
-        ## spectral decomposition
-        evinv <- solve(ev$vectors)
-        for (i in seq(along=t)) {            
-            resi <- ev$vectors %*% diag(exp(ev$values * t[i])) %*% evinv
-            if (length(t)==1) res <- resi
-            else res[,,i] <- resi
+    if (length(t) > 1) res <- array(dim=c(dim(mat), length(t)))
+    for (i in seq(along=t)) {
+        if (is.null(method) || !(method %in% c("pade","series","analytic"))) {
+            if (is.null(method)) method <- eval(formals(expm::expm)$method)
+            resi <- expm::expm(t[i]*mat, method=method, ...)
+        } else {
+            ccall <- .C("MatrixExpR", as.double(mat), as.integer(nrow(mat)), res=double(length(mat)), as.double(t[i]),
+                        as.integer(match(method, c("pade","series"))), # must match macro constants in pijt.c
+                        as.integer(qmodel$iso), as.integer(qmodel$perm), as.integer(qmodel$qperm),
+                        as.integer(0), NAOK=TRUE)
+            resi <- matrix(ccall$res, nrow=nrow(mat))
         }
+        if (length(t)==1) res <- resi
+        else res[,,i] <- resi
     }
     res
+}
+
+## Tests for a valid continuous-time Markov model transition intensity matrix
+
+is.qmatrix <- function(Q) {
+    Q2 <- Q; diag(Q2) <- 0
+    isTRUE(all.equal(-diag(Q), rowSums(Q2))) && isTRUE(all(diag(Q)<=0)) && isTRUE(all(Q2>=0))
 }
 
 ### Truncated normal distribution
@@ -90,6 +81,7 @@ dtnorm <- function(x, mean=0, sd=1, lower=-Inf, upper=Inf, log=FALSE)
   {
       ret <- numeric(length(x))
       ret[x < lower | x > upper] <- if (log) -Inf else 0
+      ret[upper < lower] <- NaN
       ind <- x >=lower & x <=upper
       if (any(ind)) {
           denom <- pnorm(upper, mean, sd) - pnorm(lower, mean, sd)
@@ -103,8 +95,15 @@ dtnorm <- function(x, mean=0, sd=1, lower=-Inf, upper=Inf, log=FALSE)
 ptnorm <- function(q, mean=0, sd=1, lower=-Inf, upper=Inf, lower.tail=TRUE, log.p=FALSE)
   {
       ret <- numeric(length(q))
-      ret[q < lower] <- 0
-      ret[q > upper] <- 1
+      if (lower.tail) {
+          ret[q < lower] <- 0
+          ret[q > upper] <- 1
+      }
+      else {
+          ret[q < lower] <- 1
+          ret[q > upper] <- 0
+      }
+      ret[upper < lower] <- NaN
       ind <- q >=lower & q <=upper
       if (any(ind)) {
           denom <- pnorm(upper, mean, sd) - pnorm(lower, mean, sd)
@@ -117,32 +116,9 @@ ptnorm <- function(q, mean=0, sd=1, lower=-Inf, upper=Inf, lower.tail=TRUE, log.
   }
 
 qtnorm <- function(p, mean=0, sd=1, lower=-Inf, upper=Inf, lower.tail=TRUE, log.p=FALSE)
-  {
-      if (log.p) p <- exp(p)
-      if (!lower.tail) p <- 1 - p
-      ret <- numeric(length(p))
-      ret[p == 1] <- upper
-      ret[p == 0] <- lower
-      ret[p < 0 | p > 1] <- NaN
-      ret[upper < lower] <- NaN
-      ind <- (p > 0 & p < 1 & lower <= upper)
-      if (any(ind)) {
-          hind <- seq(along=p)[ind]
-          h <- function(y) {
-              (ptnorm(y, mean, sd, lower, upper) - p)[hind[i]]
-          }
-          ptmp <- numeric(length(p[ind]))
-          for (i in 1:length(p[ind])) {
-              interval <- c(-1, 1)
-              while (h(interval[1])*h(interval[2]) >= 0)
-                interval <- interval + c(-1,1)*0.5*(interval[2]-interval[1])
-              ptmp[i] <- uniroot(h, interval, tol=.Machine$double.eps)$root
-          }
-          ret[ind] <- ptmp
-      }
-      if (any(is.nan(ret))) warning("NaNs produced")
-      ret
-  }
+{
+    qgeneric(ptnorm, p=p, mean=mean, sd=sd, lower=lower, upper=upper, lbound=lower, ubound=upper, lower.tail=lower.tail, log.p=log.p)
+}
 
 ## Rejection sampling algorithm by Robert (Stat. Comp (1995), 5, 121-5)
 ## for simulating from the truncated normal distribution.
@@ -167,7 +143,7 @@ rtnorm <- function (n, mean = 0, sd = 1, lower = -Inf, upper = Inf) {
                           (lower == -Inf & upper > 0) |
                           (is.finite(lower) & is.finite(upper) & (lower < 0) & (upper > 0) & (upper-lower > sqrt(2*pi)))
                           ),
-                         0, # standard "simulate from normal and reject if outside limits" method. Use if bounds are wide.  FIXME HSOULD BE 
+                         0, # standard "simulate from normal and reject if outside limits" method. Use if bounds are wide.  FIXME HSOULD BE
                          ifelse(
                                 (lower >= 0 & (upper > lower + 2*sqrt(exp(1)) /
                                  (lower + sqrt(lower^2 + 4)) * exp((lower*2 - lower*sqrt(lower^2 + 4)) / 4))),
@@ -176,7 +152,7 @@ rtnorm <- function (n, mean = 0, sd = 1, lower = -Inf, upper = Inf) {
                                        (-upper + sqrt(upper^2 + 4)) * exp((upper*2 - -upper*sqrt(upper^2 + 4)) / 4)),
                                        2, # rejection sampling with exponential proposal. Use if upper << mean.
                                        3)))) # rejection sampling with uniform proposal. Use if bounds are narrow and central.
-    
+
     ind.nan <- ind[alg==-1]; ind.no <- ind[alg==0]; ind.expl <- ind[alg==1]; ind.expu <- ind[alg==2]; ind.u <- ind[alg==3]
     ret[ind.nan] <- NaN
     while (length(ind.no) > 0) {
@@ -243,34 +219,15 @@ pmenorm <- function(q, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0, 
     }
     if (!lower.tail) ret <- 1 - ret
     if (log.p) ret <- log(ret)
+    ret[upper < lower] <- NaN
     ret
 }
 
-qmenorm <- function(p, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0, lower.tail = TRUE, log.p = FALSE)
+
+qmenorm <- function(p, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0, lower.tail=TRUE, log.p=FALSE)
 {
-    if (log.p) p <- exp(p)
-    if (!lower.tail) p <- 1 - p
-    ret <- numeric(length(p))
-    ret[p == 1] <- Inf
-    ret[p == 0] <- -Inf
-    ret[p < 0 | p > 1] <- NaN
-    ind <- (p > 0 & p < 1)
-    if (any(ind)) {
-        hind <- seq(along=p)[ind]
-        h <- function(y) {
-            (pmenorm(y, mean, sd, lower, upper, sderr, meanerr) - p)[hind[i]]
-        }
-        ptmp <- numeric(length(p[ind]))
-        for (i in 1:length(p[ind])) {
-            interval <- c(-1, 1)
-            while (h(interval[1])*h(interval[2]) >= 0)
-              interval <- interval + c(-1,1)*0.5*(interval[2]-interval[1])
-            ptmp[i] <- uniroot(h, interval, tol=.Machine$double.eps)$root
-        }
-        ret[ind] <- ptmp
-    }
-    if (any(is.nan(ret))) warning("NaNs produced")
-    ret
+    qgeneric(pmenorm, p=p, mean=mean, sd=sd, lower=lower, upper=upper, sderr=sderr, meanerr=meanerr,
+             lbound=lower, ubound=upper, lower.tail=lower.tail, log.p=log.p)
 }
 
 rmenorm <- function(n, mean=0, sd=1, lower=-Inf, upper=Inf, sderr=0, meanerr=0)
@@ -300,31 +257,10 @@ pmeunif <- function(q, lower=0, upper=1, sderr=0, meanerr=0, lower.tail = TRUE, 
     ret
 }
 
-qmeunif <- function(p, lower=0, upper=1, sderr=0, meanerr=0, lower.tail = TRUE, log.p = FALSE)
+qmeunif <- function(p, lower=0, upper=1, sderr=0, meanerr=0, lower.tail=TRUE, log.p=FALSE)
 {
-    if (log.p) p <- exp(p)
-    if (!lower.tail) p <- 1 - p
-    ret <- numeric(length(p))
-    ret[p == 1] <- Inf
-    ret[p == 0] <- -Inf
-    ret[p < 0 | p > 1] <- NaN
-    ind <- (p > 0 & p < 1)
-    if (any(ind)) {
-        hind <- seq(along=p)[ind]
-        h <- function(y) {
-            (pmeunif(y, lower, upper, sderr, meanerr) - p)[hind[i]]
-        }
-        ptmp <- numeric(length(p[ind]))
-        for (i in 1:length(p[ind])) {
-            interval <- c(-1, 1)
-            while (h(interval[1])*h(interval[2]) >= 0)
-              interval <- interval + c(-1,1)*0.5*(interval[2]-interval[1])
-            ptmp[i] <- uniroot(h, interval, tol=.Machine$double.eps)$root
-        }
-        ret[ind] <- ptmp
-    }
-    if (any(is.nan(ret))) warning("NaNs produced")
-    ret
+    qgeneric(pmeunif, p=p, lower=lower, upper=upper, sderr=sderr, meanerr=meanerr,
+             lbound=lower, ubound=upper, lower.tail=lower.tail, log.p=log.p)
 }
 
 rmeunif <- function(n, lower=0, upper=1, sderr=0, meanerr=0)
@@ -379,36 +315,9 @@ ppexp <- function(q, rate = 1, t = 0, lower.tail = TRUE, log.p = FALSE)
       ret
   }
 
-qpexp <- function (p, rate = 1, t = 0, lower.tail = TRUE, log.p = FALSE)
-  {
-      if (length(t) != length(rate)) stop("length of t must be equal to length of rate")
-      if (!isTRUE(all.equal(0, t[1]))) stop("first element of t should be 0")
-      if (is.unsorted(t)) stop("t should be in increasing order")
-      if (log.p) p <- exp(p)
-      if (!lower.tail) p <- 1 - p
-      ret <- numeric(length(p))
-      ret[p == 1] <- Inf
-      ret[p == 0] <- -Inf
-      ret[p < 0 | p > 1] <- NaN
-      ind <- (p > 0 & p < 1)
-      if (any(ind)) {
-          hind <- seq(along = p)[ind]
-          h <- function(y) {
-              (ppexp(y, rate, t) - p)[hind[i]]
-          }
-          ptmp <- numeric(length(p[ind]))
-          for (i in 1:length(p[ind])) {
-              interval <- c(-1, 1)
-              while (h(interval[1]) * h(interval[2]) >= 0) interval <- interval +
-                c(-1, 1) * 0.5 * (interval[2] - interval[1])
-              ptmp[i] <- uniroot(h, interval, tol=.Machine$double.eps)$root
-          }
-          ret[ind] <- ptmp
-      }
-      if (any(is.nan(ret)))
-        warning("NaNs produced")
-      ret
-  }
+qpexp <- function (p, rate = 1, t = 0, lower.tail = TRUE, log.p = FALSE) {
+    qgeneric(ppexp, p=p, rate=rate, t=t, lower.tail=lower.tail, log.p=log.p)
+}
 
 ## Simulate n values from exponential distribution with parameters
 ## rate changing at t.  Simulate from exponentials in turn, simulated
@@ -435,7 +344,77 @@ rpexp <- function(n=1, rate=1, t=0)
       ret
   }
 
-## TODO remove this when enough people have upgraded to R 2.7.0, which
-## has this in base.
+qgeneric <- function(pdist, p, ...)
+{
+    args <- list(...)
+    if (is.null(args$log.p)) args$log.p <- FALSE
+    if (is.null(args$lower.tail)) args$lower.tail <- TRUE
+    if (is.null(args$lbound)) args$lbound <- -Inf
+    if (is.null(args$ubound)) args$ubound <- Inf
+    if (args$log.p) p <- exp(p)
+    if (!args$lower.tail) p <- 1 - p
+    ret <- numeric(length(p))
+    ret[p == 0] <- args$lbound
+    ret[p == 1] <- args$ubound
+    args[c("lower.tail","log.p","lbound","ubound")] <- NULL
+    ret[p < 0 | p > 1] <- NaN
+    ind <- (p > 0 & p < 1)
+    if (any(ind)) {
+        hind <- seq(along=p)[ind]
+        h <- function(y) {
+            args$q <- y
+            (do.call(pdist, args) - p)[hind[i]]
+        }
+        ptmp <- numeric(length(p[ind]))
+        for (i in 1:length(p[ind])) {
+            interval <- c(-1, 1)
+            while (h(interval[1])*h(interval[2]) >= 0) {
+              interval <- interval + c(-1,1)*0.5*(interval[2]-interval[1])
+          }
+            ptmp[i] <- uniroot(h, interval, tol=.Machine$double.eps)$root
+        }
+        ret[ind] <- ptmp
+    }
+    if (any(is.nan(ret))) warning("NaNs produced")
+    ret
+}
 
-identity <- function(x)x
+
+## Transform vector of parameters constrained on [a, b] to real line.
+## Vectorised.  a=-Inf or b=Inf represent unbounded below or above.
+
+glogit <- function(x, a, b) {
+    if (is.null(a)) a <- -Inf
+    if (is.null(b)) b <- Inf
+    ret <- numeric(length(x))
+    attributes(ret) <- attributes(x)
+    nn <- is.infinite(a) & is.infinite(b)
+    nb <- is.infinite(a) & is.finite(b)
+    an <- is.finite(a) & is.infinite(b)
+    ab <- is.finite(a) & is.finite(b)
+    ret[nn] <- x[nn]
+    ret[nb] <- log(b[nb] - x[nb])
+    ret[an] <- log(x[an] - a[an])
+    ret[ab] <- log((x[ab] - a[ab]) / (b[ab] - x[ab]))
+    ret
+}
+
+## Inverse transform vector of parameters constrained on [a, b]: back
+## from real line to constrained scale.  Vectorised.  a=-Inf or b=Inf
+## represent unbounded below or above.
+
+gexpit <- function(x, a, b) {
+    if (is.null(a)) a <- -Inf
+    if (is.null(b)) b <- Inf
+    ret <- numeric(length(x))
+    attributes(ret) <- attributes(x)
+    nn <- is.infinite(a) & is.infinite(b)
+    nb <- is.infinite(a) & is.finite(b)
+    an <- is.finite(a) & is.infinite(b)
+    ab <- is.finite(a) & is.finite(b)
+    ret[nn] <- x[nn]
+    ret[nb] <- b[nb] - exp(x[nb])
+    ret[an] <- exp(x[an]) + a[an]
+    ret[ab] <- (b[ab]*exp(x[ab]) + a[ab]) / (1 + exp(x[ab]))
+    ret
+}

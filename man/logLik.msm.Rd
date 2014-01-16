@@ -6,11 +6,13 @@
   fitted with \code{\link{msm}}.  
 }
 \usage{
-\method{logLik}{msm}(object, \dots)
+\method{logLik}{msm}(object, by.subject=FALSE, \dots)
 }
 \arguments{
   \item{object}{A fitted multi-state model object, as returned by
     \code{\link{msm}}.}
+  \item{by.subject}{Return vector of subject-specific log-likelihoods,
+    which should sum to the total log-likelihood.}
   \item{...}{(unused) further arguments passed to or from other methods.}
 }
 \value{

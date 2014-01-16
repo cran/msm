@@ -6,31 +6,20 @@
    of outcome conditionally on the hidden state).  All of the form
    double f(double x, double *pars) */
 
-/* Categorical distribution on the set (1, 2, 3, ..., pars[0]), 
-   Baseline category is given by pars[1]
-   Probabilities are defined by pars[2], ... pars[ncats+1] 
-
-   Multinomial logistic regression: 
-   On entry to this function, the baseline probabilities "oldpars"
-   may have been transformed by covariates using AddCovs, as: 
-   newpars[r] --> oldpars[r]*exp(beta x)
-   In this function, these are used to calculate the actual probabilities as: 
-   p[r] = newpars[r] / (sum of non-baseline newpars)  for r = not baseline
-   p[r] = 1 / (sum of non-baseline newpars)  for r = baseline
-      
+/* Categorical distribution on the set (1, 2, 3, ..., pars[0]),
+   Baseline category is given by pars[1] (not used any more, to delete?)
+   Probabilities are defined by pars[2], ... pars[ncats+1]
+   NEW IMPLEMENTATION in v1.3
+   pars[2],pars[3]... are absolute probs.  covariates applied in R.
+   used to be relative with covariates applied in C.
 */
 
 double hmmCat(double x, double *pars)
 {
-    /* check that data x is in the set should already have been done in R */
     int cat = fprec(x, 0);
     int ncats = fprec(pars[0], 0);
-    int basecat = fprec(pars[1], 0); /* pars[2], ... pars[ncats+1] are the probabilities */
-    double ret, *p = Calloc(ncats, double); 
-    relative2absolutep(&pars[2], p, ncats, basecat-1);
-    ret = p[cat-1];
-    Free(p);
-    return ret;	    
+    if ((cat > ncats) || (cat < 1)) return 0;
+    return pars[1 + cat];
 }
 
 double hmmIdent(double x, double *pars)
@@ -63,7 +52,7 @@ double hmmExp(double x, double *pars)
 }
 
 double hmmGamma(double x, double *pars)
-{ 
+{
     double shape = pars[0], scale = 1 / pars[1];
     return dgamma(x, shape, scale, 0);
 }
@@ -112,7 +101,7 @@ double hmmMETNorm(double x, double *pars)
     double mutmp = ((x - meanerr)*sd*sd + mean*sderr*sderr) / sumsq;
     double nc = 1/(pnorm(upper, mean, sd, 1, 0) - pnorm(lower, mean, sd, 1, 0));
     double nctmp = pnorm(upper, mutmp, sigtmp, 1, 0) - pnorm(lower, mutmp, sigtmp, 1, 0);
-    return nc * nctmp * dnorm(x, meanerr + mean, sqrt(sumsq), 0); 
+    return nc * nctmp * dnorm(x, meanerr + mean, sqrt(sumsq), 0);
 }
 
 /* Satten and Longini's uniform distribution with normal measurement error */

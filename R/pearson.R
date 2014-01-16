@@ -7,7 +7,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
                         indep.cens=TRUE, # use censoring times when calculating the empirical distribution of sampling times
                         maxtimes=NULL,# upper limit for imputed next observation times
                         pval=TRUE # calculate p-values for test. false if calling from bootstrap
-                        ) {
+                        ){
 
     dat <- x$data
     ## Error handling
@@ -75,6 +75,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
     od$firstobs <- rep(tapply(1:n,od$subject,min)[as.character(unique(od$subject))],
                     table(od$subject)[as.character(unique(od$subject))])
     od$obsno <- 1:n - od$firstobs + 1
+    od$subj.num <- match(od$subject, unique(od$subject))
     if (!is.null(next.obstime) && (!is.numeric(next.obstime) || length(next.obstime) != n)) stop (paste("expected \"next.obstime\" to be a numeric vector length", n))
     od$timeinterval <- if (is.null(next.obstime)) (od$obsno>1)*(od$time - od$time[c(1,1:(n-1))]) else next.obstime
     if (!is.null(maxtimes) && (!is.numeric(maxtimes) || !(length(maxtimes) %in% c(1,n)))) stop (paste("expected \"maxtimes\" to be a numeric vector length 1 or", n))
@@ -202,7 +203,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
             if (x$ecmodel$ncovs > 0) od$cov[x$hmodel$whichcovh.orig[1:x$ecmodel$ncovs]][od$obsno>1,,drop=FALSE]
             else NULL
         p.true <- array(dim=c(nst, ntrans)) # prob of each true state conditional on complete history including current obs
-        initp <- if (x$foundse) x$hmodel$initprobs[,"Estimate"] else x$hmodel$initprobs
+        initp <- x$hmodel$initpmat
         if (x$ecmodel$ncovs > 0) {
             uniqmisc <- unique(misccov)
             ematindex <- match(do.call("paste",misccov), do.call("paste", uniqmisc))
@@ -215,12 +216,12 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
             ematrix <- if (x$ecmodel$ncovs>0) emat[,,ematindex[i]] else emat
 	    if (md$state[i] %in% ndstates) {
               T <- pmi[,,md$timeqmatindex[i]] * matrix(ematrix[,md$state[i]], nrow=nst, ncol=nst, byrow=TRUE)
-              p.true[,i] <- if (md$obsno[i] == 2) t(initp) %*% T else t(p.true[,i-1]) %*% T
+              p.true[,i] <- if (md$obsno[i] == 2) t(initp[md$subj.num[i],]) %*% T else t(p.true[,i-1]) %*% T
               p.true[,i] <- p.true[,i] / sum(p.true[,i])  # prob of each true state
             }
 	    if (!(md$state[i] %in% dstates)) {
                 prob[,i] <-
-                    if (md$obsno[i] == 2) initp %*% pmi[,,md$timeqmatindex[i]] %*% ematrix
+                    if (md$obsno[i] == 2) initp[md$subj.num[i],] %*% pmi[,,md$timeqmatindex[i]] %*% ematrix
                     else p.true[,i-1] %*% pmi[,,md$timeqmatindex[i]] %*% ematrix
             }
         }
@@ -242,7 +243,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
                     k <- deathindex[j]
                     ematrix <- if (x$ecmodel$ncovs>0) emat[,,ematindex[k]] else emat
                     prob[,k] <-
-                        if (md$obsno[k] == 2) initp %*% pmi[,,imputation[j,i,"timeqmatindex"]] %*% ematrix
+                        if (md$obsno[k] == 2) initp[md$subj.num[k],] %*% pmi[,,imputation[j,i,"timeqmatindex"]] %*% ematrix
                         else p.true[,k-1] %*% pmi[,,imputation[j,i,"timeqmatindex"]] %*% ematrix
                 }
             }
@@ -375,13 +376,13 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
         ## compute Psi  = Cov(score(theta), Orc), where Orc is observed counts in pearson table
         ## arranged as npars x RC
         ## bottom left and top right blocks wrong way round in paper
-        dp <- likderiv.msm(x$paramdata$opt$par, deriv=5, x$data, x$qmodel, x$qcmodel, x$cmodel, x$hmodel, x$paramdata) # ntrans x R x npars: trans in data order
+        dp <- Ccall.msm(x$paramdata$opt$par, do.what="dpmat", x$data, x$qmodel, x$qcmodel, x$cmodel, x$hmodel, x$paramdata) # ntrans x R x npars: trans in data order
         Psiarr <- apply(dp, c(2,3), function(x)tapply(x, md$group, sum))
         npars <- x$paramdata$nopt # only includes qbase,qcov, since no hmms here
         ## permute C x R x npars Psiarr to R x C x npars Psi and then collapse first two dims
         Psi <- t(array(aperm(Psiarr,c(2,1,3)), dim=c(R*C,npars)))
         ## rows ordered with tostate changing fastest, then category (match P)
-        EI <- 0.5*x$paramdata$info$info
+        EI <- 0.5*x$paramdata$info
         Omega <- rbind(cbind(EI, Psi %*% P), cbind(t(P) %*% t(Psi),PSigmaPT))
 
         ## compute B: RC x npars matrix with entries derc/dtheta_m / sqrt(erc)
@@ -425,12 +426,11 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
 
     ## Simulated observation times to use as sampling frame for bootstrapped data
     if (!is.null(imputation)) {
-      imp.times <- matrix(rep(od$time, N), nrow=length(od$time), ncol=N)
-      prevtime <- imp.times[which(od$state %in% dstates) - 1,]
-      imp.times[od$state %in% dstates, ] <- prevtime + imputation[,,"times"]
+      imp.times <- matrix(rep(x$data$time, N), nrow=length(x$data$time), ncol=N)
+      prevtime <- imp.times[which(x$data$state %in% dstates) - 1,]
+      imp.times[x$data$state %in% dstates, ] <- prevtime + imputation[,,"times"]
     }
     else imp.times <- NULL
-
     if (boot) {
         if (!is.null(groups)) stop("Bootstrapping not valid with user-specified groups")
         cat("Starting bootstrap refitting...\n")
@@ -521,7 +521,6 @@ pearson.boot.msm <- function(x, imp.times=NULL, transitions=NULL, timegroups=4, 
     if (!is.null(imp.times))
      x$data$time <- imp.times[,sample(ncol(imp.times), size=1)]  # resample one of the imputed sets of observation times
     boot.df <- simfitted.msm(x,drop.absorb=TRUE)
-
     x$call$data <- substitute(boot.df)
     refit.msm <- try(eval(x$call)) # estimation might not converge for a particular bootstrap resample
     if (inherits(refit.msm, "msm")) {

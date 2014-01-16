@@ -27,7 +27,7 @@
     which the rate changes. The first element of \code{t} should be 0,
     and \code{t} should be in increasing order.}
   \item{log, log.p}{logical; if TRUE, probabilities p are given as
-    log(p).}
+    log(p), or log density is returned.}
   \item{lower.tail}{logical; if TRUE (default), probabilities are P[X <= x],
     otherwise, P[X > x].}
 }
@@ -44,19 +44,19 @@ maximum \eqn{t_i}{ti} such that
   \eqn{t_i < x}{ti < x}.
   The density of this distribution at \eqn{x > 0} is \eqn{f(x)} for \eqn{k = 1},
   and \deqn{\prod_{i=1}^k (1 - F(t_{i} - t_{i-1}, r_i)) f(x - t_{k}, r_{k})}{\prod{i=1 \dots k} (1 - F(ti - t{i-1}, r{i-1})) f(x - tk, rk)}
-  for k > 1. 
+  for k > 1.
 
   where \eqn{F()} and \eqn{f()} are the distribution and density
   functions of the standard exponential distribution.
-  
+
   If \code{rate} is of length 1, this is just the standard exponential
   distribution.  Therefore, for example, \code{dpexp(x)}, with no other
   arguments, is simply equivalent to \code{dexp(x)}.
-  
+
   Only \code{rpexp} is used in the \code{msm} package, to simulate
   from Markov processes with piecewise-constant intensities depending on
   time-dependent covariates.  These functions are merely provided for
-  completion, and are not optimized for numerical stability or speed.  
+  completion, and are not optimized for numerical stability or speed.
 }
 \seealso{
   \code{\link{dexp}}, \code{\link{sim.msm}}.
@@ -68,11 +68,11 @@ t <- c(0, 10, 20, 30)
 ## standard exponential distribution
 plot(x, dexp(x, 0.1), type="l")
 ## distribution with piecewise constant rate
-lines(x, dpexp(x, rate, t), type="l", lty=2)  
+lines(x, dpexp(x, rate, t), type="l", lty=2)
 ## standard exponential distribution
-plot(x, pexp(x, 0.1), type="l") 
+plot(x, pexp(x, 0.1), type="l")
 ## distribution with piecewise constant rate
-lines(x, ppexp(x, rate, t), type="l", lty=2)  
+lines(x, ppexp(x, rate, t), type="l", lty=2)
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{distribution}

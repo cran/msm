@@ -22,8 +22,20 @@
 */
 #define _USE_LAPACK_EIGEN_
 #define _USE_LAPACK_INVERSE_
-#define _MEXP_METHOD_ 1 /* 1 for Pade approximation, 2 for series. Pade is more robust. */
+#define MEXP_PADE 1
+#define MEXP_SERIES 2
 #include "R_ext/Lapack.h"
+#include "R_ext/Rdynload.h"
+
+#define NODERIVDEBUG
+
+/* Interface to expm package. */
+typedef enum {Ward_2, Ward_1, Ward_buggy_octave} precond_type;
+void (*expm)(double *x, int n, double *z, precond_type precond_kind);
+void R_init_msm(DllInfo *dll)
+{
+    expm = (void (*) (double*, int, double*, precond_type)) R_GetCCallable("expm", "expm");
+}
 
 /* Set A to be an n x n identity matrix */
 
@@ -220,7 +232,7 @@ MatrixExpPade(double *ExpAt, double *A, int n, double t)
   double l1 = F77_CALL(dlange)("1", &n, &n, At, &n, 0); /* L-1 norm */
   double linf = F77_CALL(dlange)("i", &n, &n, At, &n, Temp); /* L-Infinity norm */
   double K = (log(l1) + log(linf))/log(4);
-  int npower =  (int)(K) + 4;
+  int npower = (R_FINITE(K) ? (int)(K)+4 : NA_INTEGER);
   double scale = 1;
 
   /* Multiply by t */
@@ -260,13 +272,6 @@ MatrixExpPade(double *ExpAt, double *A, int n, double t)
     MultMat(Temp, Temp, n, n, n, ExpAt);
   }
   Free(workspace);
-}
-
-/* R interface to Pade method */
-
-void MatrixExpPadeR(double *ExpAt, double *A, int *n, double *t)
-{
-    MatrixExpPade(ExpAt, A, *n, *t);
 }
 
 /* Tests if a vector has any non-unique entries */
@@ -318,7 +323,7 @@ void Eigen(Matrix mat, int n, vector revals, vector ievals, Matrix evecs, int *e
     Free(work); Free(worki); Free(temp);
 }
 
-/* Compute exponential of a matrix */
+/* Compute exponential of a general matrix */
 /* First try to use eigensystem decomposition */
 /* If matrix has repeated eigenvalues, then use Pade approximation
    with scaling and squaring, or (less robust) power series.  */
@@ -327,7 +332,9 @@ void Eigen(Matrix mat, int n, vector revals, vector ievals, Matrix evecs, int *e
    invertibility by calculating determinant, thus reducing number of
    cases where it is necessary to use power series or Pade? */
 
-void MatrixExp(Matrix mat, int n, Matrix expmat, double t, int debug, int degen)
+void MatrixExpMSM(Matrix mat, int n, Matrix expmat, double t,
+	       int degen, /* currently not used */
+	       int method)
 {
     int i, err=0, complex_evals=0, nsq=n*n;
     Matrix work = (Matrix) Calloc(nsq, double);
@@ -345,11 +352,10 @@ void MatrixExp(Matrix mat, int n, Matrix expmat, double t, int debug, int degen)
 	break;
       }
     if (repeated_entries (revals, n) || (err != 0) || degen || complex_evals){
-#if _MEXP_METHOD_==1
-	MatrixExpPade(expmat, mat, n, t);
-#elif _MEXP_METHOD_==2
-	MatrixExpSeries(mat, n, expmat, t);
-#endif
+	if (method == MEXP_SERIES)
+	    MatrixExpSeries(mat, n, expmat, t);
+	else
+	    MatrixExpPade(expmat, mat, n, t);
     }
     else {
 	for (i=0; i<n; ++i)
@@ -361,50 +367,44 @@ void MatrixExp(Matrix mat, int n, Matrix expmat, double t, int debug, int degen)
     Free(work);  Free(revals);  Free(ievals); Free(evecs);  Free(evecsinv);
 }
 
-/* Fills the required entries of the intensity matrix with the current intensities */
-/* qvector supplied filled by row. intens ordered by row, qmat filled by column */
-/* TODO can probably optimise by passing this from R */
+/* Exponential of a matrix.  If matrix represents one of certain
+   Markov model structures, then use appropriate analytic formulae.
+   Interface to R MatrixExp function, and also used in Pmat */
 
-void FillQmatrix(ivector qvector, vector intens, Matrix qmat, int nstates)
-{
-    int i, j, k=0;
-    for (i=0; i<nstates; ++i) {
-	qmat[MI(i, i, nstates)] = 0;
-	for (j=0; j<nstates; ++j) {
-	    if (j != i) {
-		qmat[MI(i, j, nstates)] = 0;
-		if (qvector[MI(j, i, nstates)] == 1) {
-		    qmat[MI(i, j, nstates)] += intens[k];
-		    qmat[MI(i, i, nstates)] -= intens[k];
-		    ++k;
-		}
-	    }
+void MatrixExpR(double *mat, int *n, double *expmat, double *t,
+		int *method, int *iso, int *perm, int *qperm,
+		int *degen){
+    if (*iso > 0)
+	AnalyticP(expmat, *t, *n, *iso, perm, qperm, mat, degen);
+    else
+	MatrixExpMSM(mat, *n, expmat, *t, *degen, *method);
+}
+
+void MatrixExpEXPM(double *mat, int *n, double *expmat, double *t,
+		int *method, int *iso, int *perm, int *qperm,
+		int *degen){
+    int i;
+    int nsq = (*n)*(*n);
+    double *matt = Calloc(nsq, double);
+    if (*iso > 0)
+	AnalyticP(expmat, *t, *n, *iso, perm, qperm, mat, degen);
+    else {
+	for (i=0; i<((*n)*(*n)); ++i) {
+	    matt[i] = (*t) * mat[i];
 	}
+	expm(matt, *n, expmat, Ward_2);
     }
+    Free(matt);
 }
 
 /* Returns i-j transition intensity time t given vectors of intensities and transition indicators */
-/* TODO can probably save time by passing filled Qmatrix from R */
-
-double qij(int i, int j, vector intens, ivector qvector, int nstates)
-{
-    double q;
-    Matrix qmat = Calloc( (nstates)*(nstates), double);
-    FillQmatrix(qvector, intens, qmat, nstates);
-    q = qmat[MI(i,j,nstates)];
-    Free(qmat);
-    return q;
-}
 
 /* Calculates the whole transition matrix in time t given an intensity matrix */
 
-void Pmat(Matrix pmat, double t, vector intens, int nintens, ivector qvector, int nstates, int exacttimes,
-	  int analyticp, int iso, ivector perm, ivector qperm, int debug)
+void Pmat(Matrix pmat, double t, Matrix qmat, int nstates, int exacttimes, int iso, ivector perm, ivector qperm, int use_expm)
 {
-    int i,j,degen=0;
+    int i,j,method=MEXP_PADE,degen=0;
     double pii;
-    Matrix qmat = (Matrix) Calloc( (nstates)*(nstates), double);
-    FillQmatrix(qvector, intens, qmat, nstates);
     if (exacttimes) {
 	for (i=0; i<nstates; ++i) {
 	  pii = exp(t * qmat[MI(i, i, nstates)] );
@@ -414,10 +414,10 @@ void Pmat(Matrix pmat, double t, vector intens, int nintens, ivector qvector, in
 	}
     }
     else {
-	if ((iso > 0) && (analyticp))
-	    AnalyticP(pmat, t, nstates, iso, perm, qperm, intens, nintens, &degen);
+	if (use_expm)
+	    MatrixExpEXPM(qmat, &nstates, pmat, &t, &method, &iso, perm, qperm, &degen);
 	else
-	    MatrixExp(qmat, nstates, pmat, t, debug, degen);
+	    MatrixExpR(qmat, &nstates, pmat, &t, &method, &iso, perm, qperm, &degen);
 	/* Floating point fuzz sometimes causes trouble */
 	for (i=0; i<nstates; ++i)
 	    for (j=0; j<nstates; ++j) {
@@ -425,10 +425,10 @@ void Pmat(Matrix pmat, double t, vector intens, int nintens, ivector qvector, in
 		if (pmat[MI(i, j, nstates)] > 1 - DBL_EPSILON) pmat[MI(i, j, nstates)] = 1;
 	    }
     }
-    Free(qmat);
 }
 
-double pijdeath(int r, int s, Matrix pmat, vector intens, ivector qvector, int n)
+
+double pijdeath(int r, int s, Matrix pmat, Matrix qmat, int n)
 {
     int j;
     double contrib;
@@ -436,8 +436,9 @@ double pijdeath(int r, int s, Matrix pmat, vector intens, ivector qvector, int n
     else {    /* sum over unobserved state at the previous instant */
 	contrib = 0;
 	for (j = 0; j < n; ++j)
-	    if (j != s)
-		contrib += pmat[MI(r, j, n)] * qij(j, s, intens, qvector, n);
+	    if (j != s) {
+		contrib += pmat[MI(r, j, n)] * qmat[MI(j,s,n)];
+	    }
     }
     return contrib;
 }
@@ -452,177 +453,43 @@ double pijdeath(int r, int s, Matrix pmat, vector intens, ivector qvector, int n
 ***************************************************/
 
 /*
-   Derivatives of Q matrix wrt q
 
-   With constraints on q
-   p is the index of the current distinct intensity parameter being differentiated with respect to
-   nc is length of constraint vector, ie number of intensities inc duplicates
-   qmat includes duplicates.
-   ic loops over non-distinct intensities in constr
-   constr indexed from 1
+qij exp (qii t)
+dqij exp(qii t) + dqii qij t exp(qii t)
+exp(qii t) ( dqij + dqii qij t )
 
-   diag: - no of times that parameter appears in the current row
-   other: 1 if that parameter appears.
-
-   for example 4x4 reversible
-   constr =  1 1 1 2 2 3 4
-   q with constr =  *  1  *  1
-   1  *  2  2
-   *  *  3  4
-   *  *  *  *
-   consider parameter 1 .
-   DQ =            -2  1  0  1
-   1  -1 0  0
-   0  0  ...
+or exp(qii t) if diag
 
 */
 
-void FormDQ(Matrix DQ, Matrix qmat, Matrix qbase, int p, int n, ivector qconstr, int np) {
-    int i, j, ic=0;
-    int found=0; /* found parameter in current row */
-    /* Loop through entries of result matrix */
-    for (i=0; i<n; ++i) {
-	found = 0;
-	for (j=0; j<n; ++j) {
-	    if ((i != j) || ((i==j) && !found))
-		DQ[MI(i,j,n)] = 0;
-	    if (ic < np) {
-		if (qmat[MI(i,j,n)] > 0) {
-			/* check which distinct intens this one corresponds to */
-		    if (qconstr[ic]-1 == p) { /* the pth intensity parameter starting from 0 */
-			DQ[MI(i,j,n)] = qmat[MI(i,j,n)] / qbase[MI(i,j,n)];
-			DQ[MI(i,i,n)] += -qmat[MI(i,j,n)] / qbase[MI(i,j,n)];
-			found = 1;
-		    }
-		    ++ic;
-		}
-	    }
-	}
-    }
-}
-
-/* Derivative of Q  with respect to covariate coefficients */
-
-void FormDQCov(Matrix DQ, Matrix qmat, int p, int n, ivector bconstr, ivector wcov, int np, vector x) {
-    int i, j, ic=0, found=0; /* found parameter in current row */
-    /* Loop through entries of result matrix */
-    for (i=0; i<n; ++i) {
-	found = 0;
-	for (j=0; j<n; ++j) {
-	    if ((i != j) || ((i==j) && !found))
-		DQ[MI(i,j,n)] = 0;
-	    if (ic < np) {  /* np is number of (non-distinct, non-zero, non-diagonal) intensity parameters */
-		if (qmat[MI(i,j,n)] > 0) {
-		    /* check which distinct intens this one corresponds to */
-		    if (bconstr[(wcov[p]-1)*np + ic] - 1 == p) { /* the pth intensity parameter starting from 0 */
-			DQ[MI(i,j,n)] = x[wcov[p]-1]*qmat[MI(i,j,n)];
-			DQ[MI(i,i,n)] += -x[wcov[p]-1]*qmat[MI(i,j,n)];
-			found = 1;
-		    }
-		    ++ic;
-		}
-	    }
-	}
-    }
-}
-
-/* Derivs for exact times
-   P_rr  =  P =    exp(-(qrs + rest of row r..)*t)
-   P_rs  =  P q =  exp(-(qrs + rest of row r..)*t) qrs
-
-   WRT qrs: for row r of dP:
-   dP/dqrs _ rr  =  -t*P =  - t exp(-(qrs + ..)*t)
-   dP/dqrs _ rs  =  P - t*q*P  =  exp(-(qrs + rest)*t)  - t qrs exp(-(qrs + rest)*t)
-   dP/dqrs _ ru (Pru >0)  =  -t*q*P  =  - t qru exp(-(qrs + rest)*t)
-
-   for other rows of dP:
-   dP/dqrs _ vs = 0
-*/
-
-/*
-   With constraints on Q.
-
-   P_rr  =  P =    exp(-(n*qrs + rest of row r..)*t)
-   P_rs  =  P q =  exp(-(n*qrs + rest of row r..)*t) qrs
-
-   rr entries: -n*t*P,  where n is no of times qrs appears in row r
-   rs entries: P - n*t*q*P.  This appears for each qrs
-   ru entries: -n*t*q*P    (other distinct qru in same row)
-   vs entries: 0     (other distinct qru in different rows)
-
-   With covariates.  qrs = qrs0 exp(betars x)
-   WRT qrs0:
-   rr entries: -sum(exp(betars x))*t*P
-   rs entries: P*exp(betars x) - sum(exp betars x)*t*q*P
-   ru entries: -sum(exp betars x)*t*q*P
-   vs entries: 0
-   WRT betars:
-   rr entries: -sum(x qrs)*t*P
-   rs entries: P*x*qrs - sum(x qrs)*t*q*P
-   ru entries: -sum(x qrs)*t*q*P
-   vs entries: 0
-*/
-
-void DPmatEXACT(Array3 dpmat, double t, vector x, Matrix qmat, Matrix qbase, int n,
-		ivector constr, ivector bconstr, ivector wcov, int np, int ndp, int ndc)
+void DPmatEXACT(Array3 dqmat, Matrix qmat, int n, int npars, Array3 dpmat, double t)
 {
-    int i, j, p, q, dp;
-    double pii, dqsum;
-    for (dp=0; dp<ndp+ndc; ++dp) {  /* dp indexes distinct pars */
-	p = q = 0;                  /* p, q index positive pars in transition matrix */
-	for (i=0; i<n; ++i) { /* rows */
-	    pii = exp(t * qmat[MI(i, i, n)] );
-	    dqsum=0;
-	    for (j=0; j<n; ++j) { /* columns */
-		if (qmat[MI(i,j,n)] > 0) {
-		    if ((dp < ndp) && (constr[p]-1 == dp))
-			dqsum += qmat[MI(i,j,n)] / qbase[MI(i,j,n)];
-		    else if ((dp >=ndp) && (bconstr[(wcov[dp-ndp]-1)*np + p]-1 == dp-ndp))
-			dqsum += x[wcov[dp-ndp]-1] * qmat[MI(i,j,n)];
-		    ++p;
-		}
-	    }
-	    for (j=0; j<n; ++j) {
-		if (i == j)
-		    dpmat[MI3(i, j, dp, n, n)] = -dqsum*t*pii;
-		else if (qmat[MI(i,j,n)] > 0) {
-		    if ((dp < ndp) && (constr[q]-1 == dp))
-			dpmat[MI3(i, j, dp, n, n)] = (1 / qbase[MI(i,j,n)] - dqsum*t)*pii*qmat[MI(i,j,n)];
-		    else if ((dp >=ndp) && (bconstr[(wcov[dp-ndp]-1)*np + q]-1 == dp-ndp))
-			dpmat[MI3(i, j, dp, n, n)] = (x[wcov[dp-ndp]-1] - dqsum*t)*pii*qmat[MI(i,j,n)];
-		    else dpmat[MI3(i, j, dp, n, n)] = - dqsum*t*pii*qmat[MI(i,j,n)];
-		    ++q;
-		}
-		else dpmat[MI3(i, j, dp, n, n)] = 0;
+    int i,j,p;
+    for (i=0; i<n; ++i) { /* rows */
+	for (j=0; j<n; ++j) { /* columns */
+	    for (p=0; p<npars; ++p) {
+		if (i==j)
+		    dpmat[MI3(i,j,p,n,n)] = dqmat[MI3(i,i,p,n,n)] * t * exp(qmat[MI(i,i,n)]*t);
+		else
+		    dpmat[MI3(i,j,p,n,n)] = exp(qmat[MI(i,i,n)]*t) *
+			( dqmat[MI3(i,j,p,n,n)] + dqmat[MI3(i,i,p,n,n)] * qmat[MI(i,j,n)] * t);
 	    }
 	}
     }
 }
 
-/* Derivative of matrix exponential using a power series approximation
-
-dP(t) / dq   =  sum_s=0^inf  d/dq Q^s t^s / s!
-             =  sum_s=0^inf ( sum_k=0^{s-1} Q^k dQ/dq Q^{s-1-k} )  t^s / s!
-Calc:
-at each s need to have stored previous 0..s-1 powers of Q.
-
-TODO - overflow correction.
-
-*/
-
-void DMatrixExpSeries(Matrix A, Matrix Abase, int n, int np, int ndp, int ndc,
-		      ivector constr, ivector bconstr, ivector wcov, Array3 DexpA, double t, vector x)
+void DMatrixExpSeries(Matrix DA, Matrix A, int n, int npars, Array3 DexpA, double t)
 {
     int i, j, k, p;
     int order = 20;
     int nsq = n*n;
+    double *DAp;
     vector tpower = Calloc(order+1, double); /* values of t^i / i! */
     Matrix DApower = Calloc(nsq, double); /* cumulative outer sum */
     Array3 Apower = Calloc(nsq*(order+1), double);  /* storage for successive powers of A  */
     Matrix Temp = Calloc(nsq, double); /* workspace  */
     Matrix Inner = Calloc(nsq, double); /* one term of inner sum */
     Matrix CInner = Calloc(nsq, double); /* cumulative inner sum */
-    Matrix DA = Calloc(nsq, double); /* workspace for derivative of A  */
 
     FormIdentity(&Apower[0], n);  /* A to the power 0 is identity */
     tpower[0] = 1;
@@ -631,17 +498,15 @@ void DMatrixExpSeries(Matrix A, Matrix Abase, int n, int np, int ndp, int ndc,
 	MultMat(A, &Apower[(i-1)*nsq], n, n, n, &Apower[i*nsq]);
 	tpower[i] = tpower[i-1] * t/i;
     }
-    for (p=0; p<ndp+ndc; ++p) {
-	if (p < ndp)
-	    FormDQ(DA, A, Abase, p, n, constr, np); /* derivative of A WRT pth parameter.  */
-	else FormDQCov(DA, A, p-ndp, n, bconstr, wcov, np, x); /* derivative of A WRT pth parameter.  */
+    for (p=0; p<npars; ++p) {
+	DAp = &(DA[MI3(0,0,p,n,n)]);
 	for (k=0; k<nsq; ++k)
-	    DexpA[p*nsq + k] =  DA[k]*tpower[1];
+	    DexpA[p*nsq + k] =  DAp[k]*tpower[1];
 	for (i=2; i<=order; ++i) {
 	    for (k=0; k<nsq; ++k)
 		CInner[k] = 0;
 	    for (j=0; j <=(i-1); ++j) {
-		MultMat(&Apower[j*nsq], DA, n, n, n, Temp);
+		MultMat(&Apower[j*nsq], DAp, n, n, n, Temp);
 		MultMat(Temp, &Apower[(i-1-j)*nsq], n, n, n, Inner);
 		for (k=0; k<nsq; ++k)
 		    CInner[k] += Inner[k];
@@ -650,78 +515,27 @@ void DMatrixExpSeries(Matrix A, Matrix Abase, int n, int np, int ndp, int ndc,
 		DexpA[p*nsq + k] += CInner[k]*tpower[i]; /* Fill in next nsq entries of DexpA with derivative WRT pth parameter.  */
 	}
     }
-
-    Free(tpower); Free(DApower); Free(Apower); Free(Temp); Free(Inner); Free(CInner); Free(DA);
+    Free(tpower); Free(DApower); Free(Apower); Free(Temp); Free(Inner); Free(CInner);
 }
 
-/* Derivs of P(t)_rs wrt every q,   for s death
-   P(t)_rs  =  sum_(k!=s) (P(t)_rk qks)
-   dP/dqij  =  sum_(k!=s) d/dqij P(t)_rk qks
-               for j!=s   qij not included in qks's, j not the death state.
-   dP/dqij  =  sum_(k!=s,k!=i) d/dqij P(t)_rk qks  +  P(t)_ri + qij d/dqij P(t)_ri
-               for j = s       qij included in qks's,   j is the death state
-
-   e.g. 2 state model r=0, s=1   P(t)_rs = p(t)rr qrs
-
-*/
-
-void dpijdeath(int r, int s, vector x, Array3 dpmat, Matrix pmat, vector intens, vector oldintens, ivector qvector,
-	       int n, ivector constr, ivector bconstr, int ndp, int ndc, int ncovs, Matrix dcontrib)
+void dpijdeath(int r, int s, Array3 dpmat, Matrix pmat, Array3 dqmat, Matrix qmat, int n, int npars, vector dcontrib)
 {
-    int i, j, k, p=0;
-    double dq;
-    Matrix qmat = Calloc(n*n, double);
-    Matrix qbase = Calloc(n*n, double);
-    FillQmatrix(qvector, intens, qmat, n);
-    FillQmatrix(qvector, oldintens, qbase, n);
-    for (s=0; s<n; ++s) {
-	for (p=0; p<ndp+ndc; ++p) {  /* p indexes distinct pars */
-	    dcontrib[MI(s,p,n)] = 0;
-	    for (k=0; k<n; ++k)
-		if (k != s)
-		    /* all derivatives have this contribution */
-		    dcontrib[MI(s,p,n)] += dpmat[MI3(r, k, p, n, n)] * qij(k, s, intens, qvector, n);
-	}
-	p=0;
-	/* derivatives with respect to baseline intensity pars */
-	for (i=0; i<n; ++i) {
-	    for (j=0; j<n; ++j)  {
-		if (qmat[MI(i,j,n)] > 0) {
-		    if (j == s) {
-			dq = qmat[MI(i,j,n)] / qbase[MI(i,j,n)];
-			dcontrib[MI(s,constr[p]-1,n)] += pmat[MI(r, i, n)] * dq;
-		    }
-		    ++p;  /* p indexes constraint vector */
-		}
-	    }
-	}
-	p=0;
-	/* derivatives with respect to covariate coefficients */
-	for (k=0; k<ncovs; ++k) {
-	    for (i=0; i<n; ++i) {
-		for (j=0; j<n; ++j)  {
-		    if (qmat[MI(i,j,n)] > 0) {
-			if (j == s) {
-			    dq = x[k] * qmat[MI(i,j,n)];
-			    dcontrib[MI(s,ndp+bconstr[p]-1,n)] += pmat[MI(r, i, n)] * dq;
-			}
-			++p;
-		    }
-		}
-	    }
-	}
+    int k, p=0;
+    for (p=0; p<npars; ++p) {  /* p indexes distinct pars */
+	dcontrib[p] = 0;
+	for (k=0; k<n; ++k)
+	    if (k != s)
+		dcontrib[p] += dpmat[MI3(r,k,p,n,n)] * qmat[MI(k,s,n)] + pmat[MI(r,k,n)] * dqmat[MI3(k,s,p,n,n)];
     }
-    Free(qmat); Free(qbase);
 }
 
 /* Derivatives of P matrix */
 
-void DPmat(Array3 dpmat, double t, vector x, vector intens, vector oldintens, ivector qvector,
-	   int n, int np, int ndp, int ndc, ivector qconstr, ivector bconstr, ivector wcov, int exacttimes)
+void DPmat(Array3 dpmat, double t, Array3 dqmat, Matrix qmat, int n, int npars, int exacttimes)
 {
-	int i, j, p, pp, err=0;
+    int i, j, p, err=0;
     double eit, ejt;
-    Matrix DQ = (Matrix) Calloc(n*n, double); /* should initialize to zero */
+    Matrix DQ;
     vector revals = (vector) Calloc(n, double);
     vector ievals = (vector) Calloc(n, double);
     Matrix evecs = (Matrix) Calloc(n*n, double);
@@ -729,35 +543,21 @@ void DPmat(Array3 dpmat, double t, vector x, vector intens, vector oldintens, iv
     Matrix work = (Matrix) Calloc(n*n, double);
     Matrix G = (Matrix) Calloc(n*n, double);
     Matrix V = (Matrix) Calloc(n*n, double);
-    Matrix qmat = (Matrix) Calloc(n*n, double);
-    Matrix qbase = (Matrix) Calloc(n*n, double);
 
-    FillQmatrix(qvector, intens, qmat, n);
-    FillQmatrix(qvector, oldintens, qbase, n);
     if (exacttimes) {
-	DPmatEXACT(dpmat, t, x, qmat, qbase, n, qconstr, bconstr, wcov, np, ndp, ndc);
+	DPmatEXACT(dqmat, qmat, n, npars, dpmat, t);
     }
     else {
 	Eigen(qmat, n, revals, ievals, evecs, &err);
 	if (err > 0)
 	    REprintf("error code %d from EISPACK eigensystem routine rg\n", err);
 	if (repeated_entries (revals, n)) {
-	    DMatrixExpSeries(qmat, qbase, n, np, ndp, ndc, qconstr, bconstr, wcov, dpmat, t, x);
+	    DMatrixExpSeries(dqmat, qmat, n, npars, dpmat, t);
 	}
 	else {
 	    MatInv(evecs, evecsinv, n);
-/* TODO don't calculate derivatives wrt fixed parameters, this is wasteful.
-Currently these are calculated, but omitted in msm.R(likderiv.msm) just after exiting C.
-Should retain meaning of p, ndp, ndc, but add new index pp, indexing unique non-fixed params
-and a vector of length ndp+ndc indicating which are fixed.  Add line like
-if (fixed[p]==1) { ++pp; }
-and replace p by pp in formdq and last multmat assignment
-need to edit dpijdeath, dmatrixexpseries, dpmatexact, derivsimple, derivsimple_subj in same way.
-*/
-	    for (p=0, pp=0; p<ndp+ndc; ++p) {
-		if (p < ndp)
-		    FormDQ(DQ, qmat, qbase, p, n, qconstr, np);
-		else FormDQCov(DQ, qmat, p-ndp, n, bconstr, wcov, np, x);
+	    for (p=0; p<npars; ++p) {
+		DQ = &(dqmat[MI3(0,0,p,n,n)]);
 		MultMat(DQ, evecs, n, n, n, work);
 		MultMat(evecsinv, work, n, n, n, G);
 		for (i=0; i<n; ++i) {
@@ -773,8 +573,23 @@ need to edit dpijdeath, dmatrixexpseries, dpmatexact, derivsimple, derivsimple_s
 		}
 		MultMat(V, evecsinv, n, n, n, work);
 		MultMat(evecs, work, n, n, n, &(dpmat[MI3(0, 0, p, n, n)]));
+#ifdef DERIVDEBUG
+		for (i=0; i<n; ++i) {
+		    for (j=0; j<n; ++j) {
+			printf("DQ[%d,%d]=%lf,",i,j,DQ[MI(i,j,n)]);
+		    }
+		    printf("\n");
+		}
+		printf("\n");
+		for (i=0; i<n; ++i) {
+		    for (j=0; j<n; ++j) {
+			printf("dpmat[%d,%d]=%lf,",i,j,dpmat[MI3(i, j, p, n, n)]);
+		    }
+		    printf("\n");
+		}
+#endif
 	    }
 	}
     }
-    Free(DQ); Free(revals); Free(ievals); Free(evecs); Free(evecsinv); Free(work); Free(G); Free(V); Free(qmat); Free(qbase);
+    Free(revals); Free(ievals); Free(evecs); Free(evecsinv); Free(work); Free(G); Free(V);
 }
