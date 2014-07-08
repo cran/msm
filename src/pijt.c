@@ -529,7 +529,7 @@ void dpijdeath(int r, int s, Array3 dpmat, Matrix pmat, Array3 dqmat, Matrix qma
     }
 }
 
-/* Derivatives of P matrix */
+/* Derivatives of P matrix (Kalbfleisch & Lawless) */
 
 void DPmat(Array3 dpmat, double t, Array3 dqmat, Matrix qmat, int n, int npars, int exacttimes)
 {

@@ -47,8 +47,8 @@ double hmmLNorm(double x, double *pars)
 
 double hmmExp(double x, double *pars)
 {
-    double rate = 1 / pars[0];
-    return dexp(x, rate, 0);
+    double mean = 1 / pars[0];
+    return dexp(x, mean, 0);
 }
 
 double hmmGamma(double x, double *pars)

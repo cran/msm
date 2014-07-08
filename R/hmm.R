@@ -79,10 +79,12 @@ msm.form.hmodel <- function(hmodel, hconstraint=NULL, initprobs=NULL, est.initpr
       hmod
   }
 
-msm.form.hcmodel <- function(hmodel, hcovdata, hcovinits, hconstraint)
+## NOTE removed whichcovh, whichcovh.orig
+
+msm.form.hcmodel <- function(hmodel, mm, hcovinits, hconstraint)
   {
       nst <- hmodel$nstates
-      ncovs <- if (is.null(hcovdata)) rep(0, nst) else sapply(hcovdata, function(x) x$ncovs)
+      ncovs <- if (is.null(mm)) rep(0, nst) else sapply(mm, function(x) {ncol(x)-1})
       ncovs2 <- rep(rep(0, nst), hmodel$npars)
       ncovs2[hmodel$locpars] <- ncovs[hmodel$parstate[hmodel$locpars]]
       coveffstate <- rep(1:nst, tapply(ncovs2, hmodel$parstate, sum))
@@ -93,33 +95,31 @@ msm.form.hcmodel <- function(hmodel, hcovdata, hcovinits, hconstraint)
           if (!(sum(ncovs2) == length(unlist(hcovinits)))) {
               warning("Initial values for hidden covariate effects do not match numbers of covariates, ignoring")
               coveffect <- rep(0, sum(ncovs2))
-          }
-          coveffect <- unlist(hcovinits)
+          } else coveffect <- unlist(hcovinits)
           if (!is.numeric(coveffect)) {
               warning("hcovinits should be numeric")
               coveffect <- rep(0, sum(ncovs2))
           }
       }
-      covlabels <- lapply(hcovdata, function(x) x$covlabels)
+      covlabels <- lapply(mm, function(x) colnames(x)[-1])
       covlabels <- unlist(covlabels[hmodel$parstate[hmodel$locpars]])
       names(coveffect) <- covlabels
       hcmod <- list(ncovs=ncovs2, coveffect=coveffect, covlabels=covlabels,
                     coveffstate=coveffstate, ncoveffs=length(coveffect))
       hmodel <- c(hmodel, hcmod)
       hmodel$plabs[hmodel$plabs=="hcov"] <- paste("hcov.",covlabels,sep="")
-      whichcovh <- lapply(hcovdata, function(x) x$whichcov) # factor contrasts as separate covariates
-      hmodel$whichcovh <- unlist(rep(whichcovh, tapply(ncovs2>0, hmodel$parstate, sum)))
-      whichcovh.orig <- lapply(hcovdata, function(x) x$whichcov.orig) # factors considered as one variable
-      hmodel$whichcovh.orig <- unlist(rep(whichcovh.orig, tapply(ncovs2>0, hmodel$parstate, sum)))
       class(hmodel) <- "hmodel"
       hmodel
   }
 
-msm.form.icmodel <- function(hmodel, icovdata, icovinits) {
+### NOTE whichcovi removed
+
+msm.form.icmodel <- function(hmodel, mm, icovinits) {
   nst <- hmodel$nstates
-  nicovs <- if (is.null(icovdata)) 0 else icovdata$ncovs # distinct covariates
+  nicovs <- ncol(mm) - 1
   nicovs <- rep(nicovs, nst-1)
-  nicovs[hmodel$initprobs[-1] == 0] <- 0 # don't estimate cov effects on probs which are fixed to zero
+  if (!is.matrix(hmodel$initprobs))
+      nicovs[hmodel$initprobs[-1] == 0] <- 0 # don't estimate cov effects on probs which are fixed to zero
   if (is.null(icovinits))
     icoveffect <- rep(0, sum(nicovs))
   else {
@@ -133,9 +133,8 @@ msm.form.icmodel <- function(hmodel, icovdata, icovinits) {
           icoveffect <- rep(0, sum(nicovs))
       }
   }
-  names(icoveffect) <- rep(icovdata$covlabels, each=sum(nicovs>0))
-  icmod <- list(nicovs=nicovs, icoveffect=icoveffect,
-                nicoveffs=length(icoveffect), whichcovi=icovdata$whichcov)
+  names(icoveffect) <- rep(colnames(mm)[-1], each=sum(nicovs>0))
+  icmod <- list(nicovs=nicovs, icoveffect=icoveffect, nicoveffs=length(icoveffect))
   hmodel <- c(hmodel, icmod)
   class(hmodel) <- "hmodel"
   hmodel
@@ -221,7 +220,7 @@ msm.econstr2hconstr <- function(econstr, hmodel)
           constr[hmodel$plabs == "p"][econstr == i] <-
             min(constr[hmodel$plabs == "p"][econstr == i])
       }
-      constr
+      match(constr, unique(constr))
   }
 
 print.hmodel <- function(x, ...)
@@ -375,7 +374,7 @@ in.range <- function(x, interval, strict=FALSE) {
 }
 
 ## TODO could this be merged with msm.initprobs2mat?
-msm.form.initprobs <- function(hmodel, msmdata){
+msm.form.initprobs <- function(hmodel, npts){
     ## if (!is.null(phase.states)) {
     ##     hmodel$initpmat <- matrix(0, nrow=msmdata.obs$npts, ncol=qmodel$nstates)
     ##     initstate <- msmdata.obs$state[!duplicated(msmdata.obs$subject)]
@@ -384,8 +383,8 @@ msm.form.initprobs <- function(hmodel, msmdata){
     ## }
     if (!hmodel$est.initprobs) {
         if (is.matrix(hmodel$initprobs)) {
-            if (nrow(hmodel$initprobs) != msmdata$npts)
-                stop("initial state occupancy probability should have ", msmdata$npts, " (number of subjects) rows if supplied as a matrix, found ",nrow(hmodel$initprobs))
+            if (nrow(hmodel$initprobs) != npts)
+                stop("initial state occupancy probability should have ", npts, " (number of subjects) rows if supplied as a matrix, found ",nrow(hmodel$initprobs))
         }
     }
     hmodel

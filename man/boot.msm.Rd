@@ -6,7 +6,7 @@
   resamples, and calculate statistics on the refitted models.
 }
 \usage{
-boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
+boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL, cores=NULL)
 }
 \arguments{
   \item{x}{A fitted msm model, as output by \code{\link{msm}}.}
@@ -14,12 +14,24 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
     this is \code{\link{pmatrix.msm}}, returning the transition
     probability matrix in one time unit. If
     \code{NULL} then no function is computed.}
+
   \item{B}{Number of bootstrap resamples.}
+
   \item{file}{Name of a file in which to save partial results after each
     replicate. This is saved using \code{\link{save}} and can be
     restored using \code{\link{load}}, producing an object called
-    \code{boot.list} containing the partial results.  Not currently
+    \code{boot.list} containing the partial results.  Not 
     supported when using parallel processing.}
+
+  \item{cores}{Number of processor cores to use for parallel processing.
+  Requires the \pkg{doParallel} package to be installed.  If not
+  specified, parallel processing is not used. If \code{cores} is set to
+  the string \code{"default"}, the default methods of
+  \code{\link[parallel]{makeCluster}} (on Windows) or
+  \code{\link[doParallel]{registerDoParallel}} (on Unix-like) are
+  used.
+}
+
 }
 \details{
   The bootstrap datasets are computed by resampling independent
@@ -28,13 +40,13 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
   models with censoring).  Therefore this approach doesn't work if,
   for example, the data for a HMM consist of a series of observations
   from just one individual, and is inaccurate for small numbers of
-  independent transitions or individuals. 
+  independent transitions or individuals.
 
   Confidence intervals or standard errors for the corresponding
   statistic can be calculated by summarising the returned list of
   \code{B} replicated outputs.  This is currently implemented for most
   the output functions \code{\link{qmatrix.msm}}, \code{\link{ematrix.msm}},
-  \code{\link{qratio.msm}},  
+  \code{\link{qratio.msm}},
   \code{\link{pmatrix.msm}},   \code{\link{pmatrix.piecewise.msm}},
   \code{\link{totlos.msm}} and \code{\link{prevalence.msm}}.
   For other outputs, users will have to write their own code to
@@ -54,7 +66,7 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
   sample from the asymptotic multivariate normal distribution implied by
   the maximum likelihood estimates (and covariance matrix), and
   summarise the transformed estimates.  See \code{\link{pmatrix.msm}}.
-  
+
   All objects used in the original call to \code{\link{msm}} which
   produced \code{x}, such as the \code{qmatrix}, should be in the
   working environment, or else \code{boot.msm} will produce an
@@ -67,9 +79,9 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
   \code{msm(state ~ time, data = ...)}
 
   and not, for example,
-  
+
   \code{form = data$state ~ data$time}
-  
+
   \code{msm(formula=form, data = ...)}
 
   otherwise \code{boot.msm} will be unable to draw the replicate
@@ -80,7 +92,7 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
   as a built-in R object, or an object in any other loaded package.  For
   example, if you have called a Q matrix \code{q}, when \code{q()} is
   the built-in function for quitting R.
-  
+
   If \code{stat} is \code{NULL}, then \code{B} different \code{msm} model
   objects will be stored in memory. This is unadvisable, as \code{msm}
   objects tend to be large, since they contain the original data used for
@@ -98,7 +110,7 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
   is \code{NULL}, then each component just contains the refitted
   model.  If one of the \code{B} model fits was unsuccessful and
   resulted in an error, then the corresponding list component will
-  contain the error message. 
+  contain the error message.
 }
 \references{
   Efron, B. and Tibshirani, R.J. (1993) \emph{An Introduction to the
@@ -110,16 +122,16 @@ boot.msm(x, stat=pmatrix.msm, B=1000, file=NULL)
 }
 \examples{
 \dontrun{
-  ## Psoriatic arthritis example 
+  ## Psoriatic arthritis example
   data(psor)
   psor.q <- rbind(c(0,0.1,0,0),c(0,0,0.1,0),c(0,0,0,0.1),c(0,0,0,0))
   psor.msm <- msm(state ~ months, subject=ptnum, data=psor, qmatrix =
     psor.q, covariates = ~ollwsdrt+hieffusn,
     constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
     control = list(REPORT=1,trace=2), method="BFGS")
-  ## Bootstrap the baseline transition intensity matrix.  This will take a long time. 
+  ## Bootstrap the baseline transition intensity matrix.  This will take a long time.
   q.list <- boot.msm(psor.msm, function(x)x$Qmatrices$baseline)
-  ## Manipulate the resulting list of matrices to calculate bootstrap standard errors. 
+  ## Manipulate the resulting list of matrices to calculate bootstrap standard errors.
   apply(array(unlist(q.list), dim=c(4,4,5)), c(1,2), sd)
   ## Similarly calculate a bootstrap 95\% confidence interval
   apply(array(unlist(q.list), dim=c(4,4,5)), c(1,2),

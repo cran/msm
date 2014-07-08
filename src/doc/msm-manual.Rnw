@@ -22,7 +22,7 @@
 
 <<echo=FALSE>>=
 version <- gsub("Version: +", "",
-               packageDescription("msm", lib.loc="../../..")$Version)
+               packageDescription("msm", lib.loc=c("../..",.libPaths()))$Version)
 @
 
 \title{Multi-state modelling with R: the {\tt msm} package \vskip 0.2in
@@ -86,7 +86,7 @@ cat(format(Sys.time(), "%d %B, %Y"))
 \label{sec:intro}
 
 
-Figure~\ref{fig:multi} illustrates a multi-state model in continuous
+Figure \ref{fig:multi} illustrates a multi-state model in continuous
 time. Its four states are labelled {\bf 1, 2, 3, 4}.  At a time $t$
 the individual is in state $S(t)$.  The arrows show which transitions
 are possible between states. The next state to which the individual
@@ -335,7 +335,7 @@ The corresponding time $t$ transition probabilities are
   p_{12}(t) & = &
 \left\{
 \begin{array}{ll}
-\frac{ q_{12}(-1 + e^{(q_{12}+q_{13}-q_{23})t})e^{-(q_{12}+q_{13})t} } { (q_{12} + q_{13} - q_{23}) } & (q_{12} + q_{13} \neq q_{23})\\
+\frac{ q_{12} }{q_{12} + q_{13} - q_{23} } (e^{-q_{23} t} - e^{-(q_{12} + q_{13})t})  & (q_{12} + q_{13} \neq q_{23})\\
 q_{12}te^{(-(q_{12} + q_{13})t} &  (q_{12} + q_{13} = q_{23})
 \end{array}
 \right.
@@ -343,7 +343,7 @@ q_{12}te^{(-(q_{12} + q_{13})t} &  (q_{12} + q_{13} = q_{23})
   p_{13}(t) & = &
 \left\{
 \begin{array}{ll}
-1 + \frac{(-q_{13} + q_{23})e^{-(q_{12}+q_{13})t}} {q_{12} + q_{13} - q_{23}} - \frac { q_{12}e^{-q_{23}t}} {q_{12} + q_{13} - q_{23} } & (q_{12} + q_{13} \neq q_{23})\\
+1 - e^{-(q_{12} + q_{13})t} - \frac{ q_{12} }{q_{12} + q_{13} - q_{23} } (e^{-q_{23} t} - e^{-(q_{12} + q_{13})t}) & (q_{12} + q_{13} \neq q_{23})\\
  (-1 + e^{(q_{12} + q_{13})t} - q_{12}t)e^{-(q_{12} + q_{13})t} & (q_{12} + q_{13} = q_{23})
 \end{array}
 \right.
@@ -1000,10 +1000,10 @@ entries in the row.  This matrix will eventually be used as the
 example,
 
 <<>>=
-twoway4.q  <-  rbind ( c(0, 0.25, 0, 0.25),
-                       c(0.166, 0, 0.166, 0.166),
-                       c(0, 0.25, 0, 0.25),
-                       c(0, 0, 0, 0) )
+Q  <-  rbind ( c(0, 0.25, 0, 0.25),
+               c(0.166, 0, 0.166, 0.166),
+               c(0, 0.25, 0, 0.25),
+               c(0, 0, 0, 0) )
 @
 
 Fitting the model is a process of finding values of the seven unknown
@@ -1028,18 +1028,18 @@ $n_{rs}$ transitions from state $r$ to state $s$, and a total of $n_r$
 transitions from state $r$, then $q_{rs} / q_{rr}$ can be estimated by
 $n_{rs} / n_r$. Then, given a total of $T_r$ years spent in state $r$,
 the mean sojourn time $1 / q_{rr}$ can be estimated as $T_r / n_r$.
-Thus, $n_{rs} / T_r$ is a crude estimate of $q_{rs}$. 
+Thus, $n_{rs} / T_r$ is a crude estimate of $q_{rs}$.
 
 Such default initial values can be used by supplying
 \Rfunarg{gen.inits=TRUE} in the call to \Rfunction{msm} below, along
 with a \Rfunarg{qmatrix} whose non-zero entries represent the allowed
-transitions of the model.  Alternatively the function \Rfunction{crudeinits.msm} 
-could be used to get the  amatrix of initial values as follows.  
+transitions of the model.  Alternatively the function \Rfunction{crudeinits.msm}
+could be used to get this matrix of initial values explicitly as follows.
 These methods are only available for non-hidden Markov models.
 
 <<>>=
-twoway4.crude.q  <- crudeinits.msm(state ~ years, PTNUM, data=cav, 
-                                   qmatrix=twoway4.q)
+Q.crude  <- crudeinits.msm(state ~ years, PTNUM, data=cav,
+                                   qmatrix=Q)
 @
 
 However, if there are are many changes of state in between the
@@ -1049,7 +1049,7 @@ that the mean period in each state before moving to the next is about
 2 years, and there is an equal probability of progression, recovery or
 death.  This gives $q_{rr} = - 0.5$ for $r = 1, 2, 3$, and $q_{12} =
 q_{14} = 0.25$, $q_{21} = q_{23} = q_{24} = 0.166$, $q_{32} = q_{34} =
-0.25$, and the initial value matrix \Robject{twoway4.q} shown above,
+0.25$, and the initial value matrix \Robject{Q} shown above,
 which we now use to fit the model.
 
 \subsection{Running \Rfunction{msm}}
@@ -1057,7 +1057,7 @@ which we now use to fit the model.
 
 To fit the model, call the \Rfunction{msm} function with the appropriate
 arguments.  For our running example, we have defined a data set
-\Robject{cav}, a matrix \Robject{twoway4.q} indicating the allowed
+\Robject{cav}, a matrix \Robject{Q} indicating the allowed
 transitions, and initial values. We are ready to run \Rfunction{msm}.
 
 \paragraph{Model 1: simple bidirectional model}
@@ -1065,7 +1065,7 @@ transitions, and initial values. We are ready to run \Rfunction{msm}.
 
 <<>>=
 cav.msm <- msm( state ~ years, subject=PTNUM, data = cav,
-                    qmatrix = twoway4.q, death = 4 )
+                    qmatrix = Q, death = 4)
 @
 
 In this example the day of death is assumed to be recorded exactly, as
@@ -1098,14 +1098,15 @@ argument to \Rfunction{msm}, which is passed internally to the
 <<eval=FALSE>>=
 help(optim)
 @
-for more options to control the optimisation.  When completed, the
-\Rfunction{msm} function returns a value.  This value is a list of the
-important results of the model fitting, including the parameter
-estimates and their covariances.  To keep these results for
-post-processing, we store them in an R object, here called
-\Robject{cav.msm}.  When running several similar \Rfunction{msm} models,
-it is recommended to store the respective results in
-informatively-named objects.
+for more options to control the optimisation. \footnote{Note that since version 1.3.2, \Rfunarg{method=''BFGS''}, is the default optimisation algorithm in \Rfunction{msm}, since it can use analytic derivatives, which are available for most models.}
+
+When completed, the \Rfunction{msm} function returns a value.  This
+value is a list of the important results of the model fitting,
+including the parameter estimates and their covariances.  To keep
+these results for post-processing, we store them in an R object, here
+called \Robject{cav.msm}.  When running several similar
+\Rfunction{msm} models, it is recommended to store the respective
+results in informatively-named objects.
 
 
 \subsection{Showing results}
@@ -1122,8 +1123,8 @@ prompt.  \footnote{This is equivalent to typing
 cav.msm
 @
 
-From the estimated intensity matrix, we see patients are three times
-as likely to develop symptoms than die without symptoms (first row).
+From the estimated intensities, we see patients are three times
+as likely to develop symptoms than die without symptoms (transitions from state 1).
 After disease onset (state 2), progression to severe symptoms (state
 3) is 50\% more likely than recovery.  Once in the severe state, death
 is more likely than recovery, and a mean of 1 / -0.44 = 2.3 years is
@@ -1160,19 +1161,22 @@ intensities are modelled in terms of sex.
 \paragraph{Model 2: sex as a covariate}
 <<>>=
 cavsex.msm <- msm( state ~ years, subject=PTNUM, data = cav,
-                     qmatrix = twoway4.q, death = 4, covariates = ~ sex)
+                     qmatrix = Q, death = 4, covariates = ~ sex)
 @
 
-The \Robject{msm} object will now include the estimated covariate
-effects and their confidence intervals.
+Printing the \Robject{msm} object now displays the estimated covariate
+effects and their confidence intervals (note since version 1.3.2 these
+are \emph{hazard ratios} $\exp(\beta_{rs})$, not \emph{log hazard ratios} $\beta_{rs}$ as in previous
+versions).
 
 <<>>=
 cavsex.msm
 @
-Comparing the estimated log-linear effects of sex and their standard
-errors, we see that the disease onset rate is smaller for females,
-whereas none of the other effects are significant. The first matrix shown in the output of printing
-\Robject{cavsex.msm} is the estimated transition intensity matrix
+The sizes of the
+confidence intervals for some of the hazard ratios suggests there is no information in the data about 
+the corresponding covariate effects, leading to a likelihood that is a flat function of these parameters, 
+and this model should be simplified. The first column shown in the output
+is the estimated transition intensity matrix
 $q_{rs}(z) = q_{rs}^{(0)} \exp(\beta_{rs}^T z)$ with the covariate $z$
 set to its mean value in the data.  This represents an average
 intensity matrix for the population of 535 male and 87 female
@@ -1187,19 +1191,19 @@ qmatrix.msm(cavsex.msm, covariates=list(sex=0)) # Male
 qmatrix.msm(cavsex.msm, covariates=list(sex=1)) # Female
 @
 
-Different transition rates may be easily modelled on different
-covariates by specifying a named list of formulae as the
-\Rfunarg{covariates} argument.  Each element of the list has a name
-identifying the transition.  In the model below, the transition rate
-from state 1 to state 2 and the rate from state 3 to state 4 are each
-modelled on sex as a covariate, but no other intensities have
-covariates on them.
+Since \Rpackage{msm} version 1.2.3, different transition rates may be
+easily modelled on different covariates by specifying a named list of
+formulae as the \Rfunarg{covariates} argument.  Each element of the
+list has a name identifying the transition.  In the model below, the
+transition rate from state 1 to state 2 and the rate from state 1 to
+state 4 are each modelled on sex as a covariate, but no other
+intensities have covariates on them.
 
 \paragraph{Model 2a: transition-specific covariates}
 <<eval=FALSE>>=
 cavsex.msm <- msm( state ~ years, subject=PTNUM, data = cav,
-                  qmatrix = twoway4.q, death = 4,
-                  covariates = list("1-2" = ~ sex, "3-4" = ~sex) )
+                  qmatrix = Q, death = 4,
+                  covariates = list("1-2" = ~ sex, "1-4" = ~sex) )
 @
 
 We may also want to constrain the effect of a covariate to be equal for
@@ -1212,8 +1216,8 @@ transition rates have common covariate effects.
 
 <<eval=FALSE>>=
 cav3.msm <- msm( state ~ years, subject=PTNUM, data = cav,
-                qmatrix = twoway4.q, death = 4,
-                covariates = ~ sex, 
+                qmatrix = Q, death = 4,
+                covariates = ~ sex,
                 constraint = list(sex=c(1,2,3,1,2,3,2)) )
 @
 
@@ -1252,12 +1256,12 @@ respectively).
 \paragraph{Model 4: fixed parameters}
 <<eval=FALSE>>=
 cav4.msm <- msm( state ~ years, subject=PTNUM, data = cav,
-                qmatrix = twoway4.q, death = 4,
+                qmatrix = Q, death = 4,
                 control = list(trace=2, REPORT=1),
                 fixedpars = c(6, 7) )
 @
 
-A \Rfunarg{fixedpars} statement can also be useful for fixing covariate
+A \Rfunarg{fixedpars} statement can also be used for fixing covariate
 effect parameters to zero, that is to assume no effect of a covariate
 on a certain transition rate.
 
@@ -1370,6 +1374,11 @@ totlos.msm(cav.msm)
   the expected time until the process first enters a given state or set of states,
   also called the ``hitting time''.  See its help page for further details.
 
+\item[Expected number of visits] The function \Rfunction{envisits.msm}
+  estimates the expected number of visits to a state, computed in a
+  similar way to the total length of stay. See its help page for
+  further details.
+
 \item[Ratio of transition intensities] The function
   \Rfunction{qratio.msm} estimates a ratio of two entries of the
   transition intensity matrix at a given set of covariate values,
@@ -1387,10 +1396,7 @@ qratio.msm(cav.msm, ind1=c(2,1), ind2=c(1,2))
 \item[Hazard ratios for transition] The function \Rfunction{hazard.msm}
   gives the estimated hazard ratios corresponding to each covariate
   effect on the transition intensities. 95\% confidence limits are
-  computed by assuming normality of the log-effect. For example, for
-  model 2 with female sex as a covariate, the following hazard ratios
-  show more clearly that the only transition on which the effect of
-  sex is significant at the 5\% level is the 1-2 transition.
+  computed by assuming normality of the log-effect.
 
 <<>>=
 hazard.msm(cavsex.msm)
@@ -1504,7 +1510,7 @@ transplantation model \Robject{cav.msm}:
 \end{Scode}
 Note that for \Rfunction{boot.msm} to be able to refit the original
 model that produced \Robject{cav.msm}, all objects used in the
-original model fit (for example, in this case, \Robject{twoway4.q})
+original model fit (for example, in this case, \Robject{Q})
 must be in the working environment.  Otherwise, \Rfunction{boot.msm}
 will give an ``object not found'' error.
 
@@ -1547,6 +1553,44 @@ Thus the reported solution may be a saddle point rather than the
 maximum likelihood, or it may be close to the maximum.
 
 \begin{description}
+
+\item[Model simplification]
+
+  Firstly, make sure there are not too many parameters in the model.  There may not be enough
+  information in the data on a certain transition rate.  It is
+  recommended to count all the pairs of transitions between states in
+  successive observation times, making a frequency table of previous
+  state against current state (function \Rfunction{statetable.msm}),
+  and do this for any subgroups defining covariates.
+  Although the data are a series of snapshots of a continuous-time
+  process, and the actual transitions take place in between the
+  observation times, this type of table may still be helpful.  If
+  there are not many observed `transitions' from state 2 to state 4,
+  for example, then the data may be insufficient to estimate $q_{24}$.
+
+  For a staged disease model (Figure \ref{fig:disease}), the number of
+  disease states should be low enough that all transition rates can be
+  estimated.  Consecutive states of disease severity should be merged
+  if necessary.  If it is realistic, consider applying constraints on
+  the intensities or the covariate effects so that the parameters are
+  equal for certain transitions, or zero for certain transitions.
+
+  Be careful to use a observation scheme and transition matrix
+  appropriate to your data (see
+  Section \ref{sec:arbitr-observ-times}). By default, \Rfunction{msm}
+  assumes that the data represent snapshots of the process, and the
+  true state is unknown between observation times.  In such
+  circumstances, it is rarely feasible to estimate an intensity matrix
+  with \emph{instantaneous} transitions allowed between every pair of
+  states.  This would be easier if the complete course of the process
+  is known \Rfunarg{(exacttimes = TRUE)} in the call to
+  \Rfunction{msm}.  Understand the difference between
+  \emph{instantaneous} and \emph{interval} transitions - although
+  individuals may be in state 1 at time $t_r$, and state 3 at time
+  $t_{r+1}$, that doesn't mean that instantaneous transitions from 1
+  to 3 should be permitted.
+
+
 \item[Initial values] Make sure that a sensible set of initial values
   have been chosen. The optimisation may only converge within a
   limited range of `informative' initial values.  It is also sensible
@@ -1579,17 +1623,22 @@ maximum likelihood, or it may be close to the maximum.
   for a model with 5 parameters, \Rfunarg{control = list(ndeps =
     rep(1e-6, 5))}
 
-\item[Choice of algorithm] By default, \Rfunction{msm} uses a
-  Nelder-Mead algorithm which does not use analytic derivatives of the
-  objective function.   For potentially greater speed and accuracy,
-  consider using a quasi-Newton algorithm such as
-  the ``BFGS'' method of \Rfunction{optim}, which can make use of
-  analytic derivatives, for example, \Rfunarg{method = ``BFGS'', use.deriv = TRUE}.
-  Or use the \Rfunction{nlm} R function via \Rfunarg{msm(..., opt.method = "nlm" , ...)}
-  Note also the Fisher scoring method available for non-hidden Markov
-  models for panel data, via  \Rfunarg{msm(..., opt.method = "fisher", ...)},
-  is expected to be faster than the generic methods, but less robust to
-  bad initial values.
+\item[Choice of algorithm] By default, since version 1.3.2,
+  \Rfunction{msm} uses the BFGS method of \Rfunction{optim}, which
+  makes use of analytic derivatives.  Analytic derivatives are
+  available for all models in msm, apart from hidden Markov models
+  with unknown initial state probabilities, misclassification models
+  with equality constraints on misclassification probabilities, and
+  truncated or measurement-error outcome distributions.  This speeds
+  up optimisation.  Though alternative algorithms are available such
+  as \Rfunarg{method = ``CG''}.  Or use the \Rfunction{nlm} R function
+  via \Rfunarg{msm(..., opt.method = "nlm" , ...)}  Note also the
+  Fisher scoring method available for non-hidden Markov models for
+  panel data, via \Rfunarg{msm(..., opt.method = "fisher", ...)}, is
+  expected to be faster than the generic methods, but less robust to
+  bad initial values.  Or since version 1.3.2, msm can also use
+  \Rfunarg{method=``bobyqa''} from the \Rpackage{minqa} package, a fast
+  derivative-free method.
 
 \item[\Rfunction{optim} "function cannot be evaluated at initial parameters"]
   To diagnose this problem, run \Rfunction{msm} again with
@@ -1608,41 +1657,6 @@ maximum likelihood, or it may be close to the maximum.
   may result in an infinite log-likelihood, and changing
   \Rfunarg{initprobs} would be sensible.
 
-\item[Model simplification]
-
-  If none of these numerical adjustments lead to convergence, then the
-  model is probably over-complicated.  There may not be enough
-  information in the data on a certain transition rate.  It is always
-  recommended to count all the pairs of transitions between states in
-  successive observation times, making a frequency table of previous
-  state against current state (function \Rfunction{statetable.msm}).
-  Although the data are a series of snapshots of a continuous-time
-  process, and the actual transitions take place in between the
-  observation times, this type of table may still be helpful.  If
-  there are not many observed `transitions' from state 2 to state 4,
-  for example, then the data may be insufficient to estimate $q_{24}$.
-
-  For a staged disease model (Figure \ref{fig:disease}), the number of
-  disease states should be low enough that all transition rates can be
-  estimated.  Consecutive states of disease severity should be merged
-  if necessary.  If it is realistic, consider applying constraints on
-  the intensities or the covariate effects so that the parameters are
-  equal for certain transitions, or zero for certain transitions.
-
-  Be careful to use a observation scheme and transition matrix
-  appropriate to your data (see
-  Section \ref{sec:arbitr-observ-times}). By default, \Rfunction{msm}
-  assumes that the data represent snapshots of the process, and the
-  true state is unknown between observation times.  In such
-  circumstances, it is rarely feasible to estimate an intensity matrix
-  with \emph{instantaneous} transitions allowed between every pair of
-  states.  This would be easier if the complete course of the process
-  is known \Rfunarg{(exacttimes = TRUE)} in the call to
-  \Rfunction{msm}.  Understand the difference between
-  \emph{instantaneous} and \emph{interval} transitions - although
-  individuals may be in state 1 at time $t_r$, and state 3 at time
-  $t_{r+1}$, that doesn't mean that instantaneous transitions from 1
-  to 3 should be permitted.
 
 \end{description}
 
@@ -1822,7 +1836,7 @@ together in the table, since these transitions are infrequent.
 
 <<>>=
 options(digits=2)
-pearson.msm(cav.msm, timegroups=2, 
+pearson.msm(cav.msm, timegroups=2,
             transitions=c(1,2,3,4,5,6,7,8,9,9,9,10))
 @
 
@@ -1904,7 +1918,7 @@ E = \left(
 \]
 with underlying states as rows, and observed states as columns.
 
-To model observed states with misclassification, we define an matrix
+To model observed states with misclassification, we define a matrix
 \Rfunarg{ematrix} indicating the states that can be misclassified.
 Rows of this matrix correspond to true states, columns to observed
 states.  It should contains zeroes in the positions where
@@ -1949,17 +1963,17 @@ specified.  See \Rfunction{help(msm)} for further details.
 \paragraph{Model 5: multi-state model with misclassification}
 
 <<>>=
-oneway4.q <- rbind(c(0, 0.148, 0, 0.0171),
-                     c(0, 0, 0.202, 0.081),
-                     c(0, 0, 0, 0.126),
-                     c(0, 0, 0, 0))
+Qm <- rbind(c(0, 0.148, 0, 0.0171),
+            c(0, 0, 0.202, 0.081),
+            c(0, 0, 0, 0.126),
+            c(0, 0, 0, 0))
 ematrix <- rbind(c(0, 0.1, 0, 0),
                  c(0.1, 0, 0.1, 0),
                  c(0, 0.1, 0, 0),
                  c(0, 0, 0, 0))
 cavmisc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
-                   qmatrix = oneway4.q, ematrix = ematrix, death = 4,
-                   obstrue = firstobs, method="BFGS")
+                   qmatrix = Qm, ematrix = ematrix, death = 4,
+                   obstrue = firstobs)
 cavmisc.msm
 @
 
@@ -1990,16 +2004,16 @@ this can be changed with the \Rfunarg{misccovinits} argument).
 
 <<>>=
 cavmiscsex.msm <- msm(state ~ years, subject = PTNUM, data = cav,
-                      qmatrix = oneway4.q, ematrix = ematrix, 
-                      death = 4, misccovariates = ~sex, 
-                      obstrue=firstobs, method="BFGS")
+                      qmatrix = Qm, ematrix = ematrix,
+                      death = 4, misccovariates = ~sex,
+                      obstrue=firstobs)
 @
 <<>>=
 cavmiscsex.msm
 @
-The large confidence interval for the 1/2 misclassification suggests
-that women are no more or less likely than men to have a false
-positive angiography scan. On the other hand, women have slightly more
+The large confidence interval for the odds ratio for 1/2 misclassification suggests
+there is no information in the data about the difference between genders in 
+the false positive rates for angiography. On the other hand, women have slightly more
 false negatives.
 
 
@@ -2019,7 +2033,7 @@ probabilities for men and women in model 6 are given by
 ematrix.msm(cavmiscsex.msm, covariates=list(sex=0))
 ematrix.msm(cavmiscsex.msm, covariates=list(sex=1))
 @
-The confidence intervals for the estimates for women are higher, since
+The confidence intervals for the estimates for women are wider, since
 there are only 87 women in this set of 622 patients.
 
 \item[Odds ratios for misclassification] The function
@@ -2065,7 +2079,7 @@ odds.msm(cavmiscsex.msm)
   \cite{titman:phd} found that a model with piecewise-constant
   transition intensities gave a greatly improved fit to these data.
 <<>>=
-pearson.msm(cavmisc.msm, timegroups=2, 
+pearson.msm(cavmisc.msm, timegroups=2,
             transitions=c(1,2,3,4,5,6,7,8,9,9,9,10))
 @
 
@@ -2339,7 +2353,7 @@ fev1.msm <- msm(fev ~ days, subject=ptnum, data=fev, qmatrix=three.q,
                 death=3, hmodel=hmodel1,
                 hcovariates=list(~acute, ~acute, NULL),
                 hcovinits = list(-8, -8, NULL),
-                hconstraint = list(acute = c(1,1)), method="BFGS")
+                hconstraint = list(acute = c(1,1)))
 
 fev1.msm
 
@@ -2348,7 +2362,7 @@ sojourn.msm(fev1.msm)
 
 
 Printing the \Rclass{msm} object \Rfunarg{fev1.msm} shows estimates
-and confidence intervals for the transition intensity matrix and the
+and confidence intervals for the transition intensities and the
 hidden Markov model parameters.  The estimated within-state means of
 FEV$_1$ are around 98\% and 52\% baseline respectively.  From the
 estimated transition intensities, individuals spend around 1421 days
@@ -2455,17 +2469,16 @@ This is equivalent to the model below, specified using a
 estimates should be the same as before (Model 5).
 
 \begin{Scode}
-oneway4.q <- rbind(c(0, 0.148, 0, 0.0171),
-                   c(0, 0, 0.202, 0.081),
-                   c(0, 0, 0, 0.126),
-                   c(0, 0, 0, 0))
+Qm <- rbind(c(0, 0.148, 0, 0.0171),
+            c(0, 0, 0.202, 0.081),
+            c(0, 0, 0, 0.126),
+            c(0, 0, 0, 0))
 cavmisc.msm <- msm(state ~ years, subject = PTNUM, data = cav,
-                     hmodel = list (hmmCat(c(0.9, 0.1, 0, 0)), 
-                                    hmmCat(c(0.1, 0.8, 0.1, 0)), 
-                                    hmmCat(c(0, 0.1, 0.9, 0)), 
+                     hmodel = list (hmmCat(c(0.9, 0.1, 0, 0)),
+                                    hmmCat(c(0.1, 0.8, 0.1, 0)),
+                                    hmmCat(c(0, 0.1, 0.9, 0)),
                                     hmmIdent(4)),
-                     qmatrix = oneway4.q, obstrue=firstobs, death = 4, 
-                     method="BFGS")
+                     qmatrix = Qm, obstrue=firstobs, death = 4)
 cavmisc.msm
 \end{Scode}
 
@@ -2563,6 +2576,15 @@ hmmfn HMODELS[] = {
   where \texttt{*pars} is a vector of the parameters of the
   distribution, and the density is evaluated at \texttt{x}.
 
+\item (Optionally) Write a C function to compute the derivatives of
+  the probability density with respect to the parameters, and put this
+  in \texttt{src/hmmderiv.c}, with a declaration in
+  \texttt{src/hmm.h}.  Then add the model to \texttt{DHMODELS} in
+  \texttt{lik.c} (in the same position as in \texttt{HMODELS}) and
+  \texttt{.msm.HMODELS.DERIV} in \texttt{R/constants.R}.  This will
+  generally double the speed of maximum likelihood estimation, but analytic 
+  derivatives will not be available for all distributions.
+  
 \item Update the documentation (\texttt{man/hmm-dists.Rd}) and the
   distribution table in\\ \texttt{inst/doc/msm-manual.Rnw}) if you like.
 

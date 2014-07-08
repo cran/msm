@@ -113,7 +113,7 @@ getobs.msm <- function(sim, obstimes, death=FALSE, drop.absorb=TRUE)
 
 ### Simulate a multi-state Markov or hidden Markov model dataset using fixed observation times
 
-### Would it be better to make specification of covariate model consistent with model fitting function?
+### Would it be better to make specification of covariate model consistent with model fitting function?
 ### e.g. separate hcovariates and  covariates formulae,
 ### plus covinits and hcovinits?
 
@@ -137,7 +137,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
     msm.check.qmatrix(qmatrix)
     qmatrix <- msm.fixdiag.qmatrix(qmatrix)
 
-### Subject, time and state
+### Subject, time and state
     if (!("subject" %in% names(data)))
         data$subject <- rep(1, nrow(data))
     if (!("time" %in% names(data)))
@@ -198,8 +198,9 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
 
 ### Starting states
     if (missing(start)) start <- rep(1, n)
+    else if (length(start) == 1) start <- rep(start, n)
     else if (length(start) != n)
-        stop("Supplied ", length(start), " starting states, expected ", n)
+        stop("Supplied ", length(start), " starting states, expected 1 or ", n)
 
     nq <- length(qmatrix[qmatrix > 0])
     misspeccovs <- covnames[sapply(covariates, length) != nq]
@@ -311,7 +312,7 @@ simhidden.msm <- function(state, hmodel, nstates, beta=NULL, x=NULL)
             ## don't change the underlying state if the HMM is the null (identity) model
             if (!(hmodel[[i]]$label=="identity" && (length(hmodel[[i]]$pars) == 0)))  {
                 ## simulate from the sampling function "r" in the HMM object
-                ## transform the location parameter by covariates if necessary
+                ## transform the location parameter by covariates if necessary
                 rcall <- list(n=length(state[state==i]))
                 if (!is.null(beta[[i]])) {
                     link <- get(hmodel[[i]]$link)
@@ -333,24 +334,21 @@ simhidden.msm <- function(state, hmodel, nstates, beta=NULL, x=NULL)
 ### Used for parametric bootstrap in pearson.msm
 
 simfitted.msm <- function(x, drop.absorb=TRUE, drop.pci.imp=TRUE){
-    dat <- x$data
-    dat$cens <- ifelse(x$data$state %in% 1:x$qmodel$nstates, 0, x$data$state) # 0 if not censored, cens indicator if censored, so that censoring is retained in simulated data
-    sim.df <- as.data.frame(dat[c("subject","time","cens")])
-    sim.df$obstrue <- dat$obstrue # NULL if not HMM
-    sim.df$obstype <- if (!is.null(dat$obstype.obs)) dat$obstype.obs else dat$obstype
-    sim.df$pci.imp <- dat$pci.imp
+    sim.df <- x$data$mf
+    x$data <- expand.data(x)
+    sim.df$"(cens)" <- ifelse(sim.df$"(state)" %in% 1:x$qmodel$nstates, 0, sim.df$"(state)") # 0 if not censored, cens indicator if censored, so that censoring is retained in simulated data.  TODO used in pearson?
     if (x$qcmodel$ncovs > 0) {
-        sim.df <- cbind(sim.df, dat$cov[,x$qcmodel$covlabels,drop=FALSE])
-        sim.df <- cbind(sim.df, dat$cov.orig[,x$qcmodel$covlabels.orig,drop=FALSE])
+        sim.df <- cbind(sim.df, x$data$mm.cov)
         cov.effs <- lapply(x$Qmatrices, function(y)t(y)[t(x$qmodel$imatrix)==1])[x$qcmodel$covlabels]
-    }
-    else cov.effs <- NULL
+    } else cov.effs <- NULL
     if (x$ecmodel$ncovs > 0) {
-        sim.df <- cbind(sim.df, dat$cov[,setdiff(x$ecmodel$covlabels,x$qcmodel$covlabels),drop=FALSE])
-        sim.df <- cbind(sim.df, dat$cov.orig[,setdiff(x$ecmodel$covlabels.orig,x$qcmodel$covlabels.orig),drop=FALSE])
+        sim.df <- cbind(sim.df, x$data$mm.mcov)
         misccov.effs <- lapply(x$Ematrices, function(y)t(y)[t(x$emodel$imatrix)==1])[x$ecmodel$covlabels]
-    }
-    else misccov.effs <- NULL
+    } else misccov.effs <- NULL
+    names(sim.df) <- replace(names(sim.df), match(c("(state)","(time)","(subject)"), names(sim.df)),
+                             c("state","time","subject"))
+    if (any(union(names(cov.effs), names(misccov.effs)) %in% c("state","time","subject")))
+        stop("Not supported with covariates named \"state\", \"time\" or \"subject\"") # TODO?
     boot.df <- simmulti.msm(data=sim.df,
                             qmatrix=qmatrix.msm(x, covariates=0, ci="none"),
                             covariates=cov.effs,
@@ -359,9 +357,9 @@ simfitted.msm <- function(x, drop.absorb=TRUE, drop.pci.imp=TRUE){
                             misccovariates=misccov.effs,
                             drop.absorb=drop.absorb
                             )
-    if (drop.pci.imp) {
-        boot.df <- boot.df[!boot.df$pci.imp,]
-        boot.df$pci.imp <- NULL
+    if (drop.pci.imp & !is.null(boot.df$"(pci.imp)")) {
+        boot.df <- boot.df[!boot.df$"(pci.imp)",]
+        boot.df$"(pci.imp)" <- NULL
     }
     boot.df
 }

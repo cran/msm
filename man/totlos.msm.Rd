@@ -1,14 +1,22 @@
 \name{totlos.msm}
 \alias{totlos.msm}
-\title{Total length of stay}
+\alias{envisits.msm}
+\title{Total length of stay, or expected number of visits}
 \description{
-  Estimate the expected total length of stay in each set of states,
-  for a given period of evolution of a multi-state model.
+  Estimate the expected total length of stay, or the expected number of visits, in each state, for
+a given period of evolution of a multi-state model.
 }
 \usage{
 totlos.msm(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean",
-           num.integ=FALSE, discount=0,
-           ci=c("none","normal","bootstrap"), cl=0.95, B=1000, ...)
+           piecewise.times=NULL, piecewise.covariates=NULL,
+           num.integ=FALSE, discount=0, env=FALSE,
+           ci=c("none","normal","bootstrap"), cl=0.95, B=1000,
+           cores=NULL, ...)
+envisits.msm(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean",
+            piecewise.times=NULL, piecewise.covariates=NULL,
+            num.integ=FALSE, discount=0,
+            ci=c("none","normal","bootstrap"), cl=0.95, B=1000,
+            cores=NULL, ...)
 }
 \arguments{
   \item{x}{A fitted multi-state model, as returned by
@@ -19,15 +27,19 @@ totlos.msm(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean",
     at this time.
   }
 
-  \item{end}{States to forecast the total length of stay in. Defaults to all states.}
+  \item{end}{States to estimate the total length of stay (or number of
+    visits) in. Defaults to all states.  This is deprecated, since with
+    the analytic solution (see "Details") it doesn't save any
+    computation to only estimate for a subset of states.}
 
-  \item{fromt}{Time from which to estimate total length of
-    stay. Defaults to 0, the beginning of the process.}
+  \item{fromt}{Time from which to estimate.  Defaults to 0, the beginning of the process.}
 
-  \item{tot}{Time up to which total length of stay is estimated. Defaults
-    to infinity, giving the expected time spent in the state until
-    absorption. For models without an absorbing state, \code{t}
-    must be specified.}
+  \item{tot}{Time up to which the estimate is made.  Defaults to
+    infinity,  giving the expected time spent in or number of visits to
+    the state until absorption. However, the calculation will be much
+    more efficient if a finite (potentially large) time is specified:
+    see the "Details" section.  For models without an absorbing state,
+    \code{t} must be specified.}
 
   \item{covariates}{
     The covariate values to estimate for.  This can either be:\cr
@@ -49,10 +61,26 @@ totlos.msm(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean",
 
   }
 
+  \item{piecewise.times}{ Times at which piecewise-constant intensities
+    change. See \code{\link{pmatrix.piecewise.msm}} for how to specify
+    this. This is only required for time-inhomogeneous models specified
+    using explicit time-dependent covariates, and should not be used for
+    models specified using "pci".}
+
+  \item{piecewise.covariates}{Covariates on which the piecewise-constant
+    intensities depend. See \code{\link{pmatrix.piecewise.msm}} for how to
+    specify this.}
+
   \item{num.integ}{Use numerical integration instead of analytic
     solution (see below).}
 
   \item{discount}{Discount rate in continuous time.}
+
+  \item{env}{Supplied to \code{\link{totlos.msm}}.
+    If \code{TRUE}, return the expected number of visits to
+   each state. If \code{FALSE}, return the total length of stay in each
+   state. \code{\link{envisits.msm}} simply calls
+   \code{\link{totlos.msm}} with \code{env=TRUE}.}
 
   \item{ci}{If \code{"normal"}, then calculate a confidence interval
     by simulating \code{B} random vectors
@@ -74,19 +102,29 @@ totlos.msm(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean",
 
   \item{B}{Number of bootstrap replicates}
 
+  \item{cores}{Number of cores to use for bootstrapping using parallel
+    processing. See \code{\link{boot.msm}} for more details.}
+
   \item{...}{Further arguments to be passed to the
     \code{\link{integrate}} function to control the numerical
     integration.}
 }
 \value{
-  A vector of expected total lengths of stay for each transient state.
-}
+  A vector of expected total lengths of stay (\code{\link{totlos.msm}}),
+    or expected number of visits (\code{\link{envisits.msm}}), for each
+    transient state.
+  }
 \details{
   The expected total length of stay in state \eqn{j} between times
   \eqn{t_1} and \eqn{t_2}, from the point of view of an individual in
   state \eqn{i} at time 0, is defined by the integral from \eqn{t_1} to
   \eqn{t_2} of the \eqn{i,j} entry of the transition probability matrix
-  \eqn{P(t) = Exp(tQ)}.
+  \eqn{P(t) = Exp(tQ)}, where \eqn{Q} is the transition intensity
+  matrix.
+
+  The corresponding expected number of visits to state \eqn{j} is
+\eqn{\sum_{i=j} T_i Q_{i,j}} (excluding the stay in the current state at
+time 0).
 
   More generally, suppose that \eqn{\pi_0}{pi_0}
   is the vector of probabilities of being in each state at time 0,
@@ -110,9 +148,15 @@ where
   Alternatively, the integrals can be calculated numerically, using the
   \code{\link{integrate}} function.  This may take a long time for
   models with many states where \eqn{P(t)} is expensive to calculate.
-  This facility is just provided for checking results against versions 1.2.4 and
-  earlier, and will be removed eventually.  Please let the package maintainer
-  know if any results are different.
+  This is required where \code{tot = Inf}, since the package author is
+  not aware of any analytic expression for the limit of the above
+  formula as \eqn{t} goes to infinity.
+
+  With the argument \code{num.integ=TRUE}, numerical integration is used
+  even where the analytic solution is available. This facility is just
+  provided for checking results against versions 1.2.4 and earlier, and
+  will be removed eventually. Please let the package maintainer know if
+  any results are different.
 
   For a model where the individual has only one place to go from each
   state, and each state is visited only once, for example a progressive
@@ -129,10 +173,10 @@ where
 
   In the above formulae, \eqn{Q} is assumed to be constant over time,
   but the results generalise easily to piecewise-constant intensities.
-  Though the only time-inhomogeneous models currently handled by this function are those
-  specified using the \code{pci} option to \code{\link{msm}}.
-  For any other inhomogeneous models, the function assumes that
-  covariates are constant on the forecasted interval.
+  This function automatically handles models fitted using the \code{pci}
+  option to \code{\link{msm}}. For any other inhomogeneous models, the
+  user must specify \code{piecewise.times} and
+  \code{piecewise.covariates} arguments to \code{\link{totlos.msm}}.
 
 }
 \references{

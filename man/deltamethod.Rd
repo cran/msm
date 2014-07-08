@@ -52,10 +52,17 @@ deltamethod(g, mean, cov, ses=TRUE)
 
   If you can spare the computational time, bootstrapping is a more  
   accurate method of calculating confidence intervals or standard errors
-  for transformations of parameters. See \code{\link{boot.msm}}.  
+  for transformations of parameters. See \code{\link{boot.msm}}.
+  Simulation from the asymptotic distribution of the MLEs (see e.g. Mandel 2013)
+  is also a convenient alternative.
 }
-\references{Oehlert, G. W. \emph{A note on the delta method}. American
-  Statistician 46(1), 1992}
+\references{
+  Oehlert, G. W. (1992) \emph{A note on the delta method}. American
+  Statistician 46(1).
+
+  Mandel, M. (2013) \emph{Simulation based confidence intervals for
+  functions with complicated derivatives.} The American Statistician 67(2):76-81.
+}
 \examples{
 
 ## Simple linear regression, E(y) = alpha + beta x 

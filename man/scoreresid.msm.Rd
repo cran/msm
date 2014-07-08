@@ -30,7 +30,9 @@ scoreresid.msm(x, plot=FALSE)
 
   Subjects with a higher influence on the maximum likelihood estimates
   will have higher score residuals.
-  
+
+  These are only available for models with analytic derivatives (which
+  includes all non-hidden and most hidden Markov models).
 }
 \author{Andrew Titman  \email{a.titman@lancaster.ac.uk} (theory),   
   Chris Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk} (code)}

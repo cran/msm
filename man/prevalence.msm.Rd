@@ -7,12 +7,12 @@
   This provides a rough indication of the goodness of fit of a
   multi-state model, by estimating the observed numbers of individuals
   occupying each state at a series of times, and comparing these with
-  forecasts from the fitted model.   
+  forecasts from the fitted model.
 }
 \usage{
 prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="population",
                misccovariates="mean", piecewise.times=NULL, piecewise.covariates=NULL,
-	       ci=c("none","normal","bootstrap"), cl=0.95, B=1000,
+	       ci=c("none","normal","bootstrap"), cl=0.95, B=1000, cores=NULL,
                interp=c("start","midpoint"), censtime=Inf, subset=NULL, plot=FALSE, ...)
 }
 \arguments{
@@ -33,13 +33,13 @@ prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="popula
     the covariates observed in the original data, for a fair comparison
     with the observed prevalences.  This may be slow, particularly with
     continuous covariates.
-    
+
     Predictions for fixed covariates can be obtained by supplying
     covariate values in the standard way, as in
     \code{\link{qmatrix.msm}}. Therefore if
     \code{covariates="population"} is too slow, using the mean observed
     values through \code{covariates="mean"} may give a reasonable
-    approximation. 
+    approximation.
   }
   \item{misccovariates}{(Misclassification models only)
     Values of covariates on the misclassification probability matrix
@@ -62,7 +62,7 @@ prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="popula
     maximum likelihood estimates (and covariance matrix) of the log
     transition intensities and covariate effects, then calculating the
     expected prevalences for each replicate.
-    
+
     If \code{"bootstrap"} then calculate a confidence interval by
     non-parametric bootstrap refitting.  This is 1-2 orders of magnitude
     slower than the \code{"normal"} method, but is expected to be more
@@ -71,9 +71,12 @@ prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="popula
 
     If \code{"none"} (the default) then no confidence interval is
     calculated.}
-    
+
   \item{cl}{Width of the symmetric confidence interval, relative to 1}
   \item{B}{Number of bootstrap replicates}
+
+  \item{cores}{Number of cores to use for bootstrapping using parallel
+    processing. See \code{\link{boot.msm}} for more details.}
 
   \item{interp}{Suppose an individual was observed in states
   \eqn{S_{r-1}} and \eqn{S_r} at two consecutive times \eqn{t_{r-1}}
@@ -82,25 +85,34 @@ prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="popula
 
   If \code{interp="start"}, then individuals are assumed to be in
   state \eqn{S_{r-1}} at time \eqn{t}, the same state as they were at \eqn{t_{r-1}}.
-  
+
   If \code{interp="midpoint"} then if \eqn{t <= (t_{r-1} + t_r) / 2},
      the midpoint of \eqn{t_{r-1}} and \eqn{t_r}, the state at \eqn{t}
      is assumed to be \eqn{S_{r-1}}, otherwise \eqn{S_{r}}. This is
-     generally more reasonable for "progressive" models. 
-   }  	    
-   
+     generally more reasonable for "progressive" models.
+   }
+
    \item{censtime}{If the time is greater than \code{censtime} and the
      patient has reached an absorbing state, then that subject will be
      removed from the risk set.  For example, if patients have died but
      would only have been observed up to this time, then this avoids
      overestimating the proportion of people who are dead at later
-     times.  This can be supplied as a single value, or as a vector with
-     one element per subject (after any \code{subset} has been taken),
-     in the same order as the original data.
+     times.
+
+     This can be supplied as a single value, or as a vector with one
+     element per subject (after any \code{subset} has been taken), in
+     the same order as the original data.  This vector also only
+     includes subjects with complete data, thus it excludes for example
+     subjects with only one observation (thus no observed transitions),
+     and subjects for whom every observation has missing values.
+     (Note, to help construct this, the complete data used for the model
+     fit can be accessed with \code{model.frame(x)}, where \code{x} is the
+     fitted model object)
+
      This is ignored if it is less than the subject's maximum
      observation time.  }
-   \item{subset}{Subset of subjects to calculate observed prevalences for.} 
-   
+   \item{subset}{Subset of subjects to calculate observed prevalences for.}
+
    \item{plot}{Generate a plot of observed against expected
      prevalences. See \code{\link{plot.prevalence.msm}}}
 
@@ -108,15 +120,15 @@ prevalence.msm(x, times=NULL, timezero=NULL, initstates=NULL, covariates="popula
 }
 \value{
   A list of matrices, with components:
-  
+
   \item{Observed}{Table of observed numbers of individuals in each state at
     each time}
-  
+
   \item{Observed percentages}{Corresponding percentage of the
     individuals at risk at each time.}
-  
+
   \item{Expected}{Table of corresponding expected numbers.}
-  
+
   \item{Expected percentages}{Corresponding percentage of the
     individuals at risk at each time.}
 
@@ -139,7 +151,7 @@ The component
   state at the initial time and the transition probability matrix in the
   time interval \eqn{t}.   The proportion of individuals in each state
   at the "initial" time is estimated, if necessary, in the same way as
-  the observed prevalences. 
+  the observed prevalences.
 
   For misclassification models (fitted using an \code{ematrix}), this
   aims to assess the fit of the full model for the \emph{observed}
@@ -149,13 +161,13 @@ The component
   occupying each state at the initial time using the fitted transition
   probabiliy matrix. The vector of expected prevalences of true states
   is then multiplied by the fitted misclassification probability matrix
-  to obtain the expected prevalences of \emph{observed} states. 
+  to obtain the expected prevalences of \emph{observed} states.
 
   For general hidden Markov models, the observed state is taken to be the
   predicted underlying state from the Viterbi algorithm
   (\code{\link{viterbi.msm}}).  The goodness of fit of
-  these states to the underlying Markov model is tested. 
-  
+  these states to the underlying Markov model is tested.
+
   For an example of this approach, see Gentleman \emph{et al.} (1994).
 }
 
@@ -167,7 +179,7 @@ The component
 
   Titman, A.C., Sharples, L. D.  Model diagnostics for multi-state
   models. \emph{Statistical Methods in Medical Research} (2010)
-  19(6):621-651. 
+  19(6):621-651.
 }
 
 \seealso{

@@ -1,3 +1,177 @@
+2014-07-04 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* DESCRIPTION: Version 1.4 released to CRAN.
+
+2014-07-02 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: Default CI method for pnext.msm changed to
+	"normal", since delta method may not respect probability <1
+	constraint.
+
+2014-06-23 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	*  C interface changed from .C to .Call.
+
+	*  Added ppass.msm for passage probabilites.
+
+	* DESCRIPTION: Version 1.3.3 released to r-forge.
+
+2014-06 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* src/lik.c: Bug fix in infosimple: info was not being initialized
+	at zero, leading to occasional random output.
+
+	* DESCRIPTION: Version 1.3.2 released to r-forge.
+
+2014-06 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* tests: Test suite tidied up and converted to use "testthat" package.
+
+	* R/boot.R(efpt.ci.msm): Bug fix for bootstrap and efpt.msm.
+
+	* src/lik.c(likhidden): Give informative warning for initial
+	outcomes in HMMs which are impossible for given initial state
+	probabilites and outcome models.  Makes use of a global variable
+	in a private environment called msm.globals.
+
+	* draic.msm, drlcv.msm added.
+
+2014-06 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	*  If msm is called with hessian=FALSE, then the Fisher (expected)
+	information is used to obtain standard errors and CIs, which may
+	be preferable if the observed Hessian is very intensive to
+	approximate or its estimate is nonsingular / nonpositive-definite.
+
+2014-05 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	*  Analytic derivatives available for most hidden Markov models and
+	models with censored states (excluding unknown initial state
+	probabilities, constraints on misclassification / categorical
+	outcome probabilities and their covariates, and truncated or
+	measurement error distributions).  This should speed up
+	optimisation with the BFGS or CG methods.  The corresponding
+	Fisher information matrix is also available for misclassification
+	(categorical/identity outcome) models.
+
+	*  The BFGS optimisation method is now the default, rather than
+	Nelder-Mead.
+
+2014-05 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* msm.optim.fixed, msm.rep.constraints: Bug fix for constraints on
+	misclassification probabilities and fixed parameters.
+
+2014-05 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* msm.R(msm.mnlogit.transform): Bug fix: reapply sum to 1
+	constraint after applying constraints to baseline probabilities in
+	HMMs.  May affect results.
+
+2014-05 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* hmm.R(msm.econstr2hconstr): internal constraints in
+	misclassification models mapped to 1,2,... using match(constr,
+	unique(constr))
+
+2014-05 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* msm.R(msm.unfixallparams): Don't unconstrain constraints, so
+	derivatives of fully fixed models refer to constrained pars.
+
+2014-05 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	*  Various help pages now document the objects and data structures
+	used internally and returned by msm() in the fitted model object.
+
+2014-04 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* msm.R and others: major rewrite of much of the internal code
+	that deals with reading the data and passing it to models.  This
+	uses model frames and model formulae more efficiently.  As a
+	result the "data" component of the msm has a different structure:
+	a list with one component "mf", the model frame, containing all
+	original variables required for the model fit.  This and related
+	data structures can can be extracted with the new
+	"model.frame.msm" and "model.matrix.msm" methods.
+
+	* outputs.R: new print method now the default, and new functions
+	msm.form.qoutput and msm.form.eoutput to produce the printed
+	numbers in the same arrangement.
+
+	* msm.R: Centering of "timeperiod" covariates in "pci" models is
+	now done consistently with other covariates, i.e. with last
+	observation omitted.
+
+	* outputs.R(factorcov2numeric.msm): bug fix for misclassification
+	covariates.
+
+	* msm.R(crudeinits.msm): Times consistency check added.
+
+	* msm.R(msm.check.model): Model consistency check error messages
+	now report row numbers before missing data are omitted.
+
+	* hmm.R(msm.form.hcmodel): Bug fix for when initial values for HMM
+	covariate effects of wrong length, this should ignore and carry
+	on.
+
+	* pearson.R: Bug fix for when integral for accurate p-value
+	doesn't converge.
+
+	* lik.c: Don't recalculate P matrices for timelag / obstype /
+	covariate combinations that occur more than once.  This may speed
+	up some hidden Markov or censoring models.
+
+2014-04-11 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* msm.R(msm.form.params): Fix of bug which broke models with
+	covariates on initial state occupancy.
+
+2014-04-10 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/boot.R,R/outputs.R: Parallel processing using "doParallel"
+	added for bootstrapping and bootstrap CIs.
+
+2014-04-09 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/optim.R: Optimisation methods abstracted into their own
+	functions.
+
+2014-04-04 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* DESCRIPTION: Version 1.3.1 released to r-forge.
+
+2014-04-03 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R(msm.add.qcovs,msm.add.dqcovs): Fix of drop=FALSE bug for
+	data with only one transition.
+
+2014-04-02 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R: Fix of obscure bug that broke some subject-specific
+	likelihoods, caused by omitting obstype.obs from data object.
+
+2014-04-01 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: Time-dependent covariates supported in totlos.msm.
+
+	* R/outputs.R(envisits.msm, totlos.msm): New facility for expected
+	number of visits.
+
+2014-02-26 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/mstate.R,man/msm2Surv.Rd: New function for exporting data in
+	counting process format for use with survival and mstate.
+
+2014-02-25 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R: Handle convergence failure codes from optim().
+
+2014-02-20 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R(mattotrans): printnew.msm fixed for 2-state
+	models. Thanks to Martyn Plummer.
+
 2014-01-15 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* DESCRIPTION: Version 1.3 released to CRAN.

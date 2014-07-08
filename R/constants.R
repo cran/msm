@@ -22,11 +22,17 @@
                         t = c("mean","scale","df")
                         )
 
-## TODO - non-central beta, cauchy, chisq, noncentral chisq, F,
-## non-central F, geometric, hypergeometric, logistic, t, noncentral
-## t.
+## TODO - e.g. non-central beta, cauchy, chisq, noncentral chisq, F,
+## non-central F, geometric, hypergeometric, logistic, noncentral t.
 
 .msm.HMODELS <- names(.msm.HMODELPARS)
+
+### Models with analytic derivatives available
+.msm.HMODELS.DERIV <- c("categorical","identity","uniform","normal","lognormal","exponential",
+                        "gamma","weibull","poisson","binomial","nbinom","beta","t")
+
+### Models with expected information matrix available
+.msm.HMODELS.INFO <- c("categorical","identity")
 
 ### Parameter in each distribution that can have covariates on it
 .msm.LOCPARS <- c(categorical="p", identity=NA, uniform=NA, normal="mean", lognormal="meanlog",

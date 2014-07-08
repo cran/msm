@@ -1,45 +1,62 @@
-hazard ratio for different covariate unit? or encourage people to store meaningful unit in data?
+for every release
+-----------------
+check all files are included in package build: help pages, PDF manual rebuilt, run update-docsrc.
+check Changelog, NEWS, DESCRIPTION file have correct dates and versions
+Run fast and slow tests
 
-option to log hazard ratios, or log intens
 
-put in format for mstate
+---
 
-Go over basic usage again in manual with new print format, attention to variable naming and initial values.
+OTHER
 
-Show convergence codes from optim
+efpt.msm, ppass.msm and sojourn.msm with time dependent covs? easier with qematrix.msm rewrite.
+   
+support states as labels in efpt (and others?)
 
-Common interface to different optimisation methods
-
-Total length of stay with piecewise-constant time-dependent covariates.
-
-Probability of passage (document clearly as different from pmatrix)
-
-EFPT with time dependent covs?
-
-Give informative error if initprobs not changed from default, but observed initial states other than 1.
-
-No point printing CIs for fixed parameters?
-
-Make sure all components of msm objects are documented properly, e.g. paramdata.
-No need to duplicate stuff like deriv
-
-More developer documentation - comments for definitions of variables
-   in internal data structures like qmodel, emodel etc.
+No point printing CIs for fixed parameters? todo with qematrix.msm rewrite
 
 In extractor functions, warn that polynomial contrasts not supported,
 only treatment contrasts. (factorcov2numeric.msm)
-store in covdata whether model matrix built using treat/poly for factors
+store in covdata whether model matrix built using treat/poly for factors?
+one for output functions rewrite?  must be better r way of doing factors. predict.lm?
 
+warn for factor states
+	* R/msm.R(msm.form.data): Handle factor states (with levels
+	1:nstates) by converting to numeric.
 
 
 POSSIBLE MAJOR DEVELOPMENTS
 
-Random effects models.  Could be done by translating a msm model to
-corresponding JAGS or Stan code, inserting the random effects
-then using MCMC for estimation.  HMMs would probably be better in
-Stan.
+MCMC estimation.  Done basic JAGS interface, but convergence
+difficulties typical.  Stan might be better (esp for HMMs) but can't
+do matrix exponentials in it.  Haven't tried inserting random effects
+yet.
 
 Phase-type models.  Build appropriate parameter constraints in.
+
+Internationalisation.
+
+
+SOME OTHER SUGGESTIONS: not all may be sensible.
+
+OpenMP for parallel C code called from R, see Writing R Extensions.
+Can't call R from parallel part, but using R math lib or lapack/expm OK?
+
+Turnbull method to non-parametrically estimate time to interval-censored event.
+
+Viterbi algorithm.  Probability of each hidden state at each time, instead of just most probable.
+To compute this, need probabilities of all paths ending in state L at time ti: i.e. be sum_k instead of max_k in formula in Sec2.17 of PDF manual.
+
+Bureau survival plots
+
+Multiple realisations from same hidden trace, and/or multivariate HMM outcomes
+cf. multiple multi-state processes with shared random effects?
+
+Truncated observations.
+
+Steady state probabilities
+
+Use S_alloc instead of Calloc as in Viterbi - no need to free. Can't use on.exit to free on interrupt unless pointer declared globally.
 
 Time-inhomogeneous models with smoothly-varying intensities.  Product
 integral method looks easy, e.g. for predictable covariates like age.
@@ -49,38 +66,11 @@ Difficult .Call type mechanism needed for using user-defined R functions
 in C. See Writing R Extensions 5.11.1 for a possible starting point.
 Or Rcpp.
 
-Multicore bootstrapping using "parallel" package.  Must work cross-platform, including Windows.
-http://stackoverflow.com/questions/18588896/custom-package-using-parallel-or-doparallel-for-multiple-os-as-a-cran-package
-gives alternatives: compare these for speed.
+make msm.check.model for censored states - detect model
+   inconsistency. see previous errors.R
 
+check out Banks, H. T., et al (2012). Simulation algorithms for
+   continuous time Markov chain models. Simulation and
+Modeling Related to Computational Science and Robotics Technology 37, 3-18.
 
-
-SOME OTHER SUGGESTIONS: not all may be sensible.
-
-More intelligent use of model frames and formulae when forming data, e.g. na.action to omit NAs.  expand.model.frame should be useful here
-
-Turnbull method to non-parametrically estimate time to interval-censored event.
-
-Viterbi algorithm.  Probability of each hidden state at each time, instead of just most probable.
-To compute this, need probabilities of all paths ending in state L at time ti: i.e. be sum_k instead of max_k in formula in Sec2.17 of PDF manual.
-
-Bureau survival plots
-
-Particle swarm optimisation?  ppso  http://www.rforge.net/ppso/index.html, or hydroPSO
-
-Other optimisers (Nash) Rvmmin is modern BFGS with bounds. Bounds recommended to avoid silly solutions. (compute unbounded hessian by hand at solution?). Lots of parameters: Rcgmin much better than CG.   bobyqa (package minqa) for fast derivative free.
-
-Multiple realisations from same hidden trace, and/or multivariate HMM outcomes (major change to data structures needed).
-cf. multiple multi-state processes with shared random effects?
-
-For hidden models, cache Pmatrix once for frequently-occurring each from, to, time combinations
-
-Investigate forward algorithm for fitting HMMs - is this more efficient?
-
-Truncated observations.
-
-.Call for passing data to C?  Rcpp package facilitates this.
-
-Steady state probabilities
-
-Use S_alloc instead of Calloc as in Viterbi - no need to free. Can't use on.exit to free on interrupt unless pointer declared globally.
+Li, Y. P., and Chan, W. (2006). Analysis of longitudinal multinomial outcome data. Biometrical Journal 48, 319-326.

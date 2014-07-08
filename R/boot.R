@@ -1,31 +1,57 @@
+### Reconstruct data for original msm model fit.  Replace
+### generically-named variables in model data frame ("(subject)",
+### "(time)", "(state)" etc.) with the names specified by the user for
+### the original model call, to allow model refits for
+### cross-validation or bootstrapping using the original call.  If not
+### found in the usernames attribute, these columns are dropped,
+### assuming they're not needed for the refit.  Drop imputed
+### observations at piecewise constant intensity change points.
+### NOTE assuming timeperiod covariate OK to leave as is
+
+### Factor handling: strips factor() from variable names,
+## if original data was factor, will be factor in mf as well, so refit will work
+## if not factor in df but factor() in formula, stripping factor() allows refit to work
+## TODO can test this with simple refits
+## test whether labels are OK, check changelog
+
+reconstruct.data <- function(mf){
+    un <- attr(mf, "usernames")
+    par.name <- paste0("(",names(un),")")
+    ids <- match(par.name, names(mf))
+    names(mf) <- replace(names(mf), ids, un)
+    if (!is.null(mf$"(pci.imp)")) mf <- mf[!mf$"(pci.imp)",]
+    if(is.na(un["subject"])) {
+        un["subject"] <- "subject"
+        mf$subject <- mf$"(subject)"
+        attr(mf, "usernames") <- un
+    }
+    for (i in grep("^\\(.+\\)$", names(mf), value=TRUE)) mf[,i] <- NULL
+    colnames(mf) <- gsub("factor\\((.+)\\)", "\\1", colnames(mf))
+    mf
+}
+
 ### Take a bootstrap sample from the data contained in a fitted msm
 ### model. Sample pairs of consecutive observations, i.e. independent
 ### transitions.  Not applicable if model is hidden or some states are
 ### censored.
 
 bootdata.trans.msm <- function(x) {
-    dat <- if (!is.null(x$data.orig)) x$data.orig else x$data
-    subj.num <- match(dat$subject, unique(dat$subject))
-    nextsubj <- c(subj.num[2:length(subj.num)], Inf)
-    lastsubj <- subj.num != nextsubj
-    inds <- sample(which(!lastsubj), replace=TRUE)
-    data.boot <- as.data.frame(matrix(nrow=length(inds)*2, ncol=length(dat$covlabels.orig) + 4))
-    state.name <- deparse(as.list(x$call$formula)[[2]])
-    time.name <- deparse(as.list(x$call$formula)[[3]])
-    colnames(data.boot) <- c("subject.name", time.name, state.name, "obstype.name", dat$covlabels.orig)
-    data.boot[,state.name] <- as.vector(rbind(dat$state[inds], dat$state[inds+1]))
-                                        # in the bootstrap data, label each transition as being from a different subject
-    data.boot[,"subject.name"] <- rep(seq(along=inds), each=2)
-    data.boot[,time.name] <- as.vector(rbind(dat$time[inds], dat$time[inds+1]))
-    data.boot[,"obstype.name"] <- as.vector(rbind(dat$obstype.obs[inds], dat$obstype.obs[inds+1]))
-    for (j in dat$covlabels.orig) {
-        frominds <- seq(1, 2*length(inds)-1, 2)
-        data.boot[frominds, j] <- data.boot[frominds+1,j] <- dat$cov.orig[inds, j]
-        if (is.factor(dat$cov.orig[, j])) { 
-            data.boot[, j] <- factor(data.boot[,j], labels=sort(unique(dat$cov.orig[inds, j])))
-        }
-    }
-    colnames(data.boot) <- gsub("factor\\((.+)\\)", "\\1", colnames(data.boot))
+    dat <- reconstruct.data(model.frame(x))
+    un <- attr(dat, "usernames")
+    ## sample random rows of original data, excluding last observation
+    inds <- sample(which(duplicated(dat[,un["subject"]], fromLast=TRUE)), replace=TRUE)
+    ## make new data by interleaving corresponding "from-state" and "to-state" rows
+    ntrans <- length(inds)
+    z <- array(c(unlist(dat[inds,]), # "from-state" data
+                 unlist(dat[inds+1,])), # "to-state" data
+               dim=c(ntrans, ncol(dat), 2))
+    data.boot <- matrix(aperm(z, c(3,1,2)), nrow=2*ntrans, ncol=ncol(dat),
+                        dimnames=list(NULL,names(dat)))
+    data.boot <- as.data.frame(data.boot)
+    ## label every transition in new data as from a different subject
+    data.boot[,un["subject"]] <- rep(1:ntrans, each=2)
+    for (i in which(sapply(dat, is.factor)))
+        data.boot[,i] <- factor(data.boot[,i], labels=sort(unique(dat[,i])))
     data.boot
 }
 
@@ -35,8 +61,8 @@ bootdata.trans.msm <- function(x) {
 ### independent.
 
 bootdata.subject.msm <- function(x) {
-    dat <- if (!is.null(x$data.orig)) x$data.orig else x$data
-    subj.num <- match(dat$subject, unique(dat$subject))
+    dat <- model.frame(x)
+    subj.num <- match(dat$"(subject)", unique(dat$"(subject)"))
     subjs <- sample(unique(subj.num), replace=TRUE)
     inds <- new.subj <- NULL
     for (i in seq(along=subjs)) {
@@ -44,21 +70,9 @@ bootdata.subject.msm <- function(x) {
         inds <- c(inds, subj.inds)
         new.subj <- c(new.subj, rep(i, length(subj.inds)))
     }
-    data.boot <- as.data.frame(matrix(nrow=length(inds), ncol=length(dat$covlabels.orig) + 5))
-    state.name <- deparse(as.list(x$call$formula)[[2]])
-    time.name <- deparse(as.list(x$call$formula)[[3]])
-    colnames(data.boot) <- c("subject.name", time.name, state.name, "obstype.name", "obstrue.name", dat$covlabels.orig)
-    data.boot[,"subject.name"] <- new.subj
-    data.boot[,time.name] <- dat$time[inds]
-    data.boot[,state.name] <- dat$state[inds]
-    data.boot[,"obstype.name"] <- dat$obstype[inds]
-    data.boot[,"obstrue.name"] <- dat$obstrue[inds]
-    for (j in dat$covlabels.orig) { 
-        data.boot[, j] <- dat$cov.orig[inds, j]
-        if (is.factor(dat$cov.orig[, j]))
-            data.boot[, j] <- factor(data.boot[,j], labels=sort(unique(dat$cov.orig[, j])))
-    }
-    colnames(data.boot) <- gsub("factor\\((.+)\\)", "\\1", colnames(data.boot))
+    data.boot <- dat[inds,]
+    data.boot[,"(subject)"] <- new.subj
+    data.boot <- reconstruct.data(data.boot)
     data.boot
 }
 
@@ -73,14 +87,8 @@ bootdata.subject.msm <- function(x) {
 ### e.g. qmatrix, ematrix, hmodel, ...
 ### Put in help file that these must be in the working environment.
 
-### a) if call supplied as factor(), strip factor() from name. 
-
-
-boot.msm <- function(x, stat=pmatrix.msm, B=1000, file=NULL){
-    if (!is.null(x$call$subject)) x$call$subject <- substitute(subject.name)
-    if (!is.null(x$call$obstype)) x$call$obstype <- substitute(obstype.name)
-    if (!is.null(x$call$obstrue)) x$call$obstrue <- substitute(obstrue.name)
-    boot.fn <- function(dummy){ 
+boot.msm <- function(x, stat=pmatrix.msm, B=1000, file=NULL, cores=NULL){
+    boot.fn <- function(dummy){
         boot.data <- if (x$hmodel$hidden || x$cmodel$ncens) bootdata.subject.msm(x) else bootdata.trans.msm(x)
         x$call$data <- substitute(boot.data)
         res <- try(eval(x$call))
@@ -88,18 +96,33 @@ boot.msm <- function(x, stat=pmatrix.msm, B=1000, file=NULL){
             res <- try(stat(res))
         res
     }
-    boot.list <- vector(B, mode="list")
-    for (i in 1:B) {
-        boot.list[[i]] <- boot.fn()
-        if (!is.null(file)) save(boot.list, file=file)
+    if (is.null(cores) || cores==1) parallel <- FALSE else parallel <- TRUE;
+    if (parallel) {
+        if (!is.null(cores) && cores=="default") cores <- NULL
+        require(doParallel)
+### can't get this working separated out into a function like portable.parallel(). Variable exporting / scoping doesnt' work.
+        if (.Platform$OS.type == "windows") {
+            cl <- makeCluster(cores)
+            registerDoParallel(cl)
+        } else registerDoParallel(cores=cores)
+        boot.list <- foreach(i=1:B, .packages="msm", .export=c("x",ls(.GlobalEnv))) %dopar% { boot.fn(i) }
+        if (.Platform$OS.type == "windows")
+            stopCluster(cl)
+    }
+    else {
+        boot.list <- vector(B, mode="list")
+        for (i in 1:B) {
+            boot.list[[i]] <- boot.fn()
+            if (!is.null(file)) save(boot.list, file=file)
+        }
     }
     boot.list
 }
 
 ### Utilities for calculating bootstrap CIs for particular statistics
 
-qematrix.ci.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALSE, cl=0.95, B=1000) {
-    q.list <- boot.msm(x, function(x)qematrix.msm(x=x, covariates=covariates, intmisc=intmisc)$estimates, B)
+qematrix.ci.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALSE, cl=0.95, B=1000, cores=NULL) {
+    q.list <- boot.msm(x, function(x)qematrix.msm(x=x, covariates=covariates, intmisc=intmisc)$estimates, B=B, cores=cores)
     q.array <- array(unlist(q.list), dim=c(dim(q.list[[1]]), length(q.list)))
     q.ci <- apply(q.array, c(1,2), function(x)(c(quantile(x, c(0.5 - cl/2, 0.5 + cl/2)), sd(x))))
     q.ci <- aperm(q.ci, c(2,3,1))
@@ -111,43 +134,56 @@ qematrix.ci.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALS
     else q.ci
 }
 
-qratio.ci.msm <- function(x, ind1, ind2, covariates="mean", cl=0.95, B=1000) {
-    q.list <- boot.msm(x, function(x)qratio.msm(x=x, ind1=ind1, ind2=ind2, covariates=covariates)["estimate"], B)
+qratio.ci.msm <- function(x, ind1, ind2, covariates="mean", cl=0.95, B=1000, cores=NULL) {
+    q.list <- boot.msm(x, function(x)qratio.msm(x=x, ind1=ind1, ind2=ind2, covariates=covariates)["estimate"], B=B, cores=cores)
     q.vec <- unlist(q.list)
     c(quantile(q.vec, c(0.5 - cl/2, 0.5 + cl/2)), sd(q.vec))
 }
 
-pnext.ci.msm <- function(x, covariates="mean", cl=0.95, B=1000) {
-    p.list <- boot.msm(x, function(x)pnext.msm(x=x, covariates=covariates, ci="none")$estimates, B)
+pnext.ci.msm <- function(x, covariates="mean", cl=0.95, B=1000, cores=NULL) {
+    p.list <- boot.msm(x, function(x)pnext.msm(x=x, covariates=covariates, ci="none")$estimates, B=B, cores=cores)
     p.array <- array(unlist(p.list), dim=c(dim(p.list[[1]]), length(p.list)))
     p.ci <- apply(p.array, c(1,2), function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
     aperm(p.ci, c(2,3,1))
 }
 
-pmatrix.ci.msm <- function(x, t, t1, covariates="mean", cl=0.95, B=1000) {
-    p.list <- boot.msm(x, function(x)pmatrix.msm(x=x, t=t, t1=t1, covariates=covariates,ci="none"), B)
+pmatrix.ci.msm <- function(x, t, t1, covariates="mean", cl=0.95, B=1000, cores=NULL) {
+    p.list <- boot.msm(x, function(x)pmatrix.msm(x=x, t=t, t1=t1, covariates=covariates,ci="none"), B=B, cores=cores)
     p.array <- array(unlist(p.list), dim=c(dim(p.list[[1]]), length(p.list)))
     p.ci <- apply(p.array, c(1,2), function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
     aperm(p.ci, c(2,3,1))
 }
 
-pmatrix.piecewise.ci.msm <- function(x, t1, t2, times, covariates="mean", cl=0.95, B=1000) {
-    p.list <- boot.msm(x, function(x)pmatrix.piecewise.msm(x=x, t1=t1, t2=t2, times=times, covariates=covariates,ci="none"), B)
+pmatrix.piecewise.ci.msm <- function(x, t1, t2, times, covariates="mean", cl=0.95, B=1000, cores=NULL) {
+    p.list <- boot.msm(x, function(x)pmatrix.piecewise.msm(x=x, t1=t1, t2=t2, times=times, covariates=covariates,ci="none"), B=B, cores=cores)
     p.array <- array(unlist(p.list), dim=c(dim(p.list[[1]]), length(p.list)))
     p.ci <- apply(p.array, c(1,2), function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
     aperm(p.ci, c(2,3,1))
 }
 
-totlos.ci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean", cl=0.95, B=1000,...) {
-    t.list <- boot.msm(x, function(x)totlos.msm(x, start, end, fromt, tot, covariates, ci="none",...), B)
+totlos.ci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean", piecewise.times=NULL, piecewise.covariates=NULL, discount=0, env=FALSE, cl=0.95, B=1000, cores=NULL,...) {
+    t.list <- boot.msm(x, function(x)totlos.msm(x=x, start=start, end=end, fromt=fromt, tot=tot, covariates=covariates,
+                                                piecewise.times=piecewise.times, piecewise.covariates=piecewise.covariates,
+                                                discount=discount, env=env, ci="none",...), B=B, cores=cores)
     t.array <- do.call("rbind", t.list)
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
 }
 
-efpt.ci.msm <- function(x, qmatrix=NULL, tostate, start, covariates="mean", cl=0.95, B=1000) {
-    t.list <- boot.msm(x, function(x)efpt.msm(x, qmatrix, start, tostate, covariates, ci="none"), B)
+efpt.ci.msm <- function(x, qmatrix=NULL, tostate, start, covariates="mean", cl=0.95, B=1000, cores=NULL) {
+    t.list <- boot.msm(x, function(x)efpt.msm(x=x, qmatrix=qmatrix, start=start, tostate=tostate, covariates=covariates, ci="none"), B=B, cores=cores)
     t.array <- do.call("rbind", t.list)
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
+}
+
+ppass.ci.msm <- function(x, qmatrix, tot, start, covariates="mean", piecewise.times=NULL, piecewise.covariates=NULL, cl=0.95, B=1000, cores=NULL,...) {
+    t.list <- boot.msm(x, function(x)ppass.msm(x=x, qmatrix=qmatrix, tot=tot, start=start, covariates=covariates,
+                                                piecewise.times=piecewise.times, piecewise.covariates=piecewise.covariates,
+                                                ci="none",...), B=B, cores=cores)
+    nst <- ncol(t.list[[1]])
+    t.array <- do.call("rbind", lapply(t.list, as.vector))
+    ci <- apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
+    di <- dimnames(t.list[[1]])
+    list(L=matrix(ci[1,],ncol=nst,dimnames=di), U=matrix(ci[2,],ncol=nst, dimnames=di))
 }
 
 expected.ci.msm <- function(x,
@@ -159,11 +195,11 @@ expected.ci.msm <- function(x,
                             piecewise.times=NULL,
                             piecewise.covariates=NULL,
                             risk=NULL,
-                            cl=0.95, B=1000) {
+                            cl=0.95, B=1000, cores=NULL) {
     if(is.null(risk)) risk <- observed.msm(x)$risk
     e.list <- boot.msm(x, function(x){
         expected.msm(x, times, timezero, initstates, covariates, misccovariates, piecewise.times, piecewise.covariates, risk)
-    }, B)
+    }, B=B, cores=cores)
     e.tab.array <- array(unlist(lapply(e.list, function(x)x[[1]])), dim=c(dim(e.list[[1]][[1]]), length(e.list)))
     e.perc.array <- array(unlist(lapply(e.list, function(x)x[[2]])), dim=c(dim(e.list[[1]][[2]]), length(e.list)))
     e.tab.ci <- apply(e.tab.array, c(1,2), function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
@@ -179,11 +215,11 @@ expected.ci.msm <- function(x,
 ### i.e. statistics computed as functions of x$Qmatrices, x$Ematrices and x$paramdata$params
 
 normboot.msm <- function(x, stat, B=1000) {
-    ## simulate from vector of unreplicated parameters, to avoid numerical problems with rmvnorm when lots of correlations are 1 
+    ## simulate from vector of unreplicated parameters, to avoid numerical problems with rmvnorm when lots of correlations are 1
     if (!x$foundse) stop("Asymptotic standard errors not available in fitted model")
-    sim <- rmvnorm(B, x$opt$par, solve(0.5 * x$opt$hessian))
+    sim <- rmvnorm(B, x$opt$par, x$covmat[x$paramdata$optpars,x$paramdata$optpars])
     params <- matrix(nrow=B, ncol=x$paramdata$npars)  # replicate constrained parameters.
-    params[,x$paramdata$optpars] <- sim 
+    params[,x$paramdata$optpars] <- sim
     params[,x$paramdata$fixedpars] <- rep(x$paramdata$params[x$paramdata$fixedpars], each=B)
     params[,x$paramdata$hmmpars] <- rep(msm.mninvlogit.transform(x$paramdata$params[x$paramdata$hmmpars], x$hmodel$plabs, x$hmodel$parstate), each=B)
     params <- params[, !duplicated(abs(x$paramdata$constr)), drop=FALSE][, abs(x$paramdata$constr), drop=FALSE] *
@@ -245,16 +281,29 @@ pmatrix.piecewise.normci.msm <- function(x, t1, t2, times, covariates="mean", cl
     aperm(p.ci, c(2,3,1))
 }
 
-totlos.normci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean", cl=0.95, B=1000, ...) {
-    t.list <- normboot.msm(x, function(x)totlos.msm(x, start, end, fromt, tot, covariates, ci="none", ...), B)
+totlos.normci.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean", piecewise.times=NULL, piecewise.covariates=NULL, discount=0, env=FALSE, cl=0.95, B=1000, ...) {
+    t.list <- normboot.msm(x, function(x)totlos.msm(x=x, start=start, end=end, fromt=fromt, tot=tot, covariates=covariates,
+                                                    piecewise.times=piecewise.times, piecewise.covariates=piecewise.covariates,
+                                                    discount=discount, env=env, ci="none", ...), B)
     t.array <- do.call("rbind", t.list)
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
 }
 
 efpt.normci.msm <- function(x, qmatrix=NULL, tostate, start, covariates="mean", cl=0.95, B=1000, ...) {
-    t.list <- normboot.msm(x, function(x)efpt.msm(x, qmatrix, tostate, start, covariates, ci="none", ...), B)
+    t.list <- normboot.msm(x, function(x)efpt.msm(x=x, qmatrix=qmatrix, tostate=tostate, start=start, covariates=covariates, ci="none", ...), B)
     t.array <- do.call("rbind", t.list)
     apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
+}
+
+ppass.normci.msm <- function(x, qmatrix, tot, start, covariates="mean", piecewise.times=NULL, piecewise.covariates=NULL, cl=0.95, B=1000, ...) {
+    t.list <- normboot.msm(x, function(x)ppass.msm(x=x, qmatrix=qmatrix, tot=tot, start=start, covariates=covariates,
+                                                    piecewise.times=piecewise.times, piecewise.covariates=piecewise.covariates,
+                                                    ci="none", ...), B)
+    nst <- ncol(t.list[[1]])
+    t.array <- do.call("rbind", lapply(t.list, as.vector))
+    ci <- apply(t.array, 2, function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
+    di <- dimnames(t.list[[1]])
+    list(L=matrix(ci[1,],ncol=nst,dimnames=di), U=matrix(ci[2,],ncol=nst, dimnames=di))
 }
 
 expected.normci.msm <- function(x,

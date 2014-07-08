@@ -1,4 +1,5 @@
 \name{aneur}
+\docType{data}
 \alias{aneur}
 \title{Aortic aneurysm progression data}
 \description{
@@ -7,7 +8,7 @@
   diameter of the aorta. 
   
 }
-\usage{data(aneur)}
+\usage{aneur}
 
 \format{
   A data frame containing 4337 rows, with each row corresponding to an

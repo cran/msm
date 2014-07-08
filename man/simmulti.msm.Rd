@@ -3,8 +3,8 @@
 \alias{simmulti.msm}
 \concept{Simulation}
 \description{Simulate a number of individual realisations from a
-  multi-state Markov process. Observations of the process are made at
-  specified arbitrary times for each individual, giving panel-observed data. 
+  continuous-time Markov process. Observations of the process are made at
+  specified arbitrary times for each individual, giving panel-observed data.
 }
 \usage{
 simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
@@ -23,10 +23,10 @@ simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
     should be censored. If \code{cens==0} then the state is not
     censored, and if \code{cens==k}, say, then all simulated states at that
     time which are in the set \code{censor.states} are replaced by
-    \code{k}. 
+    \code{k}.
     Other named columns of the data frame represent any covariates.
   }
-  
+
   \item{qmatrix}{
     The transition intensity matrix of the
     Markov process, with any covariates set to zero.  The diagonal of
@@ -40,7 +40,7 @@ simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
       c( 0.1, 0, 0.01 ),
       c( 0, 0, 0 )
     )}
-  
+
 }
 
 \item{covariates}{List of linear covariate effects on log transition
@@ -51,8 +51,8 @@ simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
 
   For example, for a multi-state model with three transition
   intensities, and two covariates \code{x} and \code{y} on each
-  intensity, 
-  
+  intensity,
+
   \code{covariates=list(x = c(-0.3,-0.3,-0.3), y=c(0.1, 0.1, 0.1))}
 }
 
@@ -68,10 +68,10 @@ simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
   final state is a death state, and \code{death = FALSE} (the default)
   indicates that there is no death state. }
 
-\item{start}{A vector with the same number of elements as there are 
+\item{start}{A vector with the same number of elements as there are
   distinct subjects in the data, giving the states in which each
-  corresponding individual begins. Defaults to state 1 for each 
-  subject.}
+  corresponding individual begins.  Or a single number, if all of these
+  are the same.  Defaults to state 1 for each subject.}
 
 \item{ematrix}{An optional misclassification matrix for generating observed states
   conditionally on the simulated true states. As defined in
@@ -93,7 +93,7 @@ simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
   covariate effects. Each element of the list is a named vector of the
   initial values for each set of covariates for that state.  For
   example, for a three-state hidden Markov model with two, one and no
-  covariates on the state 1, 2 and 3 outcome models respectively, 
+  covariates on the state 1, 2 and 3 outcome models respectively,
 
   \code{ hcovariates = list (c(acute=-8, age=0), c(acute=-8), NULL) }
 }
@@ -101,7 +101,7 @@ simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
   censoring indicator at censoring times.  By default this is all
   transient states (representing alive, with unknown state).}
 \item{drop.absorb}{Drop repeated observations in the absorbing state,
-  retaining only one.} 
+  retaining only one.}
 }
 \value{A data frame with columns,
   \item{subject}{Subject identification indicators}
@@ -109,9 +109,9 @@ simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
   \item{state}{Simulated (true) state at the corresponding time}
   \item{obs}{Observed outcome at the corresponding time, if
     \code{ematrix} or \code{hmodel} was supplied}
-  plus any supplied covariates. 
+  plus any supplied covariates.
 }
-\details{  
+\details{
   \code{\link{sim.msm}} is called repeatedly to produce a simulated
   trajectory for each individual. The state at each specified
   observation time is then taken to produce a new column \code{state}.
@@ -134,4 +134,4 @@ qmatrix <- rbind(c(-0.11,   0.1,  0.01 ),
 simmulti.msm(sim.df, qmatrix)
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
-\keyword{models}
+\keyword{datagen}

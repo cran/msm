@@ -10,7 +10,7 @@ sim.msm(qmatrix, maxtime, covs=NULL, beta=NULL, obstimes=0, start=1,
 mintime=0)
 }
 \arguments{
-  
+
   \item{qmatrix}{ The transition intensity matrix of the
     Markov process. The diagonal of \code{qmatrix} is ignored,
     and computed as appropriate so that the rows sum to zero. For
@@ -71,4 +71,4 @@ qmatrix <- rbind(
 sim.msm(qmatrix, 30)
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
-\keyword{models}
+\keyword{datagen}

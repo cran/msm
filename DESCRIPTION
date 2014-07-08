@@ -1,6 +1,6 @@
 Package: msm
-Version: 1.3
-Date: 2014-01-15
+Version: 1.4
+Date: 2014-07-04
 Title: Multi-state Markov and hidden Markov models in continuous time
 Author: Christopher Jackson <chris.jackson@mrc-bsu.cam.ac.uk>
 Maintainer: Christopher Jackson <chris.jackson@mrc-bsu.cam.ac.uk>
@@ -13,9 +13,13 @@ Description: Functions for fitting general continuous-time Markov and
  constant or piecewise-constant in time.
 License: GPL (>= 2)
 Imports: survival,mvtnorm,expm
-Suggests: mstate
+Suggests: mstate,minqa,doParallel,numDeriv,testthat
 LazyData: yes
-Packaged: 2014-01-16 12:04:35 UTC; chris
-NeedsCompilation: yes
 Repository: CRAN
-Date/Publication: 2014-01-16 15:40:48
+Repository/R-Forge/Project: msm
+Repository/R-Forge/Revision: 57
+Repository/R-Forge/DateTimeStamp: 2014-07-04 09:08:43
+Date/Publication: 2014-07-08 19:17:57
+Packaged: 2014-07-04 10:18:11 UTC; rforge
+Depends: R (>= 2.10)
+NeedsCompilation: yes

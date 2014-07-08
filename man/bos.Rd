@@ -1,4 +1,5 @@
 \name{bos}
+\docType{data}
 \alias{bos}
 \title{Bronchiolitis obliterans syndrome after lung transplants}
 \description{
@@ -8,7 +9,7 @@
   The condition is classified into four stages of severity: none, mild, moderate
   and severe.
 }
-\usage{data(bos)}
+\usage{bos}
 \format{
   A data frame containing 638 rows, grouped by patient, including histories of 204 patients.
   The first observation for each patient is defined to be stage 1, no

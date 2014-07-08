@@ -9,11 +9,11 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
                         pval=TRUE # calculate p-values for test. false if calling from bootstrap
                         ){
 
-    dat <- x$data
+    dat <- x$data$mf
     ## Error handling
     if (!inherits(x, "msm")) stop("expected \"x\" t to be a msm model")
     if (x$hmodel$hidden && !x$emodel$misc) stop("only HMMs handled are misclassification models specified using \"ematrix\"")
-    if (any(dat$obstype==2)) stop("exact transition times are not supported, only panel-observed data")
+    if (any(dat$"(obstype)"==2)) stop("exact transition times are not supported, only panel-observed data")
     if (!is.null(transitions) && !is.numeric(transitions)) stop("expected \"transitions\" to be numeric")
     if (!is.numeric(timegroups) || length(timegroups) != 1) stop ("expected \"timegroups\" to be a single number")
     if (!is.numeric(intervalgroups) || length(intervalgroups) != 1) stop ("expected \"intervalgroups\" to be a single number")
@@ -27,18 +27,19 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
 
     ## Label various constants
     nst <- x$qmodel$nstates
-    exact.death <- any(dat$obstype == 3)
+    exact.death <- any(dat$"(obstype)" == 3)
     dstates <- if (exact.death) absorbing.msm(x) else NULL
     ndstates <- if (exact.death) transient.msm(x) else 1:nst
     nndstates <- length(ndstates)
 
-    ## Add a few useful variables to the data
-    obstypename <- if (x$hmodel$hidden || x$cmodel$ncens > 0) "obstype" else "obstype.obs"
-    od <- as.data.frame(dat[c("subject","time","state",obstypename)])
+    ## Do minimum needed to port this to msm version 1.4
+    od <- dat[,c("(subject)","(time)","(state)","(obstype)")]
+    names(od) <- c("subject","time","state","obstype")
+    od$cov <- dat[,attr(dat,"covnames.q")]
+    if (x$emodel$misc) od$misccov <- dat[,attr(dat,"covnames.e")]
     ncovs <- x$qcmodel$ncovs
-    if (ncovs > 0) od$cov <- dat$cov.orig
     od$state <- factor(od$state, levels=sort(unique(od$state)))
-    n <- dat$n
+    n <- nrow(od)
 
     ## Method is restricted to "terminal" censoring (means not dead, occurs at end)
     ## Drop censored states not at the end of individual series
@@ -106,10 +107,10 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
 
     ## Determine unique Q matrices determined by covariate combinations
     if (ncovs>0) {
-        uniq <- unique(as.data.frame(od$cov[,dat$covdata$whichcov.orig,drop=FALSE]))
+        uniq <- unique(od$cov)
         nouniq <- dim(uniq)[1]
         pastedu <- do.call("paste",uniq)
-        pastedc <- do.call("paste",as.data.frame(od$cov[,dat$covdata$whichcov.orig,drop=FALSE]))
+        pastedc <- do.call("paste",od$cov)
         qmatindex <- match(pastedc,pastedu)
         qmat <- array(0,dim=c(nst,nst,nouniq))
         for (i in 1:nouniq)
@@ -200,7 +201,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
     prob <- array(0,dim=c(nst,ntrans)) ## array of obs state probs, conditional on previous obs state
     if (x$emodel$misc) {
         misccov <-
-            if (x$ecmodel$ncovs > 0) od$cov[x$hmodel$whichcovh.orig[1:x$ecmodel$ncovs]][od$obsno>1,,drop=FALSE]
+            if (x$ecmodel$ncovs > 0) od$misccov[od$obsno>1,,drop=FALSE]
             else NULL
         p.true <- array(dim=c(nst, ntrans)) # prob of each true state conditional on complete history including current obs
         initp <- x$hmodel$initpmat
@@ -376,7 +377,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
         ## compute Psi  = Cov(score(theta), Orc), where Orc is observed counts in pearson table
         ## arranged as npars x RC
         ## bottom left and top right blocks wrong way round in paper
-        dp <- Ccall.msm(x$paramdata$opt$par, do.what="dpmat", x$data, x$qmodel, x$qcmodel, x$cmodel, x$hmodel, x$paramdata) # ntrans x R x npars: trans in data order
+        dp <- Ccall.msm(x$paramdata$opt$par, do.what="dpmat", expand.data(x), x$qmodel, x$qcmodel, x$cmodel, x$hmodel, x$paramdata) # ntrans x R x npars: trans in data order
         Psiarr <- apply(dp, c(2,3), function(x)tapply(x, md$group, sum))
         npars <- x$paramdata$nopt # only includes qbase,qcov, since no hmms here
         ## permute C x R x npars Psiarr to R x C x npars Psi and then collapse first two dims
@@ -408,13 +409,13 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
         }
         int <- try(integrate(fn, -Inf, Inf))
         if (inherits(int, "try-error"))
-            message("Unable to calculate more accurate p-value")
+            { message("Unable to calculate more accurate p-value"); p.acc <- p.err <- NULL}
         else {
             p.acc <- 0.5 + int$value
             p.err <- int$abs.error
+            if (p.acc - 2*p.err < 0) p.acc <- 0
+            if (p.acc + 2*p.err > 1) p.acc <- 1
         }
-        if (p.acc - 2*p.err < 0) p.acc <- 0
-        if (p.acc + 2*p.err > 1) p.acc <- 1
     }
     test <- data.frame(stat=stat)
     if (acc.p) test$p <- p.acc
@@ -426,9 +427,9 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
 
     ## Simulated observation times to use as sampling frame for bootstrapped data
     if (!is.null(imputation)) {
-      imp.times <- matrix(rep(x$data$time, N), nrow=length(x$data$time), ncol=N)
-      prevtime <- imp.times[which(x$data$state %in% dstates) - 1,]
-      imp.times[x$data$state %in% dstates, ] <- prevtime + imputation[,,"times"]
+      imp.times <- matrix(rep(x$data$mf$"(time)", N), nrow=length(x$data$mf$"(time)"), ncol=N)
+      prevtime <- imp.times[which(x$data$mf$"(state)" %in% dstates) - 1,]
+      imp.times[x$data$mf$"(state)" %in% dstates, ] <- prevtime + imputation[,,"times"]
     }
     else imp.times <- NULL
     if (boot) {
@@ -519,7 +520,7 @@ pearson.boot.msm <- function(x, imp.times=NULL, transitions=NULL, timegroups=4, 
   i <- 1
   while (i <= B) {
     if (!is.null(imp.times))
-     x$data$time <- imp.times[,sample(ncol(imp.times), size=1)]  # resample one of the imputed sets of observation times
+     x$data$mf$"(time)" <- imp.times[,sample(ncol(imp.times), size=1)]  # resample one of the imputed sets of observation times
     boot.df <- simfitted.msm(x,drop.absorb=TRUE)
     x$call$data <- substitute(boot.df)
     refit.msm <- try(eval(x$call)) # estimation might not converge for a particular bootstrap resample

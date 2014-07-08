@@ -13,7 +13,7 @@
 }
 \usage{
 pmatrix.piecewise.msm(x, t1, t2, times, covariates,
-ci=c("none","normal","bootstrap"), cl=0.95, B=1000, ...)
+ci=c("none","normal","bootstrap"), cl=0.95, B=1000, cores=NULL, ...)
 }
 \arguments{
 
@@ -33,7 +33,7 @@ ci=c("none","normal","bootstrap"), cl=0.95, B=1000, ...)
     \code{times}.  Each component of the list is specified in the same
     way as the \code{covariates} argument to \code{\link{pmatrix.msm}}.
     The components correspond to the covariate values in the intervals
-    
+
     \code{(t1, times[1]],  (times[1], times[2]], ...,
       (times[length(times)], t2]}
 
@@ -46,7 +46,7 @@ ci=c("none","normal","bootstrap"), cl=0.95, B=1000, ...)
     maximum likelihood estimates (and covariance matrix) of the log
     transition intensities and covariate effects, then calculating the
     resulting transition probability matrix for each replicate.
-    
+
     If \code{"bootstrap"} then calculate a confidence interval by
     non-parametric bootstrap refitting.  This is 1-2 orders of magnitude
     slower than the \code{"normal"} method, but is expected to be more
@@ -55,11 +55,14 @@ ci=c("none","normal","bootstrap"), cl=0.95, B=1000, ...)
 
     If \code{"none"} (the default) then no confidence interval is
     calculated.}
-  
+
   \item{cl}{Width of the symmetric confidence interval, relative to 1.}
 
   \item{B}{Number of bootstrap replicates, or number of normal
     simulations from the distribution of the MLEs}
+
+  \item{cores}{Number of cores to use for bootstrapping using parallel
+    processing. See \code{\link{boot.msm}} for more details.}
 
   \item{...}{Optional arguments to be passed to \code{\link{MatrixExp}} to
     control the method of computing the matrix exponential.}
@@ -69,9 +72,9 @@ ci=c("none","normal","bootstrap"), cl=0.95, B=1000, ...)
   the transition intensity matrix \eqn{Q(x(t))} is modelled in terms of
   time-dependent covariates \eqn{x(t)}.  The transition probability
   matrix \eqn{P(t_1, t_n)}{P(t1, tn)} for the time interval \eqn{(t_1,
-  t_n)}{(t1, tn)} cannot be calculated from the estimated intensity matrix as  
+  t_n)}{(t1, tn)} cannot be calculated from the estimated intensity matrix as
   \eqn{\exp((t_n - t_1) Q)}{exp((tn - t1) Q)}, because \eqn{Q} varies within the interval
-  \eqn{t_1, t_n}{t1, tn}.  However, if the covariates are piecewise-constant, 
+  \eqn{t_1, t_n}{t1, tn}.  However, if the covariates are piecewise-constant,
   or can be approximated as piecewise-constant, then we can calculate
   \eqn{P(t_1, t_n)}{P(t1, tn)} by multiplying together individual matrices
   \eqn{P(t_i,
@@ -87,7 +90,7 @@ constant:
   time interval \code{[t1, tn]}.  That is, the probabilities of
   occupying state \eqn{s} at time \eqn{t_n}{tn}
   conditionally on occupying state \eqn{r} at time \eqn{t_1}{t1}.
-  Rows correspond to "from-state" and columns to "to-state". 
+  Rows correspond to "from-state" and columns to "to-state".
 }
 \seealso{
   \code{\link{pmatrix.msm}} }
@@ -100,7 +103,7 @@ constant:
 ## Suppose a multi-state model x has been fitted for the patients'
 ## progress, with treat1 and treat2 as time dependent covariates.
 
-## Cut points for when treatment covariate changes 
+## Cut points for when treatment covariate changes
 times <- c(0, 5, 10)
 
 ## Indicators for which treatments are active in the four intervals

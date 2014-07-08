@@ -1,11 +1,12 @@
 \name{psor}
+\docType{data}
 \alias{psor}
 \title{Psoriatic arthritis data}
 \description{
   A series of observations of grades of psoriatic arthritis, as
   indicated by numbers of damaged joints. 
 }
-\usage{data(psor)}
+\usage{psor}
 
 \format{
   A data frame containing 806 observations, representing visits to a

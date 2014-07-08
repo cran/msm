@@ -19,8 +19,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
       est.initprobs=FALSE, initcovariates = NULL, initcovinits = NULL,
       death = FALSE, exacttimes = FALSE, censor=NULL,
       censor.states=NULL, pci=NULL, cl = 0.95, fixedpars = NULL, center=TRUE,
-      opt.method=c("optim","nlm","fisher"), hessian=NULL, use.deriv=TRUE,
-      use.expm=TRUE, analyticp=TRUE, ... )
+      opt.method="optim", hessian=NULL, use.deriv=TRUE,
+      use.expm=TRUE, analyticp=TRUE, na.action=na.omit, ... )
 }
 \arguments{
   \item{formula}{ A formula giving the vectors containing the observed
@@ -386,7 +386,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     \code{hconstraint = list(sd = c(1,1), acute=c(1,1))}
 
     Note this excludes initial state occupancy probabilities and
-    covariate effects, which cannot be constrained.
+    covariate effects on those probabilities, which cannot be constrained.
     }
 
     \item{hranges}{Range constraints for hidden Markov model parameters.
@@ -440,9 +440,10 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
   \item{initprobs}{Only used in hidden Markov models.  Underlying state
     occupancy probabilities at each subject's first observation.  Can
-    either be a vector of \eqn{nst} elements with common probabilities
-    to all subjects, or a \eqn{nsubj} by \eqn{nst} matrix of
-    subject-specific probabilities.
+    either be a vector of \eqn{nstates} elements with common probabilities
+    to all subjects, or a \eqn{nsubjects} by \eqn{nstates} matrix of
+    subject-specific probabilities.  This refers to observations after
+    missing data and subjects with only one observation have been excluded.
 
     If these are estimated (see \code{est.initprobs}), then this
     represents an initial value, and defaults to equal probability for
@@ -573,6 +574,10 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
      \code{covinits = list("timeperiod[5,10)"=c(0.1,0.1),
                            "timeperiod[10,Inf)"=c(0.1,0.1))}
 
+     Thus if \code{pci} is supplied, you cannot have a
+     previously-existing variable called \code{timeperiod} as a
+     covariate in any part of a \code{msm} model.
+
      Internally, this works by inserting censored observations in the
      data at times when the intensity changes but the state is not
      observed.
@@ -644,38 +649,46 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     \code{fixedpars} indexes the set of unique parameters, excluding
     those which are constrained to be equal to previous parameters.
 
-    For covariates on misclassification probabilities, this is a change
-    from version 0.4 in the parameter ordering. Previously these were
-    ordered by misclassification probabilities within covariates.
+    To fix all parameters, specify \code{fixedpars = TRUE}.
 
     This can be useful for profiling likelihoods, and building complex
-    models stage by stage. To fix all parameters, specify
-    \code{fixedpars = TRUE}. }
+    models stage by stage. }
 
   \item{center}{If \code{TRUE} (the default, unless
     \code{fixedpars=TRUE}) then covariates are centered at their means
     during the maximum likelihood estimation. This usually improves
     stability of the numerical optimisation. }
 
-  \item{opt.method}{If "optim" or "nlm", then the corresponding R
+  \item{opt.method}{If "optim", "nlm" or "bobyqa", then the corresponding R
     function will be used for maximum likelihood estimation.
-    \code{\link{optim}} is the default.
+    \code{\link{optim}} is the default.  "bobyqa" requires the package
+    \pkg{minqa} to be installed.  See the help of these functions for
+    further details.   Advanced users can also add their own
+    optimisation methods, see the source for \code{optim.R} in msm for
+    some examples.
 
     If "fisher", then a specialised Fisher scoring method is used
-    (Kalbfleisch and Lawless, 1985) which can be substantially faster
+    (Kalbfleisch and Lawless, 1985) which can be faster
     than the generic methods, though less robust.  This is only
     available for Markov models with panel data (\code{obstype=1}), that is, not
     for models with censored states, hidden Markov models, exact
     observation or exact death times (\code{obstype=2,3}).}
 
-  \item{hessian}{If \code{TRUE} then the Hessian matrix is computed at
-    the maximum likelihood estimates, to obtain standard errors and
-    confidence intervals. This is the default when maximum likelihood
-    estimation is performed.  If all parameters are fixed at their
-    initial values and no optimisation is performed, then this defaults
-    to \code{FALSE}.  If requested, the actual Hessian is returned in
-    \code{x$paramdata$opt$hessian}, where \code{x} is the fitted model
-    object.}
+  \item{hessian}{If \code{TRUE} then standard errors and confidence
+    intervals are obtained from a numerical estimate of the Hessian (the
+    observed information matrix).  This is the default when maximum
+    likelihood estimation is performed.  If all parameters are fixed at
+    their initial values and no optimisation is performed, then this
+    defaults to \code{FALSE}.  If requested, the actual Hessian is
+    returned in \code{x$paramdata$opt$hessian}, where \code{x} is the
+    fitted model object.
+
+    If \code{hessian} is set to \code{FALSE}, then standard
+    errors and confidence intervals are obtained from the Fisher
+    (expected) information matrix, if this is available.  This may be
+    preferable if the numerical estimation of the Hessian is
+    computationally intensive, or if the resulting estimate is
+    non-invertible or not positive definite.}
 
   \item{use.deriv}{If \code{TRUE} then analytic first derivatives are
     used in the optimisation of the likelihood, when an appropriate
@@ -698,9 +711,19 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     the PDF manual for a list of the models for which analytic P
     matrices are implemented. }
 
+  \item{na.action}{What to do with missing data: either \code{na.omit}
+    to drop it and carry on, or \code{na.fail} to stop with an error.
+    Missing data includes all NAs in the states, times, \code{subject} or
+    \code{obstrue}, all NAs at the first observation for a subject for
+    covariates in \code{initcovariates},  all NAs
+    in other covariates (excluding the last observation for a subject),
+    all NAs in \code{obstype} (excluding the first observation for a
+    subject), and any subjects with only one observation (thus no
+    observed transitions).
+  }
+
   \item{...}{Optional arguments to the general-purpose \R
-    optimisation routines, \code{\link{optim}} or
-    \code{\link{nlm}}. Useful options for \code{\link{optim}} include
+    optimisation routine, \code{\link{optim}} by default. Useful options for \code{\link{optim}} include
     \code{method="BFGS"} for using a quasi-Newton optimisation
     algorithm, which can often be faster than the default Nelder-Mead.
     If the optimisation fails to converge, consider normalising the
@@ -726,105 +749,18 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   To obtain summary information from models fitted by the
   \code{\link{msm}} function, it is recommended to use extractor
   functions such as \code{\link{qmatrix.msm}},
-  \code{\link{pmatrix.msm}}, \code{\link{sojourn.msm}}.  These provide
+  \code{\link{pmatrix.msm}}, \code{\link{sojourn.msm}}, \code{\link{msm.form.qoutput}}.  These provide
   estimates and confidence intervals for quantities such as transition
   probabilities for given covariate values.
 
   For advanced use, it may be necessary to directly use information
-  stored in the object returned by the \code{msm} function.  This is a
-  list of class \code{msm}, with components:
-
-  \item{call}{The original call to \code{msm}.}
-    \item{Qmatrices}{A list of matrices. The first component, labelled
-    \code{logbaseline}, is a matrix containing the estimated
-    transition intensities on the log scale with any covariates fixed at
-    their means in the data (or at zero, if \code{center=FALSE}). The
-    component labelled \code{baseline} is the equivalent on the
-    untransformed scale. Each
-    remaining component is a matrix giving the linear
-    effects of the labelled covariate on the matrix of log
-    intensities.  To extract an estimated intensity matrix on the natural
-    scale, at an arbitrary combination of covariate values, use the
-    function \code{\link{qmatrix.msm}}.
-  }
-  \item{QmatricesSE}{The standard error matrices corresponding to
-    \code{Qmatrices}.
-  }
-  \item{QmatricesL,QmatricesU}{Corresponding lower and upper symmetric
-    confidence limits, of width 0.95 unless specified otherwise by the
-    \code{cl} argument.
-  }
-  \item{Ematrices}{A list of matrices. The first component, labelled
-    \code{logitbaseline}, is the estimated misclassification probability
-    matrix (expressed as as log odds relative to the probability of the
-    true state) with any covariates fixed at their means in the data (or
-    at zero, if \code{center=FALSE}). The
-    component labelled \code{baseline} is the equivalent on the
-    untransformed scale. Each
-    remaining component is a matrix giving the linear
-    effects of the labelled covariate on the matrix of logit
-    misclassification probabilities.   To extract an estimated misclassification
-    probability matrix on the natural scale, at an arbitrary combination
-    of covariate values, use the function \code{\link{ematrix.msm}}.}
-  \item{EmatricesSE}{The standard error matrices corresponding to \code{Ematrices}.}
-  \item{EmatricesL,EmatricesU}{Corresponding lower and upper symmetric
-    confidence limits, of width 0.95 unless specified otherwise by the
-    \code{cl} argument.
-  }
-  \item{sojourn}{
-    A list with components:
-
-    \code{mean} = estimated mean sojourn times in the transient states,
-    with covariates fixed at their means (if center=TRUE) or at zero
-    (if center=FALSE).
-
-    \code{se} = corresponding standard errors.
-  }
-  \item{minus2loglik}{Minus twice the maximised log-likelihood.}
-  \item{deriv}{Derivatives of the minus twice log-likelihood at its maximum.}
-  \item{estimates}{Vector of untransformed maximum likelihood estimates
-    returned from \code{\link{optim}}.  Transition intensities are on
-    the log scale and misclassification probabilities are given as log
-    odds relative to the probability of the true state.}
-  \item{estimates.t}{Vector of transformed maximum likelihood estimates
-    with intensities and probabilities on their natural scales.}
-  \item{fixedpars}{Indices of \code{estimates} which were fixed during
-    the maximum likelihood estimation.}
-  \item{center}{Indicator for whether the estimation was performed with
-    covariates centered on their means in the data.}
-  \item{covmat}{Covariance matrix corresponding to \code{estimates}.}
-  \item{ci}{Matrix of confidence intervals corresponding to \code{estimates.t}}
-  \item{opt}{Return value from \code{\link{optim}} or \code{\link{nlm}},
-    giving information about the results of the optimisation.}
-  \item{foundse}{Logical value indicating whether the Hessian was positive-definite
-    at the supposed maximum of the likelihood.  If not, the covariance matrix of the
-    parameters is unavailable. In these cases the optimisation has
-    probably not converged to a maximum.
-  }
-  \item{data}{A list of constants and vectors giving the data, for use
-    in post-processing.}
-  \item{qmodel}{A list of objects specifying the
-    model for transition intensities, for use in post-processing.}
-  \item{emodel}{A list of objects specifying the model for
-    misclassification.}
-  \item{qcmodel}{A list of objects specifying the
-    model for covariates on the transition intensities.}
-  \item{ecmodel}{A list of objects specifying the model for
-    covariates on misclassification probabilities.}
-  \item{hmodel}{A list of class "hmodel", containing objects specifying the hidden Markov model.
-    Estimates of "baseline" location parameters are
-    presented with any covariates fixed to their means in the data,
-    or if \code{center=FALSE}, with covariates fixed to zero.
-  }
-  \item{cmodel}{A list of objects specifying any model for censoring.}
-  \item{paramdata}{A list of objects giving information about the model
-    parameters and their eatimation.}
-  \item{cl}{The width of the confidence interval defining
-    \code{QmatricesL} and similar objects mentioned above.}
+  stored in the object returned by \code{\link{msm}}.  This is
+  documented in the help page \code{\link{msm.object}}.
 
   Printing a \code{msm} object by typing the object's name at the
-  command line implicitly invokes \code{print.msm}.  This
-  formats and prints the important information in the model fit.
+  command line implicitly invokes \code{\link{print.msm}}.  This
+  formats and prints the important information in the model fit,
+  and also returns that information in an R object.
   This includes estimates and confidence intervals for the transition intensities and (log) hazard
   ratios for the corresponding covariates. When there is a hidden Markov
   model, the chief information in the
@@ -934,14 +870,13 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 ### Heart transplant data
 ### For further details and background to this example, see
 ### Jackson (2011) or the PDF manual in the doc directory.
-data(cav)
 print(cav[1:10,])
 twoway4.q <- rbind(c(-0.5, 0.25, 0, 0.25), c(0.166, -0.498, 0.166, 0.166),
 c(0, 0.25, -0.5, 0.25), c(0, 0, 0, 0))
 statetable.msm(state, PTNUM, data=cav)
 crudeinits.msm(state ~ years, PTNUM, data=cav, qmatrix=twoway4.q)
 cav.msm <- msm( state ~ years, subject=PTNUM, data = cav,
-                 qmatrix = twoway4.q, death = 4, method="BFGS",
+                 qmatrix = twoway4.q, death = 4, 
                  control = list ( trace = 2, REPORT = 1 )  )
 cav.msm
 qmatrix.msm(cav.msm)

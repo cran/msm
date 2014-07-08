@@ -1,4 +1,5 @@
 \name{cav}
+\docType{data}
 \alias{cav}
 \title{Heart transplant monitoring data}
 \description{
@@ -6,7 +7,7 @@
   recipients.  The state at each time is a grade of cardiac allograft 
   vasculopathy (CAV),  a deterioration of the arterial walls.  
 }
-\usage{data(cav)}
+\usage{cav}
 
 \format{
   A data frame containing 2846 rows.  There are 622 patients, the rows

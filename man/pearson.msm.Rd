@@ -131,7 +131,7 @@ pearson.msm(x, transitions=NULL, timegroups=3, intervalgroups=3,
   \item{pval}{Calculate a p-value using the improved approximation of
     Titman (2009).  This is
     optional since it is not needed during bootstrapping, and it is
-    computationally non-trivial.  Only available for non-hidden Markov models for
+    computationally non-trivial.  Only available currently for non-hidden Markov models for
     panel data without exact death times.  Also not available for
     models with censoring, including time-homogeneous models fitted with
     the \code{pci} option to \code{\link{msm}}.
@@ -150,7 +150,7 @@ pearson.msm(x, transitions=NULL, timegroups=3, intervalgroups=3,
 
   \item{\code{"test"}}{the fourth element of the list, is a data frame with one row containing
   the Pearson-type goodness-of-fit test statistic \code{stat}.  The test statistic is the sum of the deviances.
-  For panel-observed data without exact death times, 
+  For panel-observed data without exact death times,
   misclassification or censored observations, \code{p} is the
   p-value for the test statistic calculated using the improved
   approximation of Titman (2009).
@@ -220,7 +220,7 @@ pearson.msm(x, transitions=NULL, timegroups=3, intervalgroups=3,
   table should be no less than about 5.
   Conversely, the power of the test is reduced if there are too few
   groups. Therefore, some sensitivity analysis of the test results to
-  the grouping is advisable. 
+  the grouping is advisable.
 
   Saved model objects fitted with previous versions of R (versions less
   than 1.2) will need to be refitted under the current R for use with
@@ -246,19 +246,17 @@ pearson.msm(x, transitions=NULL, timegroups=3, intervalgroups=3,
   \code{\link{msm}}, \code{\link{prevalence.msm}}, \code{\link{scoreresid.msm}},
 }
 \examples{
-data(psor)
 psor.q <- rbind(c(0,0.1,0,0),c(0,0,0.1,0),c(0,0,0,0.1),c(0,0,0,0))
 psor.msm <- msm(state ~ months, subject=ptnum, data=psor,
                 qmatrix = psor.q, covariates = ~ollwsdrt+hieffusn,
-                constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)),
-                control = list(REPORT=1,trace=2), method="BFGS")
+                constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)))
 pearson.msm(psor.msm, timegroups=2, intervalgroups=2, covgroups=2)
 # More 1-2, 1-3 and 1-4 observations than expected in shorter time
 # intervals - the model fits poorly.
 # A random effects model might accommodate such fast progressors.
 }
 \author{
-  Andrew Titman \email{a.titman@lancaster.ac.uk}, 
+  Andrew Titman \email{a.titman@lancaster.ac.uk},
   Chris Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}
 }
 \keyword{models}

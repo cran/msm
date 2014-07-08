@@ -3,6 +3,127 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
+Version 1.4  (2014-07-04)
+------------
+
+o CRAN release.  Includes the major changes from versions 1.3.2 and
+  1.3.3 below, previously only released on R-forge, plus:
+
+o Default confidence interval method for pnext.msm changed to
+  "normal", since delta method may not respect probability <1
+  constraint.
+
+
+Version 1.3.3  (2014-06-23)
+--------------
+
+o R-forge only release. 
+
+o C interface changed from .C to .Call, giving a slight speed
+  improvement.
+
+o Probabilities of passage, see ppass.msm.
+
+
+Version 1.3.2  (2014-06-19)
+--------------
+
+o R-forge only release. 
+
+o The new compact format for printing results from fitted models is
+  now the default.  The underlying numbers can be accessed from the
+  functions msm.form.qoutput or msm.form.eoutput, or from the object
+  returned by the print function, in the same tidy matrix form.  The
+  old print method is still available as "printold.msm".
+
+o Analytic derivatives available for most hidden Markov models and
+  models with censored states (excluding unknown initial state
+  probabilities, constraints on misclassification / categorical
+  outcome probabilities and their covariates, and truncated or
+  measurement error distributions).  This should speed up optimisation
+  with the BFGS or CG methods.  The corresponding Fisher information
+  matrix is also available for misclassification (categorical/identity
+  outcome) and censored state models.
+
+o The BFGS optimisation method is now the default, rather than
+  Nelder-Mead.
+
+o The internal code that deals with reading the data and passing it to
+  models has been rewritten to use formulae, model frames and model
+  matrices more efficiently.  As a result the "data" component of msm
+  objects now has a different structure.  The data can be extracted
+  with the new model.frame() and model.matrix() methods for msm
+  objects.  Also see help(recreate.olddata) for a utility to get the
+  old (undocumented) format back, but this will not be supported in
+  the long term.
+
+o New methods (draic.msm, drlcv.msm) for comparing models with
+  differently-aggregated states.  Thanks to Howard Thom.
+
+o Parallel processing supported for bootstrapping and bootstrap
+  confidence intervals (ci="boot"), if the "doParallel" package is
+  installed.
+
+o If msm is called with hessian=FALSE, then the Fisher (expected)
+  information is used to obtain standard errors and CIs, though this
+  is only available for non-hidden and misclassification models).
+  This may be preferable if the observed Hessian is very intensive to
+  approximate.
+
+o Optimisation code tidied, making it easier to add new methods.  As
+  an example, the "bobyqa" algorithm, a fast derivative-free method,
+  is now supported if the "minqa" package is installed.
+
+o Give informative warning for initial outcomes in HMMs which are
+  impossible for given initial state probabilites and outcome models.
+
+o Internal centering of "timeperiod" covariates around their means for
+  inhomogeneous models specified with "pci" is now done consistently
+  with other covariates, by omitting subjects' last observations
+  before calculating the mean, since they don't contribute to the
+  likelihood.  Therefore for these models, the initial values (with
+  "covariates centered around their means in the data") and outputs
+  for covariates="mean", have a very slightly different meaning from
+  previous versions.
+
+o When calculating the likelihood for hidden Markov or censoring
+  models, P matrices are not recalculated when the same one occurs
+  more than once.  This may speed up some models.
+
+o Test suite tidied up and converted to use "testthat" package.
+
+o Data consistency check added to crudeinits.msm().
+
+o Bug fix for misclassification models with constraints on baseline
+  misclassification probabilities and fixed parameters.
+
+o Bug fix for bootstrap CIs with efpt.msm
+
+o Miscellaneous minor bug fixes, see Changelog.
+
+
+Version 1.3.1  (2014-04-04)
+--------------
+
+o R-forge only release.
+
+o Time-dependent covariates supported in totlos.msm.
+
+o New function envisits.msm() for expected number of visits to each
+  state over a period, calculated as a corollary of totlos.msm().
+
+o New utility "msm2Surv" to export data from msm format to counting
+  process format for use with the survival and mstate packages.  This
+  assumes the exact transition times of the process are known.
+
+o More informative messages from model fits which have not converged.
+  In particular, a warning is now given when the optimiser iteration
+  limit was reached without convergence, which previously happened
+  silently.
+
+o Miscellaneous minor bug fixes, see Changelog.
+
+
 Version 1.3  (2014-01-15)
 -------------
 
@@ -12,7 +133,7 @@ o CRAN release.  Includes the changes below from R-forge versions
 o Fix of bug introduced in 1.2.3 which broke models with non-standard
   state ordering.
 
-o Datasets now lazy loaded so data() not required. 
+o Datasets now lazy loaded so data() not required.
 
 o New "start" argument to efpt.msm, allowing averaging over a set of
   starting states.

@@ -1,4 +1,5 @@
 \name{fev}
+\docType{data}
 \alias{fev}
 \title{FEV1 measurements from lung transplant recipients}
 \description{
@@ -6,7 +7,7 @@
   second (FEV1) from lung transplant recipients, from six months onwards
   after their transplant.  
 }
-\usage{data(fev)}
+\usage{fev}
 \format{
   A data frame containing 5896 rows.  There are 204 patients, the rows
   are grouped by patient number and ordered by days after transplant.

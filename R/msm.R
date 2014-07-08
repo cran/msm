@@ -1,61 +1,28 @@
-### Function to fit Markov multi-state models in continuous time
-### with either arbitrary observation times or observed exact transition times
-### with or without misclassification between true and underlying states
-
-msm <- function(formula,   # formula with  observed Markov states   ~  observation times (required)
-                subject = NULL, # optional, defaults to all the same if not given
-                data=list(),       # data frame in which to interpret variable names
-                qmatrix,    # matrix of 1s and 0s with indices of allowed transitions (diagonal is ignored) (required)
-                gen.inits = FALSE, # generate initial values for transition intensities using crudeinits.msm
-                ematrix = NULL,    # matrix of 1s and 0s with indices of allowed misclassfications (diagonal is ignored) (required)
-                hmodel = NULL,  # list of constructors for hidden emission distributions
-                obstype = NULL, # optional, defaults to all 1 (snapshots) if not given
-                obstrue = NULL, # for hidden Markov models, which observations represent the true state
-                covariates = NULL, # formula or list of formulae specifying covariates on transition rates.
-                covinits = NULL,      # initial values for covariate effects
-                constraint = NULL, # which intensities have covariates on them (as in Marshall et al.)
-                misccovariates = NULL, # formula or list of formulae specifying covariates on misclassification probs
-                misccovinits = NULL,      # initial values for misclassification covariate effects
-                miscconstraint = NULL, # which misc probs have covariates on them
-                hcovariates = NULL, # list of formulae specifying covariates model for each hidden state
-                hcovinits = NULL,      # initial values for covariate effects on hidden emission distribution
-                hconstraint = NULL, # constraints on hidden Markov model parameters
-                hranges = NULL, # range constraints for HMM parameters
-                qconstraint = NULL, # constraints on equality of baseline intensities
-                econstraint = NULL, # constraints on equality of baseline misc probs
-                initprobs = NULL,  # initial state occupancy probabilities
-                est.initprobs = FALSE, # should these be estimated, starting from the given values?
-                initcovariates = NULL, # If these are specified, then assume est.initprobs=TRUE, and initprobs gives initial values with these covs set to zero.
-                initcovinits = NULL,
-                death = FALSE,  # 'death' states, ie, entry time known exactly, but unknown transient state at previous instant
-                exacttimes = FALSE, # TRUE is shortcut for all obstype 2.
-                censor = NULL,
-                censor.states = NULL,
-                pci = NULL,
-                cl = 0.95, # width of confidence intervals in saved result components
-                fixedpars = NULL, # specify which parameters to fix. TRUE for all parameters
-                center = TRUE, # center covariates at their means during optimisation
-                opt.method = c("optim","nlm","fisher"),
-                hessian = NULL,
-                use.deriv = TRUE,
-                use.expm = TRUE,
-                analyticp=TRUE,
-                ... # options to optim or nlm
-                )
+msm <- function(formula, subject=NULL, data=list(), qmatrix, gen.inits=FALSE,
+                ematrix=NULL,  hmodel=NULL, obstype=NULL, obstrue=NULL,
+                covariates = NULL, covinits = NULL, constraint = NULL,
+                misccovariates = NULL, misccovinits = NULL, miscconstraint = NULL,
+                hcovariates = NULL, hcovinits = NULL, hconstraint = NULL, hranges=NULL,
+                qconstraint=NULL, econstraint=NULL, initprobs = NULL,
+                est.initprobs=FALSE, initcovariates = NULL, initcovinits = NULL,
+                death = FALSE, exacttimes = FALSE, censor=NULL,
+                censor.states=NULL, pci=NULL, cl = 0.95, fixedpars = NULL, center=TRUE,
+                opt.method="optim", hessian=NULL, use.deriv=TRUE,
+                use.expm=TRUE, analyticp=TRUE, na.action=na.omit, ...)
 {
+    call <- match.call()
     if (missing(formula)) stop("state ~ time formula not given")
-    subject <- if (missing(subject)) NULL else eval(substitute(subject), data, parent.frame())
-    obstype <- if (missing(obstype)) NULL else eval(substitute(obstype), data, parent.frame())
-    obstrue <- if (missing(obstrue)) NULL else eval(substitute(obstrue), data, parent.frame())
     if (missing(data)) data <- environment(formula)
 
 ### MODEL FOR TRANSITION INTENSITIES
     if (gen.inits) {
-        if (is.null(hmodel) && is.null(ematrix))
-            qmatrix <- crudeinits.msm(formula, subject, qmatrix, data, censor, censor.states)
+        if (is.null(hmodel) && is.null(ematrix)) {
+            subj <- eval(substitute(subject), data, parent.frame())
+            qmatrix <- crudeinits.msm(formula, subj, qmatrix, data, censor, censor.states)
+        }
         else warning("gen.inits not supported for hidden Markov models, ignoring")
     }
-    qmodel <- msm.form.qmodel(qmatrix, qconstraint, exacttimes, analyticp, use.expm)
+    qmodel <- msm.form.qmodel(qmatrix, qconstraint, analyticp, use.expm)
 
 ### MISCLASSIFICATION MODEL
     if (!is.null(ematrix)) {
@@ -82,59 +49,123 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
     else emodel <- list(misc=FALSE, npars=0, ndpars=0, nipars=0, nicoveffs=0)
 
 ### EXACT DEATH TIMES. Logical values allowed for backwards compatibility (TRUE means final state has exact death time, FALSE means no states with exact death times)
-    dmodel <- msm.form.dmodel(death, qmodel, hmodel)  # returns death, ndeath,
-    if (dmodel$ndeath > 0 && qmodel$exacttimes) warning("Ignoring death argument, as all states have exact entry times")
+    dmodel <- msm.form.dmodel(death, qmodel, hmodel)  # returns death, ndeath,
+    if (dmodel$ndeath > 0 && exacttimes) warning("Ignoring death argument, as all states have exact entry times")
 
 ### CENSORING MODEL
     cmodel <- msm.form.cmodel(censor, censor.states, qmodel$qmatrix)
 
-### READ DATA FROM SUPPLIED FORMULAE, DROP MISSING
-    msmdata.obs <- msm.form.data(formula, subject, obstype, obstrue, covariates, data,
-                                 hcovariates, misccovariates, initcovariates,
-                                 qmodel, emodel, hmodel, cmodel, dmodel, exacttimes, center)
-### EXPAND DATA AND MODEL FOR TIME DEPENDENT INTENSITIES
+    if (!inherits(formula, "formula")) stop("formula is not a formula")
+    if (!is.null(covariates) && (!(is.list(covariates) || inherits(covariates, "formula"))))
+        stop(deparse(substitute(covariates)), " should be a formula or list of formulae")
+    if (!is.null(misccovariates) && (!inherits(misccovariates, "formula")))
+        stop(deparse(substitute(misccovariates)), " should be a formula")
+    if (is.list(covariates)) {  # different covariates on each intensity
+        covlist <- covariates
+        msm.check.covlist(covlist, qmodel)
+        ter <- lapply(covlist, function(x)attr(terms(x),"term.labels"))
+        covariates <- reformulate(unique(unlist(ter))) # merge the formulae into one
+    } else covlist <- NULL # parameters will be constrained later, see msm.form.cri
+    if (is.null(covariates)) covariates <- ~1
+    if (emodel$misc && is.null(misccovariates)) misccovariates <- ~1
+### BUILD MODEL FRAME containing all data required for model fit,
+### using all variables found in formulae.
+    ## Names include factor() around covariate names, and interactions,
+    ## if specified.  Need to build and evaluate a call, instead of
+    ## running model.frame() directly, to find subject and other
+    ## extras. Not sure why.
+    indx <- match(c("data", "subject", "obstrue"), names(call), nomatch = 0)
+    temp <- call[c(1, indx)]
+    temp[[1]] <- as.name("model.frame")
+    temp[["state"]] <- as.name(all.vars(formula[[2]]))
+    temp[["time"]] <- as.name(all.vars(formula[[3]]))
+    varnames <- function(x){if(is.null(x)) NULL else attr(terms(x), "term.labels")}
+    forms <- c(covariates, misccovariates, hcovariates, initcovariates)
+    covnames <- unique(unlist(lapply(forms, varnames)))
+    temp[["formula"]] <- if (length(covnames) > 0) reformulate(covnames) else ~1
+    temp[["na.action"]] <- na.pass # run na.action later so we can pass aux info to it
+    temp[["data"]] <- data
+    mf <- eval(temp, parent.frame())
+    ## remember user-specified names for later (e.g. bootstrap/cross validation)
+    attr(mf, "usernames") <- c(state=all.vars(formula[[2]]), time=all.vars(formula[[3]]), subject=as.character(temp$subject), obstype=as.character(substitute(obstype)), obstrue=as.character(temp$obstrue))
+    if (!(hmodel$hidden || emodel$misc))
+        msm.check.state(qmodel$nstates, mf$"(state)", cmodel$censor)
+    if (is.null(mf$"(subject)")) mf$"(subject)" <- rep(1, nrow(mf))
+    msm.check.times(mf$"(time)", mf$"(subject)", mf$"(state)")
+    obstype <- if (missing(obstype)) NULL else eval(substitute(obstype), data, parent.frame()) # handle separately to allow passing a scalar (1, 2 or 3)
+    mf$"(obstype)" <- msm.form.obstype(mf, obstype, dmodel, exacttimes)
+    mf$"(obstrue)" <- msm.form.obstrue(mf, hmodel)
+    mf$"(obs)" <- seq_len(nrow(mf)) # row numbers before NAs omitted, for reporting in msm.check.*
+    basenames <- c("(state)","(time)","(subject)","(obstype)","(obstrue)","(obs)")
+    attr(mf, "covnames") <- setdiff(names(mf), basenames)
+    attr(mf, "covnames.q") <- colnames(attr(terms(covariates), "factors")) # names as in data, plus factor() if user
+    if (emodel$misc) attr(mf, "covnames.e") <- colnames(attr(terms(misccovariates), "factors"))
+    attr(mf, "ncovs") <- length(attr(mf, "covnames"))
+
+
+### HANDLE MISSING DATA
+    ## Find which cols of model frame correspond to covs which appear only on initprobs
+    ## Pass through to na.action as attribute
+    ic <- all.vars(initcovariates)
+    others <- c(covariates,misccovariates,hcovariates)
+    oic <- ic[!ic %in% unlist(lapply(others, all.vars))]
+    attr(mf, "icovi") <- match(oic, colnames(mf))
+    if (missing(na.action) || identical(na.action, na.omit) || (identical(na.action,"na.omit")))
+        mf <- na.omit.msmdata(mf)
+    else if (identical(na.action, na.fail) || (identical(na.action,"na.fail")))
+        mf <- na.fail.msmdata(mf)
+    else stop ("na.action should be \"na.omit\" or \"na.fail\"")
+    attr(mf, "npts") <- length(unique(mf$"(subject)"))
+
+### UTILITY FOR PIECEWISE-CONSTANT INTENSITIES.  Insert censored
+    ## observations into the model frame, add a factor "timeperiod" to
+    ## the data, and add the corresponding term to the formula.
+    ## NOTE pci kept pre-imputed data as msmdata.obs.orig
     if (!is.null(pci)) {
-        tdmodel <- msm.pci(pci, msmdata.obs, qmodel, cmodel, center)
-        if (is.null(tdmodel)) # supplied cut points not in range of data
-            pci <- NULL
-        else {
-            cmodel <- tdmodel$cmodel
-            msmdata.obs.orig <- msmdata.obs
-            names(msmdata.obs.orig)[names(msmdata.obs.orig) %in% c("covmat","covmat.orig")] <- c("cov","cov.orig") # used in bootstrap
-            msmdata.obs <- tdmodel$dat
-            pci <- tdmodel$tcut
-        }
+        tdmodel <- msm.pci(pci, mf, qmodel, cmodel, covariates)
+        if (!is.null(tdmodel)) {
+            mf <- tdmodel$mf; covariates <- tdmodel$covariates; cmodel <- tdmodel$cmodel
+            pci <- tdmodel$tcut # was returned in msm object
+        } else {pci <- NULL; mf$"(pci.imp)" <- 0}
     }
 
-### AGGREGATE DATA
-    if (hmodel$hidden || (cmodel$ncens > 0)) {
-        msmdata <- msm.aggregate.hmmdata(msmdata.obs)
-        msmdata$fromstate <- msmdata$tostate <- msmdata$timelag <- numeric(0)
+### CALCULATE COVARIATE MEANS from data by transition, including means of 0/1 contrasts.
+    forms <- c(covariates, misccovariates, hcovariates, initcovariates) # covariates may have been updated to include timeperiod for pci
+    covnames <- unique(unlist(lapply(forms, varnames)))
+    if (length(covnames) > 0) {
+        mm.mean <- model.matrix(reformulate(covnames), mf)
+        cm <- colMeans(mm.mean[duplicated(mf$"(subject)",fromLast=TRUE),,drop=FALSE])
+        cm["(Intercept)"] <- 0
+    } else cm <- NULL
+    attr(mf, "covmeans") <- cm
+
+### MAKE AGGREGATE DATA for computing likelihood of non-hidden models efficiently
+### This can also be used externally to extract aggregate data from model frame in msm object
+    mf.agg <- msm.form.mf.agg(list(data=list(mf=mf), qmodel=qmodel, hmodel=hmodel, cmodel=cmodel))
+### Make indicator for which distinct P matrix each observation corresponds to. Only used in HMMs.
+    mf$"(pcomb)" <- msm.form.hmm.agg(mf);
+
+### CONVERT misclassification covariate formula to hidden covariate formula
+    if (inherits(misccovariates, "formula")){
+        if (!emodel$misc) stop("misccovariates supplied but no ematrix")
+        hcovariates <- lapply(ifelse(rowSums(emodel$imatrix)>0, deparse(misccovariates), deparse(~1)), as.formula)
     }
-    else {
-        ## To speed calculation of the likelihood for the simple model (no
-        ## HMM or censoring) data are aggregated by distinct fromstate,
-        ## tostate, timelag, covariates combinations
-        msmdata <- msm.obs.to.fromto(msmdata.obs)
-        msm.check.model(msmdata$fromstate, msmdata$tostate, msmdata$obs, msmdata$subject, msmdata$obstype, qmodel$qmatrix, cmodel)
-        msmdata <- msm.aggregate.data(msmdata)
-        msmdata$subject <- msmdata$state <- msmdata$time <- numeric(0)
-        for (i in c("subject", "time", "state", "n")) msmdata[[i]] <- msmdata.obs[[i]]
-        msmdata$obstype.obs <- msmdata.obs$obstype
-        msmdata$firstobs <- msmdata.obs$firstobs
-    }
-    if (is.null(pci)) {
-      msmdata.obs.orig <- NULL
-      msmdata$pci.imp <- rep(0, msmdata$n)
-    }
-    msmdata$cov <- msmdata.obs$covmat
-    msmdata$cov.orig <- msmdata.obs$covmat.orig
-    msmdata$covlabels.orig <- msmdata.obs$covlabels.orig
+
+### FORM DESIGN MATRICES FOR COVARIATE MODELS
+### These can also be used externally to extract design matrices from model frame in msm object
+    mm.cov <- msm.form.mm.cov(list(data=list(mf=mf), covariates=covariates, center=center))
+    mm.cov.agg <- msm.form.mm.cov.agg(list(data=list(mf.agg=mf.agg), covariates=covariates, hmodel=hmodel, cmodel=cmodel, center=center))
+    mm.mcov <- msm.form.mm.mcov(list(data=list(mf=mf), misccovariates=misccovariates, emodel=emodel, center=center))
+    mm.hcov <- msm.form.mm.hcov(list(data=list(mf=mf), hcovariates=hcovariates, qmodel=qmodel, hmodel=hmodel, center=center))
+    mm.icov <- msm.form.mm.icov(list(data=list(mf=mf), initcovariates=initcovariates, hmodel=hmodel, center=center))
 
 ### MODEL FOR COVARIATES ON INTENSITIES
+    if (!is.null(covlist)) {
+        cri <- msm.form.cri(covlist, qmodel, mf, mm.cov)
+    } else cri <- NULL
     qcmodel <-
-        if (msmdata$covdata$ncovs > 0)
-            msm.form.covmodel(msmdata$covdata, constraint, qmodel$npars, covinits, msmdata)
+        if (ncol(mm.cov) > 1)
+            msm.form.covmodel(mf, mm.cov, constraint, covinits, cm, qmodel$npars, cri)
         else {
             if (!is.null(constraint)) warning("constraint specified but no covariates")
             list(npars=0, ncovs=0, ndpars=0)
@@ -147,15 +178,14 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
             warning("misccovariates have been specified, but misc is FALSE. Ignoring misccovariates.")
         }
         else {
-            ecmodel <- msm.form.covmodel(msmdata$misccovdata, miscconstraint, emodel$npars, misccovinits, msmdata)
+            ecmodel <- msm.form.covmodel(mf, mm.mcov, miscconstraint, misccovinits, cm, emodel$npars, cri=NULL)
             hcovariates <- msm.misccov2hcov(misccovariates, emodel)
             hcovinits <- msm.misccovinits2hcovinits(misccovinits, hcovariates, emodel, ecmodel)
         }
     }
-
 ### MODEL FOR COVARIATES ON GENERAL HIDDEN PARAMETERS
     if (!is.null(hcovariates)) {
-        hmodel <- msm.form.hcmodel(hmodel, msmdata$hcovdata, hcovinits, hconstraint)
+        hmodel <- msm.form.hcmodel(hmodel, mm.hcov, hcovinits, hconstraint)
         if (emodel$misc)
             hmodel$covconstr <- msm.form.hcovconstraint(miscconstraint, hmodel)
     }
@@ -165,7 +195,7 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
     }
     if (!is.null(initcovariates)) {
         if (hmodel$hidden)
-            hmodel <- msm.form.icmodel(hmodel, msmdata$icovdata, initcovinits)
+            hmodel <- msm.form.icmodel(hmodel, mm.icov, initcovinits)
         else warning("initprobs and initcovariates ignored for non-hidden Markov models")
     }
     else if (hmodel$hidden) {
@@ -178,134 +208,40 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
     }
     if (hmodel$hidden) hmodel$ranges <- msm.form.hranges(hranges, hmodel)
 ### INITIAL STATE OCCUPANCY PROBABILITIES IN HMMS
-    if (hmodel$hidden) hmodel <- msm.form.initprobs(hmodel, msmdata)
-
+    if (hmodel$hidden) hmodel <- msm.form.initprobs(hmodel, attr(mf,"npts"))
 ### FORM LIST OF INITIAL PARAMETERS, MATCHING PROVIDED INITS WITH SPECIFIED MODEL, FIXING SOME PARS IF REQUIRED
     p <- msm.form.params(qmodel, qcmodel, emodel, hmodel, fixedpars)
 
-### CALCULATE LIKELIHOOD AT INITIAL VALUES...
+    msmdata <- list(mf=mf, mf.agg=mf.agg, mm.cov=mm.cov, mm.cov.agg=mm.cov.agg,
+                    mm.mcov=mm.mcov, mm.hcov=mm.hcov, mm.icov=mm.icov)
+
+### CALCULATE LIKELIHOOD AT INITIAL VALUES OR DO OPTIMISATION (see optim.R)
+    if (p$fixed) opt.method <- "fixed"
     if (is.null(hessian)) hessian <- !p$fixed
+    p <- msm.optim(opt.method, p, hessian, use.deriv, msmdata, qmodel, qcmodel, cmodel, hmodel, ...)
     if (p$fixed) {
-        p$lik <- lik.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p)
-        p$params <- p$allinits[!duplicated(abs(p$constr))][abs(p$constr)]*sign(p$constr)
-        p$params.uniq <- p$allinits[!duplicated(abs(p$constr))]
-        p$opt <- list(par = p$params.uniq)
-        p.unfix <- msm.unfixallparams(p)
-        if (!hmodel$hidden && cmodel$ncens==0) { # Derivs only for non-hidden, no censoring
-            if (all(msmdata$obstype==1)) { # Fisher info only available for panel data
-                info <- information.msm(p.unfix$params.uniq, msmdata, qmodel, qcmodel, cmodel, hmodel, p.unfix)
-                p$deriv <- info$deriv
-                p$information <- info$info
-            }
-            else p$deriv <- deriv.msm(p.unfix$params.uniq, msmdata, qmodel, qcmodel, cmodel, hmodel, p.unfix)
-        }
-        if (hessian)
-            p$opt$hessian <- optimHess(par=p.unfix$params.uniq, fn=lik.msm,
-                                       gr=if (!hmodel$hidden && cmodel$ncens==0 && use.deriv) deriv.msm else NULL,
-                                       msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
-                                       cmodel=cmodel, hmodel=hmodel, paramdata=p.unfix)
         p$foundse <- FALSE
         p$covmat <- NULL
-    }
-
-### ... OR DO MAXIMUM LIKELIHOOD ESTIMATION
-    else {
-        p$params <- p$allinits
-        gr <- if (!hmodel$hidden && cmodel$ncens==0 && use.deriv) deriv.msm else NULL
-        opt.method <- match.arg(opt.method)
-        optim.args <- list(...)
-        if (opt.method == "optim") {
-            if (is.null(optim.args$method))
-                optim.args$method <- if (length(p$inits)==1) "BFGS" else "Nelder-Mead"
-            optim.args <- c(optim.args, list(par=p$inits, fn=lik.msm, hessian=hessian, gr=gr,
-                          msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
-                          cmodel=cmodel, hmodel=hmodel, paramdata=p))
-            opt <- do.call("optim", optim.args)
-            p$lik <- opt$value
-            p$params[p$optpars] <- opt$par
-        }
-        else if (opt.method == "nlm") {
-            nlmfn <- function(par) {
-                ret <- lik.msm(par, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
-                               cmodel=cmodel, hmodel=hmodel, paramdata=p)
-                if (!is.null(gr))
-                    attr(ret, "gradient") <- deriv.msm(par, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
-                                                       cmodel=cmodel, hmodel=hmodel, paramdata=p)
-                ret
-            }
-            opt <- nlm(nlmfn, p$inits, hessian=hessian, ...)
-            p$lik <- opt$minimum
-            p$params[p$optpars] <- opt$estimate
-        }
-        else if (opt.method == "fisher") {
-            if (hmodel$hidden)
-                stop("Fisher scoring not supported for hidden Markov models or censored states")
-            if (cmodel$ncens > 0)
-                stop("Fisher scoring not supported with censored states")
-            if (any(msmdata$obstype==2))
-                stop("Fisher scoring not supported with exact transition times")
-            if (any(msmdata$obstype==3))
-                stop("Fisher scoring not supported with exact death times")
-            if (is.null(optim.args$control$reltol)) reltol <- sqrt(.Machine$double.eps)
-            damp <- if (is.null(optim.args$control$damp)) 0 else optim.args$control$damp
-            theta <- p$inits
-            lik.old <- -lik.msm(theta, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
-                               cmodel=cmodel, hmodel=hmodel, paramdata=p)
-            converged <- FALSE
-            while(!converged) {
-                if (!is.null(optim.args$control$trace) && optim.args$control$trace > 0)
-                    cat("-2loglik=",-lik.old,", pars=",theta,"\n")
-                VI <- information.msm(theta, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
-                                      cmodel=cmodel, hmodel=hmodel, paramdata=p)
-                V <- -VI$deriv
-                Info <- VI$info + diag(damp, nrow(VI$info))
-                theta <- theta + solve(Info, V)
-                lik.new <- -lik.msm(theta, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
-                                   cmodel=cmodel, hmodel=hmodel, paramdata=p)
-                if (abs(lik.old - lik.new) < reltol*(abs(lik.old) + reltol))
-                    converged <- TRUE
-                else lik.old <- lik.new
-            }
-            p$lik <- -lik.new
-            p$params[p$optpars] <- theta
-            opt <- list(minimum=-lik.new, estimate=theta, value=-lik.new, par=theta)
-            if (hessian)
-                opt$hessian <- optimHess(par=theta, fn=lik.msm,
-                                         gr=if (!hmodel$hidden && cmodel$ncens==0 && use.deriv) deriv.msm else NULL,
-                                         msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
-                                         cmodel=cmodel, hmodel=hmodel, paramdata=p)
-        }
-        if (!hmodel$hidden && cmodel$ncens==0) {
-            if (all(msmdata$obstype==1)) {
-                info <- information.msm(p$params[p$optpars], msmdata, qmodel, qcmodel, cmodel, hmodel, p)
-                p$deriv <- info$deriv;  p$information <- info$info
-            }
-            else p$deriv <- deriv.msm(p$params[p$optpars], msmdata, qmodel, qcmodel, cmodel, hmodel, p)
-        }
-        p$opt <- opt
+    } else {
         p$params <- msm.rep.constraints(p$params, p, hmodel)
-
-        if (hessian &&
-            all(!is.na(opt$hessian)) && all(!is.nan(opt$hessian)) && all(is.finite(opt$hessian)) &&
-            all(eigen(opt$hessian)$values > 0))
+        hess <- if (hessian) p$opt$hessian else p$information
+        if (!is.null(hess) &&
+            all(!is.na(hess)) && all(!is.nan(hess)) && all(is.finite(hess)) && all(eigen(hess)$values > 0))
         {
             p$foundse <- TRUE
             p$covmat <- matrix(0, nrow=p$npars, ncol=p$npars)
-            p$covmat[p$optpars,p$optpars] <- solve(0.5 * opt$hessian)
-            p$covmat.uniq <- p$covmat[!duplicated(abs(p$constr)),!duplicated(abs(p$constr)), drop=FALSE]
+            p$covmat[p$optpars,p$optpars] <- solve(0.5 * hess)
             p$covmat <- p$covmat[!duplicated(abs(p$constr)),!duplicated(abs(p$constr)), drop=FALSE][abs(p$constr),abs(p$constr), drop=FALSE]
             p$ci <- cbind(p$params - qnorm(1 - 0.5*(1-cl))*sqrt(diag(p$covmat)),
                           p$params + qnorm(1 - 0.5*(1-cl))*sqrt(diag(p$covmat)))
             p$ci[p$fixedpars,] <- NA
-#            for (lab in rownames(.msm.TRANSFORMS))
-#                p$ci[p$plabs==lab] <- get(.msm.TRANSFORMS[lab,"inv"])(p$ci[p$plabs==lab, ])
             for (i in 1:2)
                 p$ci[,i] <- gexpit(p$ci[,i], p$ranges[,"lower",drop=FALSE], p$ranges[,"upper",drop=FALSE])
         }
         else {
             p$foundse <- FALSE
             p$covmat <- p$ci <- NULL
-            if (hessian)
+            if (!is.null(hess))
                 warning("Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite.")
         }
     }
@@ -322,27 +258,14 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
 ### REARRANGE THE VECTOR OF PARAMETER ESTIMATES (LOG-INTENSITIES, MISC PROBS AND
 ### COVARIATE EFFECTS) INTO LISTS OF MATRICES
     output <- msm.form.output("intens", qmodel, qcmodel, p)
-    Qmatrices <- output$Matrices
-    QmatricesSE <- if (p$fixed) NULL else output$MatricesSE
-    QmatricesL <- if (p$fixed) NULL else output$MatricesL
-    QmatricesU <- if (p$fixed) NULL else output$MatricesU
+    Qmatrices <- output$Matrices;  QmatricesSE <- output$MatricesSE
+    QmatricesL <-  output$MatricesL;  QmatricesU <-  output$MatricesU
 
-    if (emodel$misc) {
-        output <- msm.form.output("misc", emodel, ecmodel, p)
-        Ematrices <- output$Matrices
-        EmatricesSE <- if (p$fixed) NULL else output$MatricesSE
-        EmatricesL <- if (p$fixed) NULL else output$MatricesL
-        EmatricesU <- if (p$fixed) NULL else output$MatricesU
-        names(Ematrices)[1] <- "logitbaseline"
-        if (p$foundse & !p$fixed) names(EmatricesSE)[1] <- names(EmatricesL)[1] <-
-            names(EmatricesU)[1] <- "logitbaseline"
-    }
-    else {
-        Ematrices <- EmatricesSE <- EmatricesL <- EmatricesU <- NULL
-    }
     if (hmodel$hidden) {
         hmodel <- msm.form.houtput(hmodel, p, msmdata)
     }
+
+    msmdata[!names(msmdata)=="mf"] <- NULL # only keep model frame in returned data
 
 ### FORM A MSM OBJECT FROM THE RESULTS
     msmobject <- list (
@@ -362,7 +285,6 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                        opt = p$opt,
                        foundse = p$foundse,
                        data = msmdata,
-                       data.orig = msmdata.obs.orig, # before any pci imputation, NULL if no pci
                        qmodel = qmodel,
                        emodel = emodel,
                        qcmodel = qcmodel,
@@ -371,27 +293,36 @@ msm <- function(formula,   # formula with  observed Markov states   ~  observati
                        cmodel = cmodel,
                        pci = pci,
                        paramdata=p,
-                       cl=cl
+                       cl=cl,
+        covariates=covariates,
+        misccovariates=misccovariates,
+        hcovariates=hcovariates,
+        initcovariates=initcovariates
                        )
     attr(msmobject, "fixed") <- p$fixed
     class(msmobject) <- "msm"
-    q <- qmatrix.msm(msmobject, covariates=(if(center) "mean" else 0)) # intensity matrix on natural scale
+
+### Include intensity and misclassification matrices on natural scales
+    q <- qmatrix.msm(msmobject, covariates=(if(center) "mean" else 0))
     msmobject$Qmatrices$baseline <- q$estimates
     msmobject$QmatricesSE$baseline <- q$SE
     msmobject$QmatricesL$baseline <- q$L
     msmobject$QmatricesU$baseline <- q$U
     if (emodel$misc) {
+        output <- msm.form.output("misc", emodel, ecmodel, p)
+        Ematrices <- output$Matrices; EmatricesSE <- output$MatricesSE
+        EmatricesL <-  output$MatricesL; EmatricesU <-  output$MatricesU
         msmobject$Ematrices <- Ematrices
         msmobject$EmatricesSE <- EmatricesSE
         msmobject$EmatricesL <- EmatricesL
         msmobject$EmatricesU <- EmatricesU
-        e <- ematrix.msm(msmobject, covariates=(if(center) "mean" else 0)) # misc matrix on natural scale
+        e <- ematrix.msm(msmobject, covariates=(if(center) "mean" else 0))
         msmobject$Ematrices$baseline <- e$estimates
         msmobject$EmatricesSE$baseline <- e$SE
         msmobject$EmatricesL$baseline <- e$L
         msmobject$EmatricesU$baseline <- e$U
     }
-    ## Calculate mean sojourn times at baseline
+### Include mean sojourn times
     msmobject$sojourn <- sojourn.msm(msmobject, covariates=(if(center) "mean" else 0))
     msmobject
 }
@@ -422,7 +353,7 @@ msm.fixdiag.ematrix <- function(ematrix)
     ematrix
 }
 
-msm.form.qmodel <- function(qmatrix, qconstraint=NULL, exacttimes=FALSE, analyticp=TRUE, use.expm=FALSE)
+msm.form.qmodel <- function(qmatrix, qconstraint=NULL, analyticp=TRUE, use.expm=FALSE)
 {
     msm.check.qmatrix(qmatrix)
     nstates <- dim(qmatrix)[1]
@@ -456,7 +387,7 @@ msm.form.qmodel <- function(qmatrix, qconstraint=NULL, exacttimes=FALSE, analyti
     }
     qmodel <- list(nstates=nstates, iso=iso, perm=perm, qperm=qperm,
                    npars=npars, imatrix=imatrix, qmatrix=qmatrix, inits=inits,
-                   constr=constr, ndpars=ndpars, exacttimes=exacttimes, expm=as.numeric(use.expm))
+                   constr=constr, ndpars=ndpars, expm=as.numeric(use.expm))
     class(qmodel) <- "msmqmodel"
     qmodel
 }
@@ -523,156 +454,15 @@ msm.form.emodel <- function(ematrix, econstraint=NULL, initprobs=NULL, est.initp
     emodel
 }
 
-### Extract data from supplied arguments, check consistency, drop missing data.
-### Returns dataframe of cleaned data in observation time format
-### Covariates returned in covmat
-
-msm.form.data <- function(formula, subject=NULL, obstype=NULL, obstrue=NULL, covariates=NULL, data=NULL,
-                          hcovariates=NULL, misccovariates=NULL, initcovariates=NULL,
-                          qmodel, emodel, hmodel, cmodel, dmodel, exacttimes, center)
-{
-    ## Parse the model formula of subject and time, getting missing values
-    if (!inherits(formula, "formula")) stop("\"formula\" argument should be a formula")
-    mf <- model.frame(formula, data=data)
-    state <- mf[,1]
-    if (!(hmodel$hidden || emodel$misc))
-        msm.check.state(qmodel$nstates, state=state, cmodel$censor)  ## replace after splitting form.hmodel
-    if (is.factor(state)) state <- as.numeric(levels(state))[state]
-    time <- mf[,2]
-    ## TODO for v2.0: use model.frame more intelligently for handling missing data in different formulae and variables, and length checking.
-    droprows <- as.numeric(attr(mf, "na.action"))
-    n <- length(c(state, droprows))
-    statetimerows.kept <- (1:n)[! ((1:n) %in% droprows)]
-    if (is.null(subject)) subject <- rep(1, nrow(mf))
-    obstype <- msm.form.obstype(obstype, n, state, statetimerows.kept, dmodel, exacttimes)
-    obstrue <- msm.form.obstrue(obstrue, nrow(mf), hmodel)
-    subjrows.kept <- (1:n) [!is.na(subject)]
-    otrows.kept <- statetimerows.kept[!is.na(obstype)]
-    omrows.kept <- statetimerows.kept[!is.na(obstrue)]
-
-    ## Don't drop NA covariates on the transition process at the subject's final observation, since they are not used
-    lastobs <- c(which(subject[1:(n-1)] != subject[2:n]), n)
-    ## Parse covariates formula and extract data
-    covdata <- misccovdata <- icovdata <- list(ncovs=0, covmat=numeric(0))
-    if (!is.null(covariates)) {
-        if (is.list(covariates))
-            covdata <- msm.form.covdata.byrate(covariates, qmodel, data, lastobs, center)
-        else if (inherits(covariates, "formula"))
-            covdata <- msm.form.covdata(covariates, data, lastobs, center)
-        else stop(deparse(substitute(covariates)), " should be a formula or list of formulae")
-    }
-    if (!is.null(misccovariates) && emodel$misc) {
-        misccovdata <- msm.form.covdata(misccovariates, data, NULL, center)
-        hcovariates <- lapply(ifelse(rowSums(emodel$imatrix)>0, deparse(misccovariates), deparse(~1)), as.formula)
-    }
-    hcovdata <- vector(qmodel$nstates, mode="list")
-    if (!is.null(hcovariates)) {
-        for (i in seq(qmodel$nstates)) {
-            if (!is.null(hcovariates) && !is.null(hcovariates[[i]]))
-                hcovdata[[i]] <- msm.form.covdata(hcovariates[[i]], data, NULL, center)
-            else hcovdata[[i]] <- list(ncovs=0)
-        }
-    }
-    ## Only drop NA covariates on initprobs at initial observation
-    firstobs <- c(1, which(subject[2:n] != subject[1:(n-1)]) + 1)
-    if (!is.null(initcovariates)) {
-        icovdata <- msm.form.covdata(initcovariates, data, !firstobs, center)
-    }
-    ## List of which covariates are in which model
-    all.covlabels <- unique(c(covdata$covlabels, unlist(lapply(hcovdata, function(x)x$covlabels)), icovdata$covlabels)) # factors as numeric contrasts
-    orig.covlabels <- unique(c(covdata$covlabels.orig, unlist(lapply(hcovdata, function(x)x$covlabels.orig)), icovdata$covlabels.orig)) # factors as single variables
-    covdata$whichcov <- match(covdata$covlabels, all.covlabels)
-    covdata$whichcov.orig <- match(covdata$covlabels.orig, orig.covlabels)
-    if(!is.null(hcovariates)) {
-        for (i in seq(along=hcovdata)){
-            hcovdata[[i]]$whichcov <- match(hcovdata[[i]]$covlabels, all.covlabels)
-            hcovdata[[i]]$whichcov.orig <- match(hcovdata[[i]]$covlabels.orig, orig.covlabels)
-        }
-    }
-    if (!is.null(initcovariates))
-        icovdata$whichcov <- match(icovdata$covlabels, all.covlabels)
-
-    ## Drop missing data
-    final.rows <- intersect(statetimerows.kept, subjrows.kept)
-    final.rows <- intersect(final.rows, otrows.kept)
-    final.rows <- intersect(final.rows, omrows.kept)
-    if (covdata$ncovs > 0)
-        final.rows <- intersect(final.rows, covdata$covrows.kept)
-    if (!is.null(hcovariates))
-        for (i in seq(along=hcovariates))
-            if (hcovdata[[i]]$ncovs > 0)
-                final.rows <- intersect(final.rows, hcovdata[[i]]$covrows.kept)
-    if (icovdata$ncovs > 0)
-        final.rows <- intersect(final.rows, icovdata$covrows.kept)
-
-    ## Drop subjects with only one observation remaining after dropping missing data
-    subj.num <- factor(match(subject,unique(subject))) # avoid problems with factor subjects with empty levels
-    nobspt <- table(subj.num[final.rows])[subj.num]
-    final.rows <- intersect(final.rows, which(nobspt>1))
-
-    subject <- subject[final.rows]
-    time <- subset(time, statetimerows.kept %in% final.rows)
-    state <- subset(state, statetimerows.kept %in% final.rows)
-    msm.check.times(time, subject, state, final.rows)
-    obstype <- subset(obstype, statetimerows.kept %in% final.rows)
-    obstrue <- subset(obstrue, statetimerows.kept %in% final.rows)
-    covmat <- covmat.orig <- covmeans <- numeric()
-    if (covdata$ncovs > 0) {
-        covmat <- subset(covdata$covmat, covdata$covrows.kept %in% final.rows)
-        covmat.orig <- subset(covdata$covmat.orig, covdata$covrows.kept %in% final.rows)
-        covdata$covmat <- covdata$covmat.orig <- NULL
-    }
-    for (i in seq(along=hcovariates)) {
-        if (hcovdata[[i]]$ncovs > 0) {
-            hcovdata[[i]]$covmat <- subset(hcovdata[[i]]$covmat, hcovdata[[i]]$covrows.kept %in% final.rows)
-            hcovdata[[i]]$covmat.orig <- subset(hcovdata[[i]]$covmat.orig, hcovdata[[i]]$covrows.kept %in% final.rows)
-            covmat <- cbind(covmat, as.matrix(hcovdata[[i]]$covmat))
-            covmat.orig <- cbind(covmat.orig, as.matrix(hcovdata[[i]]$covmat.orig))
-            hcovdata[[i]]$covmat <- hcovdata[[i]]$covmat.orig <- NULL
-        }
-    }
-    if (icovdata$ncovs > 0) {
-        icovdata$covmat <- subset(icovdata$covmat, icovdata$covrows.kept %in% final.rows)
-        icovdata$covmat.orig <- subset(icovdata$covmat.orig, icovdata$covrows.kept %in% final.rows)
-        covmat <- cbind(covmat, as.matrix(icovdata$covmat))
-        covmat.orig <- cbind(covmat.orig, as.matrix(icovdata$covmat.orig))
-        icovdata$covmat <- icovdata$covmat.orig <- NULL
-    }
-    nobs <- length(final.rows)
-    if (length(all.covlabels) > 0) {
-        covmat <- as.data.frame(covmat, optional=TRUE)[all.covlabels]
-        ## don't include last observations when centering covariates, as they
-        ## don't contribute to the likelihood.
-        lastobs <- c(subject[1:(nobs-1)] != subject[2:nobs], TRUE)
-#        lastobs <- rep(FALSE,nobs)
-        covmeans <- colMeans(covmat[!lastobs,,drop=FALSE])
-        if (center) covmat <- sweep(covmat, 2, covmeans)
-        covmat.orig <- as.data.frame(covmat.orig, optional=TRUE)[orig.covlabels]
-    }
-    nmiss <- n - nobs
-    plural <- if (nmiss==1) "" else "s"
-    if (nmiss > 0) warning(nmiss, " record", plural, " dropped due to missing values or subjects with only one record")
-    dat <- list(state=state, time=time, subject=subject, obstype=obstype, obstrue=obstrue,
-                nobs=nobs, n=nobs, npts=length(unique(subject)),
-                firstobs = c(1, which(subject[2:nobs] != subject[1:(nobs-1)]) + 1, nobs+1),
-                ncovs=length(all.covlabels), covlabels=all.covlabels, covlabels.orig=orig.covlabels,
-                covdata=covdata, misccovdata=misccovdata, hcovdata=hcovdata, icovdata=icovdata,
-                covmeans=covmeans,
-                covmat=covmat, # covariates including factors as 0/1 contrasts
-                covmat.orig=covmat.orig # covariates in which a factor is a single variable
-                )
-    class(dat) <- "msmdata"
-    dat
-}
-
 ### Check elements of state vector. For simple models and misc models specified with ematrix
 ### No check is performed for hidden models
 
-msm.check.state <- function(nstates, state=NULL, censor)
+msm.check.state <- function(nstates, state, censor)
 {
-    statelist <- if (nstates==2) "1, 2" else if (nstates==3) "1, 2, 3" else paste("1, 2, ... ,",nstates)
     states <- c(1:nstates, censor)
+    state <- na.omit(state) # NOTE added in 1.4
     if (!is.null(state)) {
+        statelist <- if (nstates==2) "1, 2" else if (nstates==3) "1, 2, 3" else paste("1, 2, ... ,",nstates)
         if (length(setdiff(unique(state), states)) > 0)
             stop("State vector contains elements not in ",statelist)
         miss.state <- setdiff(states, unique(state))
@@ -682,10 +472,15 @@ msm.check.state <- function(nstates, state=NULL, censor)
     invisible()
 }
 
-msm.check.times <- function(time, subject, state=NULL, final.rows)
+msm.check.times <- function(time, subject, state=NULL)
 {
+    final.rows <- !is.na(subject) & !is.na(time)
+    if (!is.null(state)) final.rows <- final.rows & !is.na(state)
+    final.rows <- which(final.rows)
+    time <- time[final.rows]; subject <- subject[final.rows]
+    if (!is.null(state)) state <- state[final.rows]
 ### Check if any individuals have only one observation (after excluding missing data)
-### Note this shouldn't happen after 1.2 addition to msm.form.data
+### Note this shouldn't happen after 1.2
     subj.num <- match(subject,unique(subject)) # avoid problems with factor subjects with empty levels
     nobspt <- table(subj.num)
     if (any (nobspt == 1)) {
@@ -698,9 +493,9 @@ msm.check.times <- function(time, subject, state=NULL, final.rows)
         warning ("Subject", plural, " ", badlist, andothers, " only ", has, " one complete observation")
     }
 ### Check if observations within a subject are adjacent
-    ind <- tapply(1:length(subj.num), subj.num, length)
-    imin <- tapply(1:length(subj.num), subj.num, min)
-    imax <- tapply(1:length(subj.num), subj.num, max)
+    ind <- tapply(seq_along(subj.num), subj.num, length)
+    imin <- tapply(seq_along(subj.num), subj.num, min)
+    imax <- tapply(seq_along(subj.num), subj.num, max)
     adjacent <- (ind == imax-imin+1)
     if (any (!adjacent)) {
         badsubjs <- unique(subject)[ !adjacent ]
@@ -722,7 +517,7 @@ msm.check.times <- function(time, subject, state=NULL, final.rows)
     }
 ### Check if any consecutive observations are made at the same time, but with different states
     if (!is.null(state)){
-        prevsubj <- c(-Inf, subj.num[1:length(subj.num)-1])
+        prevsubj <- c(-Inf, subj.num[seq_along(subj.num)-1])
         prevtime <- c(-Inf, time[1:length(time)-1])
         prevstate <- c(-Inf, state[1:length(state)-1])
         sametime <- final.rows[subj.num==prevsubj & prevtime==time & prevstate!=state]
@@ -733,32 +528,36 @@ msm.check.times <- function(time, subject, state=NULL, final.rows)
     invisible()
 }
 
-### Convert observation time data to from-to format
-
-msm.obs.to.fromto <- function(dat)
+msm.form.obstype <- function(mf, obstype, dmodel, exacttimes)
 {
-    n <- length(dat$state)
-    subj.num <- match(dat$subject, unique(dat$subject))
-    prevsubj <- c(-Inf, subj.num[1:(n-1)])
-    firstsubj <- subj.num != prevsubj
-    nextsubj <- c(subj.num[2:n], Inf)
-    lastsubj <- subj.num != nextsubj
-    fromstate <- c(-Inf, dat$state[1:(n-1)])[!firstsubj]
-    tostate <- dat$state[!firstsubj]
-    timelag <- diff(dat$time)[!firstsubj[-1]]
-    subject <- dat$subject[!firstsubj]
-    obstype <- dat$obstype[!firstsubj]
-    obs <- seq(n)[!firstsubj]
-    datf <- list(fromstate=fromstate, tostate=tostate, timelag=timelag, subject=subject, obstype=obstype,
-                 time=dat$time, obs=obs, firstsubj=firstsubj, npts=dat$npts, ncovs=dat$ncovs, covlabels=dat$covlabels,
-                 obstype.obs=dat$obstype, # need to keep this, e.g. for bootstrap resampling.
-                 covdata=dat$covdata, hcovdata=dat$hcovdata, covmeans=dat$covmeans)
-    if (datf$ncovs > 0) {
-        ## match time-dependent covariates with the start of the transition
-        datf$covmat <- subset(as.data.frame(dat$covmat, optional=TRUE), !lastsubj)
-    } ## n.b. don't need to  use this function for misc models
-    class(datf) <- "msmfromtodata"
-    datf
+    if (!is.null(obstype)) {
+        if (!is.numeric(obstype)) stop("obstype should be numeric")
+        if (length(obstype) == 1) obstype <- rep(obstype, nrow(mf))
+        else if (length(obstype)!=nrow(mf)) stop("obstype of length ", length(obstype), ", should be length 1 or ",nrow(mf))
+        if (any(! obstype[duplicated(mf$"(subject)")] %in% 1:3)) stop("elements of obstype should be 1, 2, or 3") # ignore obstypes at subject's first observation
+    }
+    else if (!is.null(exacttimes) && exacttimes)
+        obstype <- rep(2, nrow(mf))
+    else {
+        obstype <- rep(1, nrow(mf))
+        if (dmodel$ndeath > 0)
+            obstype[mf$"(state)" %in% dmodel$obs] <- 3
+    }
+    obstype
+}
+
+msm.form.obstrue <- function(mf, hmodel) {
+    obstrue <- mf$"(obstrue)"
+    if (!is.null(obstrue)) {
+        if (!hmodel$hidden) {
+            warning("Specified obstrue for a non-hidden model, ignoring.")
+            obstrue <- rep(1, nrow(mf))
+        }
+        else if (!is.numeric(obstrue) && !is.logical(obstrue)) stop("obstrue should be logical or numeric")
+    }
+    else if (hmodel$hidden) obstrue <- rep(0, nrow(mf))
+    else obstrue <- rep(1, nrow(mf))
+    obstrue
 }
 
 ## Replace censored states by state with highest probability that they
@@ -767,7 +566,7 @@ msm.obs.to.fromto <- function(dat)
 
 msm.impute.censored <- function(fromstate, tostate, Pmat, cmodel)
 {
-    ## e.g. cmodel$censor 99,999;  cmodel$states 1,2,1,2,3;  cmodel$index 1, 3, 6
+    ## e.g. cmodel$censor 99,999;  cmodel$states 1,2,1,2,3;  cmodel$index 1, 3, 6
     ## Both from and to are censored
     wb <- which ( fromstate %in% cmodel$censor & tostate %in% cmodel$censor)
     for (i in wb) {
@@ -807,7 +606,7 @@ msm.check.model <- function(fromstate, tostate, obs, subject, obstype=NULL, qmat
     n <- length(fromstate)
     qmatrix <- qmatrix / mean(qmatrix[qmatrix>0]) # rescale to avoid false warnings with small rates
     Pmat <- MatrixExp(qmatrix)
-    Pmat[Pmat < 1e-16] <- 0
+    Pmat[Pmat < .Machine$double.eps] <- 0
     imputed <- msm.impute.censored(fromstate, tostate, Pmat, cmodel)
     fs <- imputed$fromstate; ts <- imputed$tostate
     unitprob <- apply(cbind(fs, ts), 1, function(x) { Pmat[x[1], x[2]] } )
@@ -818,114 +617,28 @@ msm.check.model <- function(fromstate, tostate, obs, subject, obstype=NULL, qmat
         badobs <- which.min(unitprob)
         warning ("Data may be inconsistent with transition matrix for model without misclassification:\n",
                  "individual ", if(is.null(subject)) "" else subject[badobs], " moves from state ", fromstate[badobs],
-                 " to state ", tostate[badobs], " at non-missing observation ", obs[badobs], "\n")
+                 " to state ", tostate[badobs], " at observation ", obs[badobs], "\n")
     }
     if (any(qunit[obstype==2]==0)) {
         badobs <- min (obs[qunit==0 & obstype==2], na.rm = TRUE)
         warning ("Data may be inconsistent with intensity matrix for observations with exact transition times and no misclassification:\n",
                  "individual ", if(is.null(subject)) "" else subject[obs==badobs], " moves from state ", fromstate[obs==badobs],
-                 " to state ", tostate[obs==badobs], " at non-missing observation ", badobs)
+                 " to state ", tostate[obs==badobs], " at observation ", badobs)
     }
     absorbing <- absorbing.msm(qmatrix=qmatrix)
     absabs <- (fromstate %in% absorbing) & (tostate %in% absorbing)
     if (any(absabs)) {
         badobs <- min( obs[absabs] )
-        warning("Absorbing - absorbing transition at non-missing observation ", badobs)
+        warning("Absorbing - absorbing transition at observation ", badobs)
     }
     invisible()
 }
 
-
-## Extract covariate information from a formula.
-## Find which columns and which rows to keep from the original data
-
-msm.form.covdata <- function(covariates, data,
-                             ignore.obs=NULL, # observation IDs for which missing data should not be dropped
-                             center=TRUE)
-{
-    if (!inherits(covariates, "formula")) stop(deparse(substitute(covariates)), " should be a formula")
-    mf1 <- model.frame(covariates, data=data, na.action=NULL)
-    ## We shouldn't drop NA covariates at the subject's final
-    ## observation, since they are not used in the analysis, therefore
-    ## we impute observed zeros when final observations are NA.
-    ## TODO for v2.0: use model frames more intelligently with a new na.omit method
-    mf.imp <- mf1
-    for (i in names(mf.imp))
-        if (!is.null(ignore.obs))
-            mf.imp[ignore.obs,i][is.na(mf.imp[ignore.obs,i])] <- if (is.factor(mf.imp[,i])) levels(mf.imp[,i])[1] else 0
-    mm <- na.omit(as.data.frame(model.matrix(covariates, data=mf.imp)))
-    n <- nrow(mf.imp)
-    covlabels <- names(mm)[-1]
-    ncovs <- length(covlabels)
-    mm <- subset(mm, select=-1)
-    mf2 <- na.omit(mf.imp)
-    droprows <- as.numeric(attr(mf2, "na.action"))
-    covrows.kept <- (1:n)[! ((1:n) %in% droprows)]
-    covfactor <- sapply(mf2, is.factor)
-    covfactorlevels <- lapply(mf2, levels)
-    colnames(mm) <- covlabels # ( ) in names are converted into . in sweep, breaks factor covs
-    covdata <- list(covlabels=covlabels, ncovs=ncovs,
-                    covfactor=covfactor,
-                    covfactorlevels=covfactorlevels,
-                    covmat=mm, # data with factors as set of 0/1 contrasts, and centered.  (for model fitting)
-                    covmat.orig=mf2, # with factors kept as one variable, and not centered (for bootstrap refitting)
-                    covlabels.orig=colnames(mf2),
-                    covrows.kept=covrows.kept)
-    class(covdata) <- "msmcovdata"
-    covdata
-}
-
-### Aggregate the data by distinct values of time lag, covariate values, from state, to state, observation type
-### Result is passed to the C likelihood function (for non-hidden multi-state models)
-
-msm.aggregate.data <- function(dat)
-{
-    dat2 <- as.data.frame(dat[c("fromstate","tostate","timelag","obstype")], optional=TRUE)
-    dat2$covmat <- dat$covmat
-    nobsf <- length(dat2$fromstate)
-    apaste <- do.call("paste", c(dat2[,c("fromstate","tostate","timelag","obstype")], dat2$covmat))
-    msmdata <- dat2[!duplicated(apaste),]
-    msmdata <- msmdata[order(unique(apaste)),]
-    msmdata$nocc <- as.numeric(table(apaste))
-    apaste2 <- msmdata[,"timelag"]
-    if (dat$ncovs > 0) apaste2 <- paste(apaste2,  do.call("paste", msmdata$covmat))
-    ## which unique timelag/cov combination each row of aggregated data corresponds to
-    ## lik.c needs this to know when to recalculate the P matrix.
-    msmdata$whicha <- match(apaste2, sort(unique(apaste2)))
-    msmdata <- as.list(msmdata[order(apaste2,msmdata$fromstate,msmdata$tostate),])
-    ## for Fisher information: number of obs over timelag/covs starting in
-    ## fromstate, replicated for all tostates.
-    apaste2 <- paste(msmdata$fromstate, apaste2)
-    msmdata$noccsum <- tapply(msmdata$nocc, apaste2, sum)[apaste2]
-    msmdata <- c(msmdata, dat[c("covdata", "hcovdata", "npts", "covlabels","covmeans")])
-    msmdata$nobs <- length(msmdata[[1]])
-    ## number of disaggregated transitions
-    msmdata$ntrans <- nrow(dat2)
-    class(msmdata) <- "msmaggdata"
-    msmdata
-}
-
-### Make indicator for which distinct from, to, timelag, covariate combination each observation corresponds to
-### HMM only. This indicator is not used at the moment, but may be in the future.
-
-msm.aggregate.hmmdata <- function(dat)
-{
-    dat2 <- msm.obs.to.fromto(dat)
-    firstsubj <- dat2$firstsubj
-    dat2 <- as.data.frame(c(dat2[c("fromstate","tostate","timelag")], dat2$covmat), optional=TRUE)
-    apaste <- as.character(do.call("paste", dat2))
-    dat$whicha <- rep(0, dat$nobs)
-    dat$whicha[!firstsubj] <- match(apaste, unique(apaste))
-    ## index of patient's first observation, plus extra element for
-    ## last person's last observation plus one. This is used.
-    dat$firstobs <- c(which(firstsubj), dat$nobs+1)
-    dat
-}
-
-msm.check.constraint <- function(constraint, covdata){
+msm.check.constraint <- function(constraint, mm){
     if (is.null(constraint)) return(invisible())
-    covlabels <- covdata$covlabels
-    covfactor <- covdata$covfactor
+    covlabels <- colnames(mm)[-1]
+    aa <- attr(mm, "assign")
+    covfactor <- rep(table(aa), table(aa)) > 1
     if (!is.list(constraint)) stop(deparse(substitute(constraint)), " should be a list")
     if (!all(sapply(constraint, is.numeric)))
         stop(deparse(substitute(constraint)), " should be a list of numeric vectors")
@@ -939,37 +652,42 @@ msm.check.constraint <- function(constraint, covdata){
         }
 }
 
-msm.check.covinits <- function(covinits, covdata){
-    covlabels <- covdata$covlabels
+msm.check.covinits <- function(covinits, covlabels){
     if (!is.list(covinits)) warning(deparse(substitute(covinits)), " should be a list")
     else if (!all(sapply(covinits, is.numeric)))
         warning(deparse(substitute(covinits)), " should be a list of numeric vectors")
-    else if (!all(names(covinits) %in% covlabels))
-        warning("covariate ", paste(setdiff(names(covinits), covlabels), collapse=", "), " in ", deparse(substitute(covinits)), " unknown")
+    else {
+        notin <- setdiff(names(covinits), covlabels)
+        if (length(notin) > 0){
+            plural <- if (length(notin) > 1) "s " else " "
+            warning("covariate", plural, paste(notin, collapse=", "), " in ", deparse(substitute(covinits)), " unknown")
+        }
+    }
 }
 
 ### Process covariates constraints, in preparation for being passed to the likelihood optimiser
 ### This function is called for both sets of covariates (transition rates and the misclassification probs)
 
-msm.form.covmodel <- function(covdata,
+msm.form.covmodel <- function(mf,
+                              mm,
                               constraint,
-                              nmatrix,     # number of transition intensities / misclassification probs
                               covinits,
-                              fulldata
+                              covmeans,
+                              nmatrix,     # number of transition intensities / misclassification probs
+                              cri
                               )
 {
-    if (!is.null(covdata$cri))
-        return(msm.form.covmodel.byrate(covdata, constraint, nmatrix, covinits, fulldata))
-    ncovs <- covdata$ncovs
-    covlabels <- covdata$covlabels
-    covlabels.orig <- covdata$covlabels.orig
+    if (!is.null(cri))
+        return(msm.form.covmodel.byrate(mf, mm, constraint, covinits, covmeans, nmatrix, cri))
+    ncovs <- ncol(mm) - 1
+    covlabels <- colnames(mm)[-1]
     if (is.null(constraint)) {
         constraint <- rep(list(1:nmatrix), ncovs)
         names(constraint) <- covlabels
         constr <- 1:(nmatrix*ncovs)
     }
     else {
-        msm.check.constraint(constraint, covdata)
+        msm.check.constraint(constraint, mm)
         constr <- inits <- numeric()
         maxc <- 0
         for (i in seq(along=covlabels)){
@@ -993,7 +711,7 @@ msm.form.covmodel <- function(covdata,
     }
     inits <- numeric()
     if (!is.null(covinits))
-        msm.check.covinits(covinits, covdata)
+        msm.check.covinits(covinits, covlabels)
     for (i in seq(along=covlabels)) {
         if (!is.null(covinits) && is.element(covlabels[i], names(covinits))) {
             thisinit <- covinits[[covlabels[i]]]
@@ -1013,18 +731,63 @@ msm.form.covmodel <- function(covdata,
     }
     npars <- ncovs*nmatrix
     ndpars <- max(unique(abs(constr)))
-    ## which covariate each distinct covariate parameter corresponds to. Used in C (FormDQCov)
-    whichdcov <- rep(1:ncovs, each=nmatrix)[!duplicated(abs(constr))]
     list(npars=npars,
          ndpars=ndpars,    # number of distinct covariate effect parameters
          ncovs=ncovs,
          constr=constr,
-         whichdcov=whichdcov,
          covlabels=covlabels, # factors as separate contrasts
-         covlabels.orig=covlabels.orig, # factors as one variable
          inits = inits,
-         covmeans = fulldata$covmeans[covlabels]
+         covmeans = attr(mm, "means")
          )
+}
+
+## Process constraints and initial values for covariates supplied as a
+## list of transition-specific formulae.  Convert to form needed for a
+## single covariates formula common to all transitions, which can be
+## processed with msm.form.covmodel.
+
+msm.form.covmodel.byrate <- function(mf, mm,
+                                     constraint, # as supplied by user
+                                     covinits,  # as supplied by user
+                                     covmeans,
+                                     nmatrix,
+                                     cri
+                                     ){
+    covs <- colnames(mm)[-1]
+    ## Convert short form constraints to long form
+    msm.check.constraint(constraint, mm)
+    constr <- inits <- numeric()
+    for (i in seq(along=covs)){
+        if (covs[i] %in% names(constraint)){
+            if (length(constraint[[covs[i]]]) != sum(cri[,i]))
+                stop("\"",covs[i],"\" constraint of length ",
+                     length(constraint[[covs[i]]]),", should be ",sum(cri[,i]))
+            con <- match(constraint[[covs[i]]], unique(constraint[[covs[i]]])) + 1
+            constraint[[covs[i]]] <- rep(1, nmatrix)
+            constraint[[covs[i]]][cri[,i]==1] <- con
+        }
+        else constraint[[covs[i]]] <- seq(length=nmatrix)
+    }
+    ## convert short to long initial values in the same way
+    if (!is.null(covinits)) msm.check.covinits(covinits, covs)
+    for (i in seq(along=covs)) {
+        if (!is.null(covinits) && (covs[i] %in% names(covinits))) {
+            if (!is.numeric(covinits[[covs[i]]])) {
+                warning("initial values for covariates should be numeric, ignoring")
+                covinits[[covs[i]]] <- rep(0, nmatrix)
+            }
+            thisinit <- rep(0, nmatrix)
+            if (length(covinits[[covs[i]]]) != sum(cri[,i])) {
+                warning("\"", covs[i], "\" initial values of length ", length(covinits[[covs[i]]]), ", should be ", sum(cri[,i]), ", ignoring")
+                covinits[[covs[i]]] <- rep(0, nmatrix)
+            }
+            else thisinit[cri[,i]==1] <- covinits[[covs[i]]]
+            covinits[[covs[i]]] <- thisinit
+        }
+    }
+    qcmodel <- msm.form.covmodel(mf, mm, constraint, covinits, covmeans, nmatrix, cri=NULL)
+    qcmodel$cri <- cri
+    qcmodel
 }
 
 
@@ -1035,7 +798,7 @@ msm.form.dmodel <- function(death, qmodel, hmodel)
     if (is.logical(death) && death==TRUE)
         states <- nstates
     else if (is.logical(death) && death==FALSE)
-        states <- numeric(0) ## Will be changed to -1 when passing to C
+        states <- numeric(0) ## Will be changed to -1 when passing to C
     else if (!is.numeric(death)) stop("Death states indicator must be numeric")
     else if (length(setdiff(death, 1:nstates)) > 0)
         stop("Death states indicator contains states not in ",statelist)
@@ -1106,46 +869,14 @@ msm.form.cmodel <- function(censor=NULL, censor.states=NULL, qmatrix)
          )
 }
 
-### Observation scheme
-### 1: snapshots,
-### 2: exact transition times (states unchanging between observation times),
-### 3: death (exact entry time but state at previous instant unknown)
-
-msm.form.obstype <- function(obstype, nobs, state, notna, dmodel, exacttimes)
-{
-    if (!is.null(obstype)) {
-        if (!is.numeric(obstype)) stop("obstype should be numeric")
-        if (length(obstype) == 1) obstype <- rep(obstype, nobs)
-        else if (length(obstype) != nobs) stop("obstype of length ", length(obstype), ", expected 1 or ", nobs)
-        if (any(! obstype %in% 1:3)) stop("elements of obstype should be 1, 2, or 3")
-    }
-    else if (!is.null(exacttimes) && exacttimes)
-        obstype <- rep(2, nobs)
-    else {
-        obstype <- rep(1, nobs)
-        if (dmodel$ndeath > 0)
-            obstype[notna][state %in% dmodel$obs] <- 3
-    }
-    obstype[notna]
-}
-
-msm.form.obstrue <- function(obstrue, nobs, hmodel) {
-    if (!is.null(obstrue)) {
-        if (!is.numeric(obstrue) && !is.logical(obstrue)) stop("obstrue should be logical or numeric")
-        else if (length(obstrue) != nobs) stop("obstrue of length ", length(obstrue), ", expected ", nobs)
-        if (!hmodel$hidden) warning("Specified obstrue for a non-hidden model, ignoring.")
-    }
-    else if (hmodel$hidden) obstrue <- rep(0, nobs)
-    else obstrue <- rep(1, nobs)
-    obstrue
-}
-
 ### Transform set of sets of probs {prs} to {log(prs/pr1)}
 msm.mnlogit.transform <- function(pars, plabs, states){
     res <- pars
     if (any(plabs=="p")) {
         whichst <- match(states[plabs == "p"], unique(states[plabs == "p"]))
-        res[plabs == "p"] <- log(pars[plabs=="p"] / pars[plabs=="pbase"][whichst])
+        for (i in unique(whichst)) # recalculate baseline prob if necessary, e.g. if constraints applied
+            res[plabs=="pbase"][i] <- 1 - sum(res[plabs=="p"][whichst==i])
+        res[plabs == "p"] <- log(pars[plabs=="p"] / res[plabs=="pbase"][whichst])
     }
     res
 }
@@ -1158,11 +889,8 @@ msm.mninvlogit.transform <- function(pars, plabs, states){
         whichst <- match(states[plabs=="p"], unique(states[plabs=="p"]))
         if (is.matrix(pars)) {# will be used when applying covariates
             for (i in unique(whichst)) {
-###                psum <- colSums(exp(pars[plabs=="p",][whichst==i,,drop=FALSE]))
                 psum <- colSums(exp(pars[which(plabs=="p")[whichst==i],,drop=FALSE]))
-###                res[plabs=="pbase",,drop=FALSE][i,,drop=FALSE] <- 1 / (1 + psum)
                 res[which(plabs=="pbase")[i],] <- 1 / (1 + psum)
-###                res[plabs=="p",,drop=FALSE][whichst==i,,drop=FALSE] <-
                 res[which(plabs=="p")[whichst==i],] <-
                     exp(pars[plabs=="p",,drop=FALSE][whichst==i,]) /
                         rep(1 + psum, each=sum(whichst==i))
@@ -1244,10 +972,12 @@ msm.form.params <- function(qmodel, qcmodel, emodel, hmodel, fixedpars)
     inits <- msm.transform(inits, hmodel, ranges)
     ## Form constraint vector for complete set of parameters
     ## No constraints allowed on initprobs and their covs for the moment
-    constr <- c(qmodel$constr, if(is.null(qcmodel$constr)) NULL else (ni + abs(qcmodel$constr))*sign(qcmodel$constr),
+    constr <- c(qmodel$constr,
+                if(is.null(qcmodel$constr)) NULL else (ni + abs(qcmodel$constr))*sign(qcmodel$constr),
                 ni + nc + hmodel$constr,
-                ni + nc + nh + hmodel$covconstr, ni + nc + nh + nhc + seq(length=nip),
-                ni + nc + nh + nip + seq(length=nipc))
+                ni + nc + nh + hmodel$covconstr,
+                ni + nc + nh + nhc + seq(length=nip),
+                ni + nc + nh + nhc + nip + seq(length=nipc))
     constr <- match(abs(constr), unique(abs(constr)))*sign(constr)
     ## parameters which are always fixed and not included in user-supplied fixedpars
     auxpars <- which(plabs %in% .msm.AUXPARS)
@@ -1271,34 +1001,36 @@ msm.form.params <- function(qmodel, qcmodel, emodel, hmodel, fixedpars)
         ## fix covariate effects not included in model to zero
         fixedpars <- sort(c(fixedpars, which(inds==0)))
     }
-    fixedpars <- sort(c(realpars[fixedpars], auxpars))
-    notfixed <- setdiff(seq(npars), fixedpars)
+    notfixed <- realpars[setdiff(seq_along(realpars),fixedpars)]
+    fixedpars <- sort(c(realpars[fixedpars], auxpars)) # change fixedpars to index unconstrained pars
     allinits <- inits
     optpars <- intersect(notfixed, which(!duplicated(abs(constr))))
     inits <- inits[optpars]
     fixed <- (length(fixedpars) + length(duppars) == npars) # TRUE if all parameters are fixed, then no optimisation needed, just evaluate likelihood
     names(allinits) <- plabs; names(fixedpars) <- plabs[fixedpars]; names(plabs) <- NULL
     paramdata <- list(inits=inits, plabs=plabs, allinits=allinits, hmmpars=hmmpars,
-                      fixed=fixed, notfixed=notfixed, optpars=optpars,
-                      fixedpars=fixedpars, constr=constr,  npars=npars,
-                      nfix=length(fixedpars),
-                      nopt=length(optpars), ndup=length(duppars), ranges=ranges)
+                      fixed=fixed, fixedpars=fixedpars,
+                      optpars=optpars, auxpars=auxpars,
+                      constr=constr, npars=npars, duppars=duppars,
+                      nfix=length(fixedpars), nopt=length(optpars), ndup=length(duppars),
+                      ranges=ranges)
     paramdata
 }
 
-## Unfix and unconstrain all parameters in a paramdata object p (as
+## Unfix all fixed parameters in a paramdata object p (as
 ## returned by msm.form.params).  Used for calculating deriv /
 ## information over all parameters for models with fixed parameters.
+## Don't unfix auxiliary pars such as binomial denominators
+## Don't unconstrain constraints
 
 msm.unfixallparams <- function(p) {
+    npars <- length(p$allinits)
     p$fixed <- FALSE
-    p$notfixed <- seq(along=p$allinits)
-    p$optpars <- seq(along=p$allinits)
-    p$fixedpars <- NULL
-    p$constr <- seq(along=p$allinits)
-    p$nfix <- 0
+    p$optpars <- setdiff(1:npars, union(p$auxpars,p$duppars))
+    p$fixedpars <- p$auxpars
     p$nopt <- length(p$optpars)
-    p$ndup <- 0
+    p$nfix <- npars - length(p$optpars)
+    p$inits <- p$allinits[p$optpars]
     p
 }
 
@@ -1307,8 +1039,17 @@ msm.rep.constraints <- function(pars, # transformed pars
                                 hmodel){
     plabs <- names(pars)
     p <- paramdata
-    ## Before replication, transform probs on log(pr/pbase scale) back to pr scale,
-    ## so that econstraint applies to pr not log(pr/pbase). After, transform back
+    ## Handle constraints on misclassification probs / HMM cat probs separately
+    ## This is fiddly. First replicate within states, on log(pr/pbase) scale
+    if (any(hmodel$plabs=="p")) {
+        for (i in 1:hmodel$nstates){
+            inds <- (hmodel$parstate==i & hmodel$plabs=="p")
+            hpc <- hmodel$constr[inds]
+            pars[p$hmmpars][inds] <- pars[p$hmmpars][inds][match(hpc, unique(hpc))]
+        }
+    }
+    ## ...then replicate them between states, on pr scale, so that constraint applies
+    ## to pr not log(pr/pbase). After, transform back
     pars[p$hmmpars] <- msm.mninvlogit.transform(pars[p$hmmpars], hmodel$plabs, hmodel$parstate)
     plabs <- plabs[!duplicated(abs(p$constr))][abs(p$constr)]
     pars <- pars[!duplicated(abs(p$constr))][abs(p$constr)]*sign(p$constr)
@@ -1317,99 +1058,241 @@ msm.rep.constraints <- function(pars, # transformed pars
     pars
 }
 
+## Apply covariates to transition intensities. Parameters enter this
+## function already log transformed and replicated, and exit on
+## natural scale.
+
+msm.add.qcovs <- function(qmodel, pars, mm){
+    labs <- names(pars)
+    beta <- rbind(pars[labs=="qbase"],
+                  matrix(pars[labs=="qcov"], ncol=qmodel$npars, byrow=TRUE))
+    qvec <- exp(mm %*% beta)
+    imat <- t(qmodel$imatrix); row <- col(imat)[imat==1]; col <- row(imat)[imat==1]
+    qmat <- array(0, dim=c(qmodel$nstates, qmodel$nstates, nrow(mm)))
+    for (i in 1:qmodel$npars) {
+        qmat[row[i],col[i],] <- qvec[,i]
+    }
+    for (i in 1:qmodel$nstates)
+        qmat[i,i,] <- -apply(qmat[i,,,drop=FALSE], 3, sum)
+    qmat
+}
+
+## Derivatives of intensity matrix Q wrt unique log q and beta, after
+## applying constraints.  By observation with covariates applied.
+## e.g. qmodel$constr 1 1 2, qcmodel$constr 1 -1 2 3 3 -3
+## returns derivs w.r.t pars named p1 p2 p3 p4 p5
+## i.e. with baseline q on the log scale
+## qo = exp(p1 + p3x1 + p5x2)
+## q1 = exp(p1 + -p3x1 + p5x2)
+## q2 = exp(p2 + p4x1  - p5x2)
+
+msm.form.dq <- function(qmodel, qcmodel, pars, paramdata, mm){
+    labs <- names(pars)
+    q0 <- pars[labs=="qbase"]
+    beta <- rbind(q0, matrix(pars[labs=="qcov"], ncol=qmodel$npars, byrow=TRUE))
+    qvec <- exp(mm %*% beta)
+    covs <- mm[,-1,drop=FALSE]
+    qrvec <- exp(covs %*% beta[-1,,drop=FALSE])
+    nopt <- qmodel$ndpars + qcmodel$ndpars # after constraint but before omitting fixed
+    dqvec <- array(pars[labs=="qbase"],
+                   dim=c(nrow(mm), qmodel$npars, nopt))
+    for (i in seq_len(qmodel$npars)) {
+        ind <- rep(0, qmodel$ndpars); ind[qmodel$constr[i]] <- 1
+        cind <- 1:qmodel$ndpars
+#        dqvec[,i,cind] = qrvec[,i] * rep(ind, each=nrow(mm))
+        dqvec[,i,cind] = qrvec[,i] * rep(ind, each=nrow(mm)) * exp(q0[i])
+        if (qcmodel$npars > 0)
+            for (k in 1:qcmodel$ncovs) {
+                con <- qcmodel$constr[(k-1)*qmodel$npars + 1:qmodel$npars]
+                ucon <- match(abs(con), unique(abs(con)))
+                ind <- rep(0, max(ucon)); ind[ucon[i]] <- sign(con[i])
+                cind <- max(cind) + unique(ucon)
+                dqvec[,i,cind] <- covs[,k] * qvec[,i] * rep(ind, each=nrow(mm))
+            }
+    }
+    dqmat <- array(0, dim=c(qmodel$nstates, qmodel$nstates, nopt, nrow(mm)))
+    imat <- t(qmodel$imatrix); row <- col(imat)[imat==1]; col <- row(imat)[imat==1]
+    for (i in 1:qmodel$npars)
+        dqmat[row[i],col[i],,] <- t(dqvec[,i,])
+    for (i in 1:qmodel$nstates)
+        dqmat[i,i,,] <- -apply(dqmat[i,,,,drop=FALSE], c(3,4), sum)
+    p <- paramdata # leave fixed parameters out
+    fixed <- p$fixedpars[p$plabs[p$fixedpars] %in% c("qbase","qcov")]
+    con <- abs(p$constr[p$plabs %in% c("qbase","qcov")])
+    ## FIXME
+    if (any(fixed)) dqmat <- dqmat[,,-con[fixed],,drop=FALSE]
+    dqmat
+}
+
+
 ## Apply covariates to HMM location parameters
 ## Parameters enter transformed, and exit on natural scale
 
-msm.add.hmmcovs <- function(hmodel, pars, msmdata){
+msm.add.hmmcovs <- function(hmodel, pars, mml){
     labs <- names(pars)
     hpinds <- which(!(labs %in% c("qbase","qcov","hcov","initpbase","initp","initp0","initpcov")))
-    hpars <- matrix(rep(pars[hpinds], msmdata$nobs), ncol=msmdata$nobs,
-                    dimnames=list(labs[hpinds], NULL))
+    n <- nrow(mml[[1]])
+    hpars <- matrix(rep(pars[hpinds], n), ncol=n,  dimnames=list(labs[hpinds], NULL))
     ito <- 0
     for (i in which(hmodel$ncovs > 0)) {
+        mm <- mml[[hmodel$parstate[i]]]
+        ## TODO is this cleaner with hmodel$coveffstate ?
+        ## TODO is this correct for misc covs: two matrices
         ifrom <- ito + 1; ito <- ito + hmodel$ncovs[i]
-        hbase <- pars[hpinds][i]
-        coveffs <- pars[names(pars)=="hcov"][ifrom:ito]
-        wc <- hmodel$whichcovh[ifrom:ito]
-        covs <- as.matrix(msmdata$covmat[,wc,drop=FALSE])
-        hpars[i,] <- hpars[i,] + covs %*% coveffs
+        beta <- pars[names(pars)=="hcov"][ifrom:ito]
+        hpars[i,] <- hpars[i,] + mm[,-1,drop=FALSE] %*% beta
     }
     for (i in seq_along(hpinds)){
-        hpars[i,] <- gexpit(hpars[i,], hmodel$ranges[i,"lower"], hmodel$ranges[i,"upper"]) # TESTME
-#        if (labs[hpinds][i] %in% rownames(.msm.TRANSFORMS))  {
-#            invlink <- get(.msm.TRANSFORMS[labs[hpinds][i],"inv"])
-#            hpars[i,] <- invlink(hpars[i,])
-#        }
+        hpars[i,] <- gexpit(hpars[i,], hmodel$ranges[i,"lower"], hmodel$ranges[i,"upper"])
     }
     hpars <- msm.mninvlogit.transform(hpars, hmodel$plabs, hmodel$parstate)
     hpars
 }
 
-## Apply covariates to transition intensities. Parameters enter this
-## function already log transformed and replicated, and exit on
-## natural scale.
+### Derivatives of HMM pars w.r.t HMM baseline pars (on transformed,
+### e.g. log, scale) and covariate effects
+## Account for parameter constraints, e.g.
+## hmodel$constr 1 2 3 2 4, hmodel$covconstr 1 2 1 3
+## mu0 = g(p1 + p5x1 + p6x2);  g is id for mean, g'(p)=1, or exp for sigma
+## sd0 = g(p2)
+## mu1 = g(p3 + p5x1 + p7x2)
+## sd1 = g(p2)
+## id1 = g(p4)
+## want deriv wrt p1,p2,...,p7
 
-msm.add.qcovs <- function(qmodel, pars, msmdata, agg=TRUE){
+msm.form.dh <- function(hmodel,
+                        pars, # before adding covariates, and on transformed scale
+                        newpars, # after adding covariates, and on natural scale
+                        paramdata,
+                        mml){
     labs <- names(pars)
-    n <- if (agg) msmdata$nobs else msmdata$n
-    qvec <- matrix(rep(pars[labs=="qbase"],each=n), nrow=n)
-    covs <- if (agg) msmdata$covmat else msmdata$cov
-    if (msmdata$covdata$ncovs > 0)
-        covs <- as.matrix(covs[,msmdata$covdata$whichcov,drop=FALSE])
-    beta <- matrix(pars[labs=="qcov"], ncol=qmodel$npars, byrow=TRUE)
-    xb <- if (msmdata$covdata$ncovs == 0) matrix(0,nrow=n,ncol=qmodel$npars) else covs %*% beta
-    qvec <- exp(qvec + xb)
-    imat <- t(qmodel$imatrix); row <- col(imat)[imat==1]; col <- row(imat)[imat==1]
-    qmat <- array(0, dim=c(qmodel$nstates, qmodel$nstates, n))
-    for (i in 1:qmodel$npars) {
-        qmat[row[i],col[i],] <- qvec[,i]
-    }
-    for (i in 1:qmodel$nstates)
-        qmat[i,i,] <- -colSums(qmat[i,,])
-    qmat
-}
-
-## Derivatives of intensity matrix Q wrt q (not log q) and beta. By
-## observation with covariates applied.
-
-msm.form.dq <- function(qmodel, qcmodel, pars, msmdata, agg=TRUE){
-    labs <- names(pars)
-    n <- if (agg) msmdata$nobs else msmdata$n
-    qvec <- matrix(rep(pars[labs=="qbase"],each=n), nrow=n, ncol=qmodel$npars)
-    covs <- if (agg) msmdata$covmat else msmdata$cov
-    if (msmdata$covdata$ncovs > 0)
-        covs <- as.matrix(covs[,msmdata$covdata$whichcov])
-    beta <- matrix(pars[labs=="qcov"], ncol=qmodel$npars, byrow=TRUE)
-    xb <- if (msmdata$covdata$ncovs == 0) matrix(0,nrow=n,ncol=qmodel$npars) else covs %*% beta
-    qvec <- exp(qvec + xb)
-    qrvec <- exp(xb)
-    dqvec <- array(pars[labs=="qbase"], dim=c(n, qmodel$npars, qmodel$npars + qcmodel$npars))
-    for (i in seq_len(qmodel$npars)) { ## can this be vectorised further?
-        dqvec[,i,] = qrvec[,i] * rep(abs(qmodel$constr) == abs(qmodel$constr[i]), each=n)
-        if (qcmodel$npars > 0)
-            for (k in 1:qcmodel$ncovs) {
-                con <- qcmodel$constr[(k-1)*qmodel$npars + 1:qmodel$npars]
-                con <- match(abs(con), unique(abs(con)))*sign(con)
-                dqvec[,i,k*qmodel$npars + 1:qmodel$npars] <-
-                    covs[,k] * qvec[,i] * rep((abs(con)==abs(con[i]))*sign(con)*sign(con[i]), each=n)
+    hpinds <- which(!(labs %in% c("qbase","qcov","hcov","initpbase","initp","initp0","initpcov"))) # baseline HMM parameters
+    n <- nrow(mml[[1]])
+    hpars <- matrix(rep(pars[hpinds], n), ncol=n,  dimnames=list(labs[hpinds], NULL))
+    nh <- sum(hmodel$npars)
+    nopt <- length(unique(hmodel$constr)) + length(unique(hmodel$covconstr)) # TODO store in hmodel
+    dh <- array(0, dim=c(nh, nopt, n))
+    for (i in 1:nh){
+        ind <- rep(0, length(unique(hmodel$constr)))
+        ind[hmodel$constr[i]] <- 1
+        cind <- 1:length(unique(hmodel$constr))
+        if (labs[hpinds][i] != "p") {
+            a <- hmodel$ranges[i,"lower"]; b <- hmodel$ranges[i,"upper"]
+            gdash <- dgexpit(glogit(newpars[i,], a, b), a, b)
+            dh[i,cind,] <- rep(ind, n)*rep(gdash, each=length(cind))
+            if (hmodel$ncovs[i] > 0) {
+                mm <- mml[[hmodel$parstate[i]]][,-1,drop=FALSE]
+                con <- hmodel$covconstr[hmodel$coveffstate == hmodel$parstate[i]]
+                cind <- max(cind) + unique(con)
+                dh[i,cind,] <- t(mm) * rep(gdash, each=length(cind))
             }
+        }
     }
-    dqmat <- array(0, dim=c(qmodel$nstates, qmodel$nstates, qmodel$npars + qcmodel$npars, n))
-    imat <- t(qmodel$imatrix); row <- col(imat)[imat==1]; col <- row(imat)[imat==1]
-    for (i in 1:qmodel$npars)
-        dqmat[row[i],col[i],,] <- t(dqvec[,i,])
-    for (i in 1:qmodel$nstates)
-        dqmat[i,i,,] <- -colSums(dqmat[i,,,], dims=1)
-    dqmat
+    dh <- msm.dmninvlogit(hmodel, hpars, mml, pars[names(pars)=="hcov"], dh)
+    p <- paramdata # leave fixed parameters out
+    dhinds <- which(!(labs %in% c("qbase","qcov","initpbase","initp","initp0","initpcov")))
+    fixed <- intersect(p$fixedpars, dhinds) # index into full par vec
+    fixed <- match(fixed, setdiff(dhinds, p$duppars)) # index into constrained hmm par vec
+    if (any(fixed)) dh <- dh[,-fixed,,drop=FALSE]
+    dh
+}
+
+### Derivatives of outcome probabilities w.r.t baseline log odds and covariate effects
+### in a HMM categorical outcome distribution
+### Constraints on probabilities not supported, seems too fiddly.
+### Could generalize for use in est.initprobs, if ever support derivatives for that
+
+### log(p_r/pbase) = lp_r + beta_r ' x
+### p_r / pbase  =  exp(lp_r + beta_r'x)
+### (p1 +...+ pR) / pbase  = 1/pbase = sum_allR(exp()), so
+### pbase = 1/sum_allR(exp())
+### p_r = exp(lp_r + beta_r'x) / sum_all(exp(lp_s + beta_s'x)), where pars 0 for s=pbase
+### d/dlp_s pbase    = -exp(lp_s + beta_s'x)/ (sum_all())^2
+### d/dbeta_sk pbase = (-x_sk * exp(lp_s + beta_s'x)/ (sum_all())^2
+
+### for r!=s, d/dlp_s p_r  =  exp(lp_r + beta_r'x) * -exp(lp_s + beta_s'x)/ (sum_all())^2
+### for r=s,  d/dlp_s p_r  =  exp(lp_r + beta_r'x) / sum_all()  +
+###                                   exp(lp_r + beta_r'x) * -exp(lp_r + beta_r'x)/ (sum_all())^2
+### for r!=s, d/dbeta_sk p_r  =  exp(lp_r + beta_r'x) * (-x_sk * exp(lp_s + beta_s'x)/ (sum_all())^2
+### for r=s,  d/dbeta_sk p_r  =  x_sk exp(lp_r + beta_r'x) / sum_all()  +
+###                                   exp(lp_r + beta_r'x) * (-x_sk * exp(lp_r + beta_r'x)/ (sum_all())^2
+
+### if no covs:  p_r = exp(lp_r) / sum_all(exp(lp_s)).   lp_r = log(p_r/pbase)
+### d/dlp_s p_r =
+### for r!=s,  exp(lp_r) * (-exp(lp_s)/ (sum_all())^2
+### for r=s,  d/dlp_s p_r  =  exp(lp_r) / sum_all() - exp(lp_r)^2 / (sum_all())^2
+
+msm.dmninvlogit <- function(hmodel, pars, mml, hcov, dh){
+    plabs <- hmodel$plabs
+    states <- hmodel$parstate
+    n <- nrow(mml[[1]])
+    nh <- sum(hmodel$npars)
+    if (any(plabs=="p")) {
+        whichst <- match(states[plabs=="p"], unique(states[plabs=="p"]))
+        for (i in unique(whichst)) {
+            labsi <- plabs[states==i]
+            ppars <- which(labsi %in% c("p","pbase","p0"))
+            lp <- matrix(pars[states==i ,1][ppars], nrow=n, ncol=length(ppars),
+                         byrow=TRUE, dimnames=list(NULL,labsi[ppars]))
+            ncovs <- hmodel$ncovs[states==i][ppars]
+            beta <- hcov[hmodel$coveffstate==i]
+            X <- mml[[states[i]]][,-1,drop=FALSE]
+            ito <- 0
+            for (j in which(ncovs > 0)){
+                ifrom <- ito + 1; ito <- ito + ncovs[j]
+                betaj <- beta[ifrom:ito]
+                lp[,j] <- lp[,j] + X %*% betaj
+            }
+            elp <- lp
+            elp[,labsi[ppars]=="p"] <- exp(elp[,labsi[ppars]=="p"])
+            psum <- 1 + rowSums(elp[,labsi[ppars]=="p",drop=FALSE])
+            pil <- which(states==i & plabs=="p")
+            pis <- which(colnames(elp) == "p")
+            for (r in seq_along(pil)){
+                ito <- 0
+                for (s in seq_along(pil)){
+                    dh[pil[r],pil[s],] <-
+                        if (r == s)
+                            elp[,pis[r]] / psum * (1 - elp[,pis[r]] / psum)
+                        else
+                            - elp[,pis[r]] * elp[,pis[s]] / psum^2
+
+                    if (ncovs[pis[s]] > 0){
+                        ifrom <- ito + 1; ito <- ito + ncovs[pis[s]]
+                        bil <- nh + which(hmodel$coveffstate==i)[ifrom:ito]
+                        for (k in seq_along(bil))
+                            dh[pil[r],bil[k],] <-
+                                if (r == s)
+                                    X[,k] * elp[,pis[r]] / psum * (1 - elp[,pis[r]] / psum)
+                                else
+                                    - X[,k] *  elp[,pis[r]] * elp[,pis[s]] / psum^2
+                    }
+                }
+            }
+            pib <- which(states==i & plabs=="pbase")
+            ito <- 0
+            for (s in seq_along(pil)){
+                dh[pib,pil[s],] <- - elp[,pis[s]] / psum^2
+                if (ncovs[pis[s]] > 0){
+                    ifrom <- ito + 1; ito <- ito + ncovs[pis[s]]
+                    bil <- nh + which(hmodel$coveffstate==i)[ifrom:ito]
+                    for (k in seq_along(bil))
+                        dh[pib,bil[k],] <- - X[,k] * elp[,pis[s]] / psum^2
+                }
+            }
+        }
+    }
+    dh
 }
 
 
-msm.initprobs2mat <- function(hmodel, pars, msmdata){
+msm.initprobs2mat <- function(hmodel, pars, mm, mf){
+    npts <- attr(mf, "npts")
     ## Convert vector initial state occupancy probs to matrix by patient
     if (!hmodel$hidden) return(0)
     if (hmodel$est.initprobs) {
         initp <- pars[names(pars) %in% c("initpbase","initp","initp0")]
-        initp <- matrix(rep(initp, each=msmdata$npts), nrow=msmdata$npts,
+        initp <- matrix(rep(initp, each=npts), nrow=npts,
                         dimnames=list(NULL,
                         names(pars)[names(pars) %in% c("initpbase","initp","initp0")]))
         ## Multiply baselines (entering on mnlogit scale) by current covariate
@@ -1421,14 +1304,13 @@ msm.initprobs2mat <- function(hmodel, pars, msmdata){
             coveffs <- pars[names(pars)=="initpcov"]
             coveffs <- matrix(coveffs, nrow=max(hmodel$nicovs), byrow=TRUE)
             coveffs[,hmodel$nicovs==0] <- 0 # states with fixed initp=zero
-            firstobs <- !duplicated(msmdata$subject)
-            ip <- ip + as.matrix(msmdata$covmat[firstobs,hmodel$whichcovi,drop=FALSE]) %*% coveffs
+            ip <- ip + as.matrix(mm[,-1,drop=FALSE]) %*% coveffs
         }
         initp[,est] <- exp(ip) / (1 + rowSums(exp(ip)))
         initp[,"initpbase"] <- 1 / (1 + rowSums(exp(ip)))
     }
     else if (!is.matrix(hmodel$initprobs))
-        initp <- matrix(rep(hmodel$initprobs,each=msmdata$npts),nrow=msmdata$npts)
+        initp <- matrix(rep(hmodel$initprobs,each=npts),nrow=npts)
     else initp <- hmodel$initprobs
     initp
 }
@@ -1441,123 +1323,67 @@ Ccall.msm <- function(params, do.what="lik", msmdata, qmodel, qcmodel, cmodel, h
     pars <- p$allinits
     pars[p$optpars] <- params
     pars <- msm.rep.constraints(pars, paramdata, hmodel)
-
+    agg <- if (!hmodel$hidden && cmodel$ncens==0 &&
+               do.what %in% c("lik","deriv","info")) TRUE else FALSE # data as aggregate transition counts, as opposed to individual observations
     ## Add covariates to hpars and q here. Inverse-transformed to natural scale on exit
-    agg <- if(do.what %in% c("lik","deriv","info")) TRUE else FALSE # data as aggregate transition counts, as opposed to individual observations
-    Q <- msm.add.qcovs(qmodel, pars, msmdata, agg)
-    DQ <- if (do.what %in% c("deriv","info","deriv.subj","dpmat")) msm.form.dq(qmodel, qcmodel, pars, msmdata, agg) else NULL
-    hpars <- if (hmodel$hidden) msm.add.hmmcovs(hmodel, pars, msmdata) else NULL
-    initprobs <- msm.initprobs2mat(hmodel, pars, msmdata)
+    mm.cov <- if (agg) msmdata$mm.cov.agg else msmdata$mm.cov
+    Q <- msm.add.qcovs(qmodel, pars, mm.cov)
+    DQ <- if (do.what %in% c("deriv","info","deriv.subj","dpmat")) msm.form.dq(qmodel, qcmodel, pars, p, mm.cov) else NULL
+    H <- if (hmodel$hidden) msm.add.hmmcovs(hmodel, pars, msmdata$mm.hcov) else NULL
+    DH <- if (hmodel$hidden && (do.what %in% c("deriv","info","deriv.subj"))) msm.form.dh(hmodel, pars, H, paramdata, msmdata$mm.hcov) else NULL
+    initprobs <- msm.initprobs2mat(hmodel, pars, msmdata$mm.icov, msmdata$mf)
 
-    ## In R, work with states / parameter indices / model indices 1, ... n. In C, work with 0, ... n-1
-    msmdata$fromstate <- msmdata$fromstate - 1
-    msmdata$tostate <- msmdata$tostate - 1
-    msmdata$firstobs <- msmdata$firstobs - 1
-    hmodel$models <- hmodel$models - 1
-    hmodel$links <- hmodel$links - 1
+   mf <- msmdata$mf; mf.agg <- msmdata$mf.agg
+   ## In R, work with states / parameter indices / model indices 1, ... n. In C, work with 0, ... n-1
+   mf.agg$"(fromstate)" <- mf.agg$"(fromstate)" - 1
+   mf.agg$"(tostate)" <- mf.agg$"(tostate)" - 1
+   firstobs <- c(which(!duplicated(model.extract(mf, "subject"))), nrow(mf)+1) - 1
+   mf$"(subject)" <- match(mf$"(subject)", unique(mf$"(subject)"))
+   ntrans <- sum(duplicated(model.extract(mf, "subject")))
+   hmodel$models <- hmodel$models - 1
+   hmodel$links <- hmodel$links - 1
+   nagg <- if(is.null(mf.agg)) 0 else nrow(mf.agg)
+   mf$"(pcomb)" <- mf$"(pcomb)" - 1
+   npcombs <- length(unique(na.omit(model.extract(mf, "pcomb"))))
+   qmodel$nopt <- if (is.null(DQ)) 0 else dim(DQ)[3]
+   hmodel$nopt <- if (is.null(DH)) 0 else dim(DH)[2]
+   nopt <- qmodel$nopt + hmodel$nopt
 
-    lik <- .C("msmCEntry",
-              as.integer(match(do.what, .msm.CTASKS) - 1),
-              as.double(Q),
-              as.double(DQ),
-              as.double(hpars),
-
-              ## data for non-HMM
-              as.integer(msmdata$fromstate),
-              as.integer(msmdata$tostate),
-              as.double(msmdata$timelag),
-              as.integer(msmdata$nocc),
-              as.integer(msmdata$noccsum),
-              as.integer(msmdata$whicha),
-              as.integer(if(do.what %in% c("lik.subj","deriv.subj","dpmat")) msmdata$obstype.obs else msmdata$obstype), # per-observation obstype
-
-              ## data for HMM or censored
-              as.integer(match(msmdata$subject, unique(msmdata$subject))),
-              as.double(msmdata$time),
-              as.double(msmdata$state), # If this is a misc or censored state, this is indexed from 1.
-              as.integer(msmdata$firstobs),
-              as.integer(msmdata$obstrue),
-
-              ## HMM specification
-              as.integer(hmodel$hidden),
-              as.integer(hmodel$models),
-              as.integer(hmodel$totpars),
-              as.integer(hmodel$firstpar),
-              as.double(initprobs),
-
-              ## various constants
-              as.integer(qmodel$nstates),
-              as.integer(qmodel$iso),
-              as.integer(qmodel$perm),
-              as.integer(qmodel$qperm),
-              as.integer(qmodel$expm),
-              as.integer(qmodel$npars),
-              as.integer(msmdata$nobs), # number of aggregated transitions
-              as.integer(msmdata$n), # number of observations
-              as.integer(msmdata$npts),  # HMM only
-              as.integer(msmdata$ntrans), # number of (disaggregated) transitions
-              as.integer(qcmodel$npars),
-
-              as.integer(cmodel$ncens),
-              as.integer(cmodel$censor),
-              as.integer(cmodel$states),
-              as.integer(cmodel$index - 1),
-
-              returned = double(
-              if (do.what %in% c("deriv","info")) qmodel$npars + qcmodel$npars
-              else if (do.what=="lik.subj") msmdata$npts
-              else if (do.what=="deriv.subj") msmdata$npts*(qmodel$npars + qcmodel$npars)
-              else if (do.what=="dpmat") msmdata$ntrans*qmodel$nstates*(qmodel$npars + qcmodel$npars)
-              else if (do.what=="viterbi") msmdata$nobs
-              else 1),
-
-              returned2 = double(
-              if (do.what=="info") (qmodel$npars + qcmodel$npars) ^ 2
-              else 1),
-
-              ## so that Inf values are allowed for parameters denoting truncation points of truncated distributions
-              NAOK = TRUE
-#              ,
-#              PACKAGE = "msm"
-              )
-    ## transform derivatives wrt Q to derivatives wrt log Q
-    ## don't return derivs for constrained or fixed parameters
-    qp <- 1:qmodel$npars
-    dp <- intersect(which(!duplicated(abs(p$constr))), p$notfixed)
-    tpars <- if(length(params)==0) p$allinits[qp] else (params[abs(p$constr)]*sign(p$constr))[qp]
-    if (do.what %in% c("deriv","info")) {
-        lik$returned[qp] <- lik$returned[qp]*exp(tpars)
-        lik$returned <- lik$returned[dp]
-    }
-    ## Fisher information matrix
-    if (do.what=="info") {
-        lik$returned2 <- matrix(lik$returned2, nrow=qmodel$npars + qcmodel$npars)
-        lik$returned2[qp,qp] <- lik$returned2[qp,qp]*outer(exp(tpars),exp(tpars))
-        if (qcmodel$ndpars > 0) {
-            qcp <- (qmodel$npars + 1):(qmodel$npars + qcmodel$npars)
-            lik$returned2[qp,qcp] <- lik$returned2[qp,qcp]*exp(tpars)
-            lik$returned2[qcp,qp] <- lik$returned2[qcp,qp]*rep(exp(tpars),each=qcmodel$npars)
-            lik$returned2 <- lik$returned2[dp,dp]
-        }
-    }
-    ## subject-specific derivatives, to use for score residuals
-    if (do.what=="deriv.subj") {
-        lik$returned <- matrix(lik$returned, nrow=msmdata$npts)
-        lik$returned[,qp] <- lik$returned[,qp]*rep(exp(tpars), each=msmdata$npts)
-        lik$returned <- lik$returned[,dp]
-    }
-    ## transition-specific derivatives of P matrix, to use for Pearson test
-    if (do.what=="dpmat") {
-        lik$returned <- array(lik$returned, dim=c(msmdata$ntrans, qmodel$nstates, qmodel$npars+qcmodel$npars))
-        tpars <- if(length(params)==0) p$allinits[!duplicated(p$constr)][qp] else params[qp]
-        lik$returned[,,qp] <- lik$returned[,,qp]*rep(exp(tpars), each=msmdata$ntrans*qmodel$nstates)
-        lik$returned <- lik$returned[,,dp]
-    }
-    if (do.what=="info") list(deriv=lik$returned, info=lik$returned2) else lik$returned
+   ## coerce types here to avoid PROTECT faff with doing this in C
+   mfac <- list("(fromstate)" = as.integer(mf.agg$"(fromstate)"),
+                  "(tostate)" = as.integer(mf.agg$"(tostate)"),
+                  "(timelag)" = as.double(mf.agg$"(timelag)"),
+                  "(nocc)" = as.integer(mf.agg$"(nocc)"),
+                  "(noccsum)" = as.integer(mf.agg$"(noccsum)"),
+                  "(whicha)" = as.integer(mf.agg$"(whicha)"),
+                  "(obstype)" = as.integer(mf.agg$"(obstype)"))
+   mfc <- list("(subject)" = as.integer(mf$"(subject)"),  "(time)" = as.double(mf$"(time)"),
+              "(state)" = as.double(mf$"(state)"), "(obstype)" = as.integer(mf$"(obstype)"),
+              "(obstrue)" = as.integer(mf$"(obstrue)"), "(pcomb)" = as.integer(mf$"(pcomb)"))
+   auxdata <- list(nagg=as.integer(nagg),n=as.integer(nrow(mf)),npts=as.integer(attr(mf,"npts")),
+                   ntrans=as.integer(ntrans), npcombs=as.integer(npcombs),
+                   nliks=as.integer(get("nliks",msm.globals)),firstobs=as.integer(firstobs))
+   qmodel <- list(nstates=as.integer(qmodel$nstates), npars=as.integer(qmodel$npars),
+                  nopt=as.integer(qmodel$nopt), iso=as.integer(qmodel$iso),
+                  perm=as.integer(qmodel$perm), qperm=as.integer(qmodel$qperm),
+                  expm=as.integer(qmodel$expm))
+   cmodel <- list(ncens=as.integer(cmodel$ncens), censor=as.integer(cmodel$censor),
+                  states=as.integer(cmodel$states), index=as.integer(cmodel$index - 1))
+   hmodel <- list(hidden=as.integer(hmodel$hidden), models=as.integer(hmodel$models),
+                  totpars=as.integer(hmodel$totpars), firstpar=as.integer(hmodel$firstpar),
+                  npars=as.integer(hmodel$npars), nopt=as.integer(hmodel$nopt))
+   pars <- list(Q=as.double(Q),DQ=as.double(DQ),H=as.double(H),DH=as.double(DH),
+                initprobs=as.double(initprobs),nopt=as.integer(nopt))
+   .Call("msmCEntry",  as.integer(match(do.what, .msm.CTASKS) - 1),
+         mfac, mfc, auxdata, qmodel, cmodel, hmodel, pars, PACKAGE="msm")
 }
+
 
 lik.msm <- function(params, ...)
 {
+    ## number of likelihood evaluations so far including this one
+    ## used for error message for iffy initial values in HMMs
+    assign("nliks", get("nliks",msm.globals) + 1, envir=msm.globals)
     Ccall.msm(params, do.what="lik", ...)
 }
 
@@ -1576,8 +1402,9 @@ information.msm <- function(params, ...)
 msm.form.output <- function(whichp, model, cmodel, p)
 {
     Matrices <- MatricesSE <- MatricesL <- MatricesU <- list()
+    basename <- if (whichp=="intens") "logbaseline" else "logitbaseline"
     for (i in 0:cmodel$ncovs) {
-        matrixname <- if (i==0) "logbaseline" else cmodel$covlabels[i] # name of the current output matrix.
+        matrixname <- if (i==0) basename else cmodel$covlabels[i] # name of the current output matrix.
         mat <- t(model$imatrix) # state matrices filled by row, while R fills them by column.
         if (whichp=="intens")
             parinds <- if (i==0) which(p$plabs=="qbase") else which(p$plabs=="qcov")[(i-1)*model$npars + 1:model$npars]
@@ -1601,15 +1428,13 @@ msm.form.output <- function(whichp, model, cmodel, p)
             diag(semat) <- diag(lmat) <- diag(umat) <- 0
             dimnames(semat)  <- dimnames(mat)
         }
-        else if (!p$fixed){
+        else {
             semat <- lmat <- umat <- NULL
         }
         Matrices[[matrixname]] <- mat
-        if (!p$fixed) {
-            MatricesSE[[matrixname]] <- semat
-            MatricesL[[matrixname]] <- lmat
-            MatricesU[[matrixname]] <- umat
-        }
+        MatricesSE[[matrixname]] <- semat
+        MatricesL[[matrixname]] <- lmat
+        MatricesU[[matrixname]] <- umat
     }
     list(Matrices=Matrices,     # list of baseline log intensities/logit misc probability matrix
                                         # and linear effects of covariates
@@ -1653,7 +1478,7 @@ msm.form.houtput <- function(hmodel, p, msmdata)
             }
         }
     }
-    hmodel$initpmat <- msm.initprobs2mat(hmodel, p$estimates.t, msmdata)
+    hmodel$initpmat <- msm.initprobs2mat(hmodel, p$estimates.t, msmdata$mm.icov, msmdata$mf)
     if (hmodel$foundse) {
         hmodel$ci <- p$ci[!(p$plabs %in% c("qbase","qcov","hcov","initpbase","initp","initp0","initpcov")), , drop=FALSE]
         hmodel$covci <- p$ci[p$plabs %in% c("hcov"), ]
@@ -1661,6 +1486,8 @@ msm.form.houtput <- function(hmodel, p, msmdata)
     names(hmodel$pars) <- hmodel$plabs
     hmodel
 }
+
+
 
 ## Table of 'transitions': previous state versus current state
 
@@ -1679,6 +1506,8 @@ statetable.msm <- function(state, subject, data=NULL)
     previous <- c(NA, state[1:(n-1)])
     previous[prevsubj!=subject] <- NA
     ntrans <- table(previous, state)
+# or simpler as
+# ntrans <- table(state[duplicated(subject,fromLast=TRUE)], state[duplicated(subject)])
     names(dimnames(ntrans)) <- c("from", "to")
     ntrans
 }
@@ -1693,18 +1522,18 @@ crudeinits.msm <- function(formula, subject, qmatrix, data=NULL, censor=NULL, ce
     time <- mf[,2]
     n <- length(state)
     if (missing(subject)) subject <- rep(1, n)
-    if (!is.null(data))
+    else if (!is.null(data))
         subject <- eval(substitute(subject), as.list(data), parent.frame())
-    subject <- match(subject, unique(subject))
+    if (is.null(subject)) subject <- rep(1, n)
     notna <- !is.na(subject) & !is.na(time) & !is.na(state)
     subject <- subject[notna]; time <- time[notna]; state <- state[notna]
     msm.check.qmatrix(qmatrix)
     msm.check.state(nrow(qmatrix), state, cens$censor)
+    msm.check.times(time, subject, state)
     nocens <- (! (state %in% cens$censor) )
     state <- state[nocens]; subject <- subject[nocens]; time <- time[nocens]
     n <- length(state)
-    nextsubj <- c(subject[2:n], NA)
-    lastsubj <- (subject != nextsubj)
+    lastsubj <- !duplicated(subject, fromLast=TRUE)
     timecontrib <- ifelse(lastsubj, NA, c(time[2:n], 0) - time)
     tottime <- tapply(timecontrib[!lastsubj], state[!lastsubj], sum) # total time spent in each state
     ntrans <- statetable.msm(state, subject, data=NULL) # table of transitions
@@ -1727,122 +1556,96 @@ crudeinits.msm <- function(formula, subject, qmatrix, data=NULL, censor=NULL, ce
 ### Form a new dataset with censored states and extra covariate, and
 ### form a new censor model, given change times in tcut
 
-msm.pci <- function(tcut, dat, qmodel, cmodel, center)
+msm.pci <- function(tcut, mf, qmodel, cmodel, covariates)
 {
     if (!is.numeric(tcut)) stop("Expected \"tcut\" to be a numeric vector of change points")
-    old <- as.data.frame(dat[c("subject","time","state","obstype","obstrue")])
-    if (dat$ncovs > 0)
-        old[c("covmat","covmat.orig")] <- dat[c("covmat","covmat.orig")]
-    ## new dataset
+    ## Make new dataset with censored observations at time cut points
     ntcut <- length(tcut)
-    nextra <- ntcut*dat$npts
-    extra <- data.frame(subject = rep(unique(dat$subject), each=ntcut),
-                        time = rep(tcut, dat$npts),
-                        state = rep(NA, nextra),
-                        obstype = rep(1, nextra),
-                        obstrue = rep(TRUE, nextra),
-                        pci.imp = 1
-                        )
-    old$pci.imp <- 0
-    if (dat$ncovs > 0){
-        extra$covmat <- as.data.frame(matrix(NA, nrow=nextra, ncol=ncol(old$covmat)))
-        extra$covmat.orig <- as.data.frame(matrix(NA, nrow=nextra, ncol=ncol(old$covmat.orig)))
-        rownames(old$covmat.orig) <- rownames(old$covmat) <- 1:nrow(old)
-        rownames(extra$covmat.orig) <- rownames(extra$covmat) <- nrow(old) + 1:nrow(extra) # get rid of dup / null rownames errors
-    }
-    ## merge new and old observations
-    new <- rbind(old, extra)
-    new <- new[order(new$subject, new$time),]
-    label <- if (cmodel$ncens > 0) max(cmodel$censor)*2 else qmodel$nstates + 1
-    new$state[is.na(new$state)] <- label
-    ## Only keep cutpoints within range of each patient's followup
-    mintime <- tapply(old$time, old$subject, min)[as.character(unique(old$subject))]
-    maxtime <- tapply(old$time, old$subject, max)[as.character(unique(old$subject))]
-    nobspt <- as.numeric(table(new$subject)[as.character(unique(new$subject))])
-    new <- new[new$time >= rep(mintime, nobspt) & new$time <= rep(maxtime, nobspt), ]
+    npts <- length(unique(model.extract(mf, "subject")))
+    nextra <- ntcut*npts
+    basenames <- c("(state)","(time)","(subject)","(obstype)","(obstrue)","(obs)","(pci.imp)")
+    covnames <- setdiff(colnames(mf), basenames)
+    extra <- mf[rep(1,nextra),]
+    extra$"(state)" = rep(NA, nextra)
+    extra$"(time)" = rep(tcut, npts)
+    extra$"(subject)" <- rep(unique(model.extract(mf, "subject")), each=ntcut)
+    extra$"(obstype)" = rep(1, nextra)
+    extra$"(obstrue)" = rep(TRUE, nextra)
+    extra$"(obs)" <- NA
+    extra$"(pci.imp)" = 1
+    extra[, covnames] <- NA
+    mf$"(pci.imp)" <- 0
 
-    ## drop imputed observations at times when there was already an observation
+    ## Merge new and old observations
+    new <- rbind(mf, extra)
+    new <- new[order(new$"(subject)", new$"(time)"),]
+    label <- if (cmodel$ncens > 0) max(cmodel$censor)*2 else qmodel$nstates + 1
+    new$"(state)"[is.na(new$"(state)")] <- label
+    ## Only keep cutpoints within range of each patient's followup
+    mintime <- tapply(mf$"(time)", mf$"(subject)", min)[as.character(unique(mf$"(subject)"))]
+    maxtime <- tapply(mf$"(time)", mf$"(subject)", max)[as.character(unique(mf$"(subject)"))]
+    nobspt <- as.numeric(table(new$"(subject)")[as.character(unique(new$"(subject)"))])
+    new <- new[new$"(time)" >= rep(mintime, nobspt) & new$"(time)" <= rep(maxtime, nobspt), ]
+
+    ## Drop imputed observations at times when there was already an observation
     ## assumes there wasn't already duplicated obs times
-    prevsubj <- c(NA,new$subject[1:(nrow(new)-1)]); nextsubj <- c(new$subject[2:nrow(new)], NA)
-    prevtime <- c(NA,new$time[1:(nrow(new)-1)]); nexttime <- c(new$time[2:nrow(new)], NA)
-    prevstate <- c(NA,new$state[1:(nrow(new)-1)]); nextstate <- c(new$state[2:nrow(new)], NA)
-    new <- new[!((new$subject==prevsubj & new$time==prevtime & new$state==label & prevstate!=label) |
-                 (new$subject==nextsubj & new$time==nexttime & new$state==label & nextstate!=label))
+    prevsubj <- c(NA,new$"(subject)"[1:(nrow(new)-1)]); nextsubj <- c(new$"(subject)"[2:nrow(new)], NA)
+    prevtime <- c(NA,new$"(time)"[1:(nrow(new)-1)]); nexttime <- c(new$"(time)"[2:nrow(new)], NA)
+    prevstate <- c(NA,new$"(state)"[1:(nrow(new)-1)]); nextstate <- c(new$"(state)"[2:nrow(new)], NA)
+    new <- new[!((new$"(subject)"==prevsubj & new$"(time)"==prevtime & new$"(state)"==label & prevstate!=label) |
+                 (new$"(subject)"==nextsubj & new$"(time)"==nexttime & new$"(state)"==label & nextstate!=label))
                ,]
 
     ## Carry last value forward for other covariates
-    if (dat$ncovs > 0) {
-        eind <- which(is.na(new$covmat[,1]))
+    if (length(covnames) > 0) {
+        eind <- which(is.na(new[,covnames[1]]) & new$"(pci.imp)"==1)
         while(length(eind) > 0){
-            new$covmat[eind,] <- new$covmat[eind - 1,]
-            new$covmat.orig[eind,] <- new$covmat.orig[eind - 1,]
-            eind <- which(is.na(new$covmat[,1]))
+            new[eind,covnames] <- new[eind - 1, covnames]
+            eind <- which(is.na(new[,covnames[1]]))
         }
     }
 
-    ## constants in dataset
-    new <- as.list(new)
-    new$nobs <- new$n <- n <- length(new$state)
-    new$npts <- dat$npts
-    new$firstobs <- c(1, which(new$subject[2:n] != new$subject[1:(n-1)]) + 1, n+1)
-    new$ncovs <- dat$ncovs + ntcut
-
     ## Check range of cut points
-    if (any(tcut <= min(dat$time)))
-      warning("Time cut point", if (sum(tcut <= min(dat$time)) > 1) "s " else " ",
-                paste(tcut[tcut<=min(dat$time)],collapse=","),
-                " less than or equal to minimum observed time of ",min(dat$time))
-    if (any(tcut >= max(dat$time)))
-        warning("Time cut point", if (sum(tcut >= max(dat$time)) > 1) "s " else " ",
-                paste(tcut[tcut>=max(dat$time)],collapse=","),
-                " greater than or equal to maximum observed time of ",max(dat$time))
-    tcut <- tcut[tcut > min(dat$time) & tcut < max(dat$time)]
+    if (any(tcut <= min(mf$"(time)")))
+      warning("Time cut point", if (sum(tcut <= min(mf$"(time)")) > 1) "s " else " ",
+                paste(tcut[tcut<=min(mf$"(time)")],collapse=","),
+                " less than or equal to minimum observed time of ",min(mf$"(time)"))
+    if (any(tcut >= max(mf$"(time)")))
+        warning("Time cut point", if (sum(tcut >= max(mf$"(time)")) > 1) "s " else " ",
+                paste(tcut[tcut>=max(mf$"(time)")],collapse=","),
+                " greater than or equal to maximum observed time of ",max(mf$"(time)"))
+    tcut <- tcut[tcut > min(mf$"(time)") & tcut < max(mf$"(time)")]
     ntcut <- length(tcut)
     if (ntcut==0)
         res <- NULL # no cut points in range of data, continue with no time-dependent model
     else {
         ## Insert new covariate in data representing time period
         tcovlabel <- "timeperiod"
-        while (tcovlabel %in% dat$covlabels)
-            tcovlabel <- paste(tcovlabel, ".1", sep="")
-        tcov <- factor(cut(new$time, c(-Inf,tcut,Inf), right=FALSE))
+        if (any(covnames=="timeperiod")) stop("Cannot have a covariate called \"timeperiod\" if \"pci\" is supplied")
+        tcov <- factor(cut(new$"(time)", c(-Inf,tcut,Inf), right=FALSE))
         levs <- levels(tcov)
         levels(tcov) <- gsub(" ","", levs) # get rid of spaces in e.g. [10, Inf) levels
         assign(tcovlabel, tcov)
-        mm <- model.matrix(as.formula(paste("~", tcovlabel)))[,-1,drop=FALSE]
-        new$covmat <- cbind(new$covmat, mm)
-        lastobs <- c(new$subject[1:(new$nobs-1)] != new$subject[2:new$nobs], TRUE)
-        new$covmeans <- colMeans(new$covmat[!lastobs,,drop=FALSE])
-        new$covmat.orig <- if(is.null(new$covmat.orig)) data.frame(timeperiod=tcov) else cbind(new$covmat.orig, timeperiod=tcov)
-        if (center) new$covmat <- sweep(new$covmat, 2, colMeans(new$covmat))
+        new[,tcovlabel] <- tcov
 
-        ## new censoring model
+        ## Add "+ timeperiod" to the Q covariates formula.
+        current.covs <- if(attr(mf,"ncovs")>0) attr(terms(covariates), "term.labels") else NULL
+        covariates <- reformulate(c(current.covs, tcovlabel))
+        attr(new, "covnames") <- c(attr(mf, "covnames"), "timeperiod")
+        attr(new, "covnames.q") <- c(attr(mf, "covnames.q"), "timeperiod")
+        attr(new, "ncovs") <- attr(mf, "ncovs") + 1
+        ## New censoring model
         cmodel$ncens <- cmodel$ncens + 1
         cmodel$censor <- c(cmodel$censor, label)
         cmodel$states <- c(cmodel$states, 1:qmodel$nstates)
         cmodel$index <- if (is.null(cmodel$index)) 1 else cmodel$index
         cmodel$index <- c(cmodel$index, length(cmodel$states) + 1)
-
-        ## new auxiliary information about covariates
-        for (i in c("covdata","misccovdata","hcovdata","icovdata")) new[[i]] <- dat[[i]]
-        new$covlabels <- c(dat$covlabels, colnames(mm))
-        new$covlabels.orig <- c(dat$covlabels.orig, tcovlabel)
-        new$covdata$covlabels <- c(dat$covdata$covlabels, colnames(mm))
-        new$covdata$ncovs <- dat$covdata$ncovs + ntcut
-        new$covdata$covmeans <- c(dat$covdata$covmeans, colMeans(mm))
-        new$covdata$covfactor <- c(dat$covdata$covfactor, timeperiod=TRUE)
-        new$covdata$covfactorlevels <- c(dat$covdata$covfactorlevels, list(timeperiod=levels(tcov)))
-        new$covdata$covlabels.orig <- c(dat$covdata$covlabels.orig, tcovlabel)
-        new$covdata$whichcov <- match(new$covdata$covlabels, new$covlabels)
-        new$covdata$whichcov.orig <- match(new$covdata$covlabels.orig, new$covlabels.orig)
-
-        res <- list(dat=new, cmodel=cmodel, tcut=tcut)
+        res <- list(mf=new, covariates=covariates, cmodel=cmodel, tcut=tcut)
     }
     res
 }
 
-
-msm.check.covlist <- function(covlist) {
+msm.check.covlist <- function(covlist, qemodel) {
     check.numnum <- function(str)
         length(grep("^[0-9]+-[0-9]+$", str)) == length(str)
     num <- sapply(names(covlist), check.numnum)
@@ -1857,18 +1660,7 @@ msm.check.covlist <- function(covlist) {
     for (i in seq(along=covlist))
         if (!inherits(covlist[[i]], "formula"))
             stop("\"covariates\" should be a formula or list of formulae")
-}
-
-## Given covariates argument to msm as a list of transition-specific
-## formulae, convert to formula common to all intensities, with
-## associated data.  This can be processed with existing
-## msm.form.covdata.  Appropriate effects will be fixed to zero in
-## msm.form.params.
-
-msm.form.covdata.byrate <- function(covlist, qemodel, data, ignore.obs=NULL, center=TRUE) {
-    msm.check.covlist(covlist)
     trans <- sapply(strsplit(names(covlist), "-"), as.numeric)
-    npars <- qemodel$npars
     tm <- if(inherits(qemodel,"msmqmodel")) "transition" else "misclassification"
     qe <- if(inherits(qemodel,"msmqmodel")) "qmatrix" else "ematrix"
     imat <- qemodel$imatrix
@@ -1876,81 +1668,218 @@ msm.form.covdata.byrate <- function(covlist, qemodel, data, ignore.obs=NULL, cen
         if (imat[trans[1,i],trans[2,i]] != 1)
             stop("covariates on ", names(covlist)[i], " ", tm, " requested, but this is not permitted by the ", qe, ".")
     }
-    imat <- t(imat) # order named transitions / misclassifications by row
+}
+
+## Form indicator matrix for effects that will be fixed to zero when
+## "covariates" specified as a list of transition-specific formulae
+
+msm.form.cri <- function(covlist, qmodel, mf, mm) {
+    imat <- t(qmodel$imatrix) # order named transitions / misclassifications by row
     tnames <- paste(col(imat)[imat==1],row(imat)[imat==1],sep="-")
-
-    ## Merge transition-specific formulae into one big formula
-    ter <- lapply(covlist, terms)
-    vars <- unique(unlist(lapply(ter, function(x)attr(x,"term.labels"))))
-    form <- as.formula(paste("~ ", paste(vars,collapse="+")))
-    covdata <- msm.form.covdata(form, data, ignore.obs, center)
-
-    ## Form indicator matrix for cov effects that will be fixed to zero
-    covs <- covdata$covlabels
-    covdata$cri <- matrix(0, nrow=npars, ncol=length(covs), dimnames = list(tnames, covs))
+    covlabs <- colnames(mm)[-1]
+    npars <- qmodel$npars
+    cri <- matrix(0, nrow=npars, ncol=length(covlabs), dimnames = list(tnames, covlabs))
     sorti <- function(x) {
         ## converts, e.g. c("b:a:c","d:f","f:e") to c("a:b:c", "d:f", "e:f")
         sapply(lapply(strsplit(x, ":"), sort), paste, collapse=":")
     }
     for (i in 1:npars) {
         if (tnames[i] %in% names(covlist)) {
-            covsi <- msm.form.covdata(covlist[[tnames[i]]], data)$covlabels
-            covdata$cri[i, match(sorti(covsi), sorti(covs))] <- 1
+            covlabsi <- colnames(model.matrix(covlist[[tnames[i]]], data=mf))[-1]
+            cri[i, match(sorti(covlabsi), sorti(covlabs))] <- 1
         }
     }
-    covdata
+    cri
 }
 
-## Process constraints and initial values for covariates supplied as a
-## list of transition-specific formulae.  Convert to form needed for a
-## single covariates formula common to all transitions, which can be
-## processed with msm.form.covmodel.
+## adapted from stats:::na.omit.data.frame.  ignore handling of
+## non-atomic, matrix within df
 
-msm.form.covmodel.byrate <- function(covdata,
-                                     constraint, # as supplied by user
-                                     nmatrix,
-                                     covinits,  # as supplied by user
-                                     fulldata
-                                     ){
-    covs <- covdata$covlabels
-    cri <- covdata$cri
-    ## Convert short form constraints to long form
-    msm.check.constraint(constraint, covdata)
-    constr <- inits <- numeric()
-    for (i in seq(along=covs)){
-        if (covs[i] %in% names(constraint)){
-            if (length(constraint[[covs[i]]]) != sum(cri[,i]))
-                stop("\"",covs[i],"\" constraint of length ",
-                     length(constraint[[covs[i]]]),", should be ",sum(cri[,i]))
-            con <- match(constraint[[covs[i]]], unique(constraint[[covs[i]]])) + 1
-            constraint[[covs[i]]] <- rep(1, nmatrix)
-            constraint[[covs[i]]][cri[,i]==1] <- con
-        }
-        else constraint[[covs[i]]] <- seq(length=nmatrix)
+na.omit.msmdata <- function(object, ...) {
+    omit <- na.find.msmdata(object)
+    xx <- object[!omit, , drop = FALSE]
+    if (any(omit > 0L)) {
+        temp <- setNames(seq(omit)[omit], attr(object, "row.names")[omit])
+        attr(temp, "class") <- "omit"
+        attr(xx, "na.action") <- temp
     }
-    ## convert short to long initial values in the same way
-    if (!is.null(covinits)) msm.check.covinits(covinits, covdata)
-    for (i in seq(along=covs)) {
-        if (!is.null(covinits) && (covs[i] %in% names(covinits))) {
-            if (!is.numeric(covinits[[covs[i]]])) {
-                warning("initial values for covariates should be numeric, ignoring")
-                covinits[[covs[i]]] <- rep(0, nmatrix)
-            }
-            thisinit <- rep(0, nmatrix)
-            if (length(covinits[[covs[i]]]) != sum(cri[,i])) {
-                warning("\"", covs[i], "\" initial values of length ", length(covinits[[covs[i]]]), ", should be ", sum(cri[,i]), ", ignoring")
-                covinits[[covs[i]]] <- rep(0, nmatrix)
-            }
-            else thisinit[cri[,i]==1] <- covinits[[covs[i]]]
-            covinits[[covs[i]]] <- thisinit
-        }
-    }
-    covdata$cri <- NULL
-    qcmodel <- msm.form.covmodel(covdata, constraint, nmatrix, covinits, fulldata)
-    qcmodel$cri <- cri
-    qcmodel
+    xx
 }
 
-### Unload shared library when package is detached with unloadNamespace("msm")
-.onUnload <- function(libpath) { library.dynam.unload("msm", libpath) }
+na.fail.msmdata <- function(object, ...) {
+    omit <- na.find.msmdata(object)
+    if (any(omit))
+        stop("Missing values or subjects with only one observation in data")
+    else object
+}
 
+na.find.msmdata <- function(object, ...) {
+    subj <- as.character(object[,"(subject)"])
+    firstobs <- !duplicated(subj)
+    lastobs <- !duplicated(subj, fromLast=TRUE)
+    nm <- names(object)
+    omit <- FALSE
+    for (j in seq(along=object)) {
+        ## Drop all NAs in state, time, subject or obstrue as usual
+        if ((j %in% 1:2) || (nm[j] %in% c("(subject)","(obstrue)")))
+            omit <- omit | is.na(object[[j]])
+        ## Don't drop NAs in obstype at first observation for a subject
+        else if (nm[j]=="(obstype)")
+            omit <- omit | (is.na(object[[j]]) & !firstobs)
+        ## covariates on initial state probs - only drop if NA at initial observation
+        else if (j %in% attr(object, "icovi"))
+            omit <- omit | (is.na(object[[j]]) & firstobs)
+        ## Don't drop NAs in covariates at last observation for a subject
+        else
+            omit <- omit | (is.na(object[[j]]) & !lastobs)
+    }
+    ## Drop obs with only one subject remaining after NAs have been omitted
+    nobspt <- table(subj[!omit])[subj]
+    omit <- omit | (nobspt==1)
+    omit
+}
+
+msm.form.mf.agg <- function(x){
+    mf <- x$data$mf; qmodel <- x$qmodel; hmodel <- x$hmodel; cmodel <- x$cmodel
+    if (!hmodel$hidden && cmodel$ncens==0){
+        mf.trans <- msm.obs.to.fromto(mf)
+        msm.check.model(mf.trans$"(fromstate)", mf.trans$"(tostate)", mf.trans$"(obs)", mf.trans$"(subject)", mf.trans$"(obstype)", qmodel$qmatrix, cmodel)
+        ## Aggregate over unique from/to/timelag/cov/obstype
+        mf.agg <- msm.aggregate.data(mf.trans)
+    } else mf.agg <- NULL
+    mf.agg
+}
+
+msm.obs.to.fromto <- function(mf)
+{
+    n <- nrow(mf)
+    subj <- model.extract(mf, "subject")
+    time <- model.extract(mf, "time")
+    state <- model.extract(mf, "state")
+    firstsubj <- !duplicated(subj)
+    lastsubj <- !duplicated(subj, fromLast=TRUE)
+    mf.trans <- mf[!lastsubj,,drop=FALSE]   ## retains all covs corresp to the start of the transition
+    names(mf.trans)[names(mf.trans)=="(state)"] <- "(fromstate)"
+    mf.trans$"(tostate)" <- state[!firstsubj]
+    mf.trans$"(obstype)" <- model.extract(mf, "obstype")[!firstsubj] # obstype matched with end of transition
+    mf.trans$"(obs)" <- model.extract(mf, "obs")[!firstsubj]
+    mf.trans$"(timelag)" <- diff(time)[!firstsubj[-1]]
+    ## NOTE not kept constants npts, ncovs, covlabels, covdata, hcovdata, covmeans
+    ## NOTE: orig returned dat$time, dat$obstype.obs of orig length, assume not needed
+    ## NOTE: firstsubj in old only used in msm.aggregate.hmmdata, which is not used
+    mf.trans
+}
+
+### Aggregate the data by distinct values of time lag, covariate values, from state, to state, observation type
+### Result is passed to the C likelihood function (for non-hidden multi-state models)
+
+msm.aggregate.data <- function(mf.trans)
+{
+    n <- nrow(mf.trans)
+    apaste <- do.call("paste", mf.trans[,c("(fromstate)","(tostate)","(timelag)","(obstype)", attr(mf.trans, "covnames"))])
+    mf.agg <- mf.trans[!duplicated(apaste),]
+    mf.agg <- mf.agg[order(unique(apaste)),]
+    mf.agg$"(nocc)" <- as.numeric(table(apaste))
+    apaste2 <- mf.agg[,"(timelag)"]
+    if (attr(mf.agg, "ncovs") > 0)
+        apaste2 <- paste(apaste2,  do.call("paste", mf.agg[,attr(mf.agg, "covnames"),drop=FALSE]))
+    ## which unique timelag/cov combination each row of aggregated data corresponds to
+    ## lik.c needs this to know when to recalculate the P matrix.
+    mf.agg$"(whicha)" <- match(apaste2, sort(unique(apaste2)))
+    mf.agg <- mf.agg[order(apaste2,mf.agg$"(fromstate)",mf.agg$"(tostate)"),]
+    ## for Fisher information: number of obs over timelag/covs starting in
+    ## fromstate, replicated for all tostates.
+    apaste2 <- paste(mf.agg$"(fromstate)", apaste2)
+    mf.agg$"(noccsum)" <- unname(tapply(mf.agg$"(nocc)", apaste2, sum)[apaste2])
+    ## NOTE not kept covdata, hcovdata, npts, covlabels, covmeans, nobs, ntrans
+    mf.agg
+}
+
+### Form indicator for which unique timelag/obstype/cov each observation belongs to
+### Used in HMMs/censoring to calculate P matrices efficiently in C
+
+msm.form.hmm.agg <- function(mf){
+    mf.trans <- msm.obs.to.fromto(mf)
+    mf.trans$"(apaste)" <- do.call("paste", mf.trans[,c("(timelag)","(obstype)",attr(mf.trans,"covnames"))])
+    mf.trans$"(pcomb)" <- match(mf.trans$"(apaste)", unique(mf.trans$"(apaste)"))
+    mf$"(pcomb)" <- NA
+    mf$"(pcomb)"[duplicated(model.extract(mf,"subject"))] <- mf.trans$"(pcomb)"
+    mf$"(pcomb)"
+}
+
+### FORM DESIGN MATRICES FOR COVARIATE MODELS.
+msm.form.mm.cov <- function(x){
+    mm.cov <- model.matrix(x$covariates, x$data$mf)
+    msm.center.covs(mm.cov, attr(x$data$mf,"covmeans"), x$center)
+}
+
+msm.form.mm.cov.agg <- function(x){
+    mm.cov.agg <- if (x$hmodel$hidden || (x$cmodel$ncens > 0)) NULL else model.matrix(x$covariates, x$data$mf.agg)
+    msm.center.covs(mm.cov.agg, attr(x$data$mf.agg,"covmeans"), x$center)
+}
+
+msm.form.mm.mcov <- function(x){
+    mm.mcov <- if (x$emodel$misc) model.matrix(x$misccovariates, x$data$mf) else NULL
+    msm.center.covs(mm.mcov, attr(x$data$mf,"covmeans"), x$center)
+}
+
+msm.form.mm.hcov <- function(x){
+    hcov <- x$hcovariates
+    nst <- x$qmodel$nstates
+    if (x$hmodel$hidden) {
+        mm.hcov <- vector(mode="list", length=nst)
+        if (is.null(hcov))
+            hcov <- rep(list(~1), nst)
+        for (i in seq_len(nst)){
+            if (is.null(hcov[[i]])) hcov[[i]] <- ~1
+            mm.hcov[[i]] <- model.matrix(hcov[[i]], x$data$mf)
+            mm.hcov[[i]] <- msm.center.covs(mm.hcov[[i]], attr(x$data$mf,"covmeans"), x$center)
+        }
+    } else mm.hcov <- NULL
+    mm.hcov
+}
+
+msm.form.mm.icov <- function(x){
+    if (x$hmodel$hidden) {
+        if (is.null(x$initcovariates)) x$initcovariates <- ~1
+        mm.icov <- model.matrix(x$initcovariates, x$data$mf[!duplicated(x$data$mf$"(subject)"),])
+    } else mm.icov <- NULL
+    msm.center.covs(mm.icov, attr(x$data$mf,"covmeans"), x$center)
+}
+
+msm.center.covs <- function(covmat, cm, center=TRUE){
+    if (is.null(covmat)||is.null(cm)) return(covmat)
+    means <- cm[colnames(covmat)]
+    attr(covmat, "means") <- means[-1]
+    if (center)
+        covmat <- sweep(covmat, 2, means)
+    covmat
+}
+
+expand.data <- function(x){
+    x$data$mf.agg <- msm.form.mf.agg(x)
+    x$data$mm.cov <- msm.form.mm.cov(x)
+    x$data$mm.cov.agg <- msm.form.mm.cov.agg(x)
+    x$data$mm.mcov <- msm.form.mm.mcov(x)
+    x$data$mm.hcov <- msm.form.mm.hcov(x)
+    x$data$mm.icov <- msm.form.mm.icov(x)
+    x$data
+}
+
+model.frame.msm <- function(formula, agg=FALSE, ...){
+    x <- formula
+    if (agg) x$data$mf.agg else x$data$mf
+}
+
+model.matrix.msm <- function(object, model="intens", state=1, ...){
+    switch(model,
+           intens=msm.form.mm.cov(object),
+           misc=msm.form.mm.mcov(object),
+           hmm=msm.form.mm.hcov(object)[[state]],
+           init=msm.form.mm.icov(object))
+}
+
+.onLoad <- function(libname, pkgname) {
+    assign("msm.globals", new.env(), envir=parent.env(environment()))
+    assign("nliks", 0, envir=msm.globals)
+}

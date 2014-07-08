@@ -143,7 +143,7 @@ rtnorm <- function (n, mean = 0, sd = 1, lower = -Inf, upper = Inf) {
                           (lower == -Inf & upper > 0) |
                           (is.finite(lower) & is.finite(upper) & (lower < 0) & (upper > 0) & (upper-lower > sqrt(2*pi)))
                           ),
-                         0, # standard "simulate from normal and reject if outside limits" method. Use if bounds are wide.  FIXME HSOULD BE
+                         0, # standard "simulate from normal and reject if outside limits" method. Use if bounds are wide.
                          ifelse(
                                 (lower >= 0 & (upper > lower + 2*sqrt(exp(1)) /
                                  (lower + sqrt(lower^2 + 4)) * exp((lower*2 - lower*sqrt(lower^2 + 4)) / 4))),
@@ -344,6 +344,14 @@ rpexp <- function(n=1, rate=1, t=0)
       ret
   }
 
+mean.pexp <- function(rate=1, t=0){
+    if (length(t) != length(rate)) stop("length of t must be equal to length of rate")
+    if (!isTRUE(all.equal(0, t[1]))) stop("first element of t should be 0")
+    if (is.unsorted(t)) stop("t should be in increasing order")
+    t1 <- c(t[-1], Inf)
+    sum(    (t + 1/rate)*exp(-rate*t) - (t1 - 1/rate)*exp(-rate*t1)  )
+}
+
 qgeneric <- function(pdist, p, ...)
 {
     args <- list(...)
@@ -399,6 +407,26 @@ glogit <- function(x, a, b) {
     ret
 }
 
+dglogit <- function(x, a, b) {
+    if (is.null(a)) a <- -Inf
+    if (is.null(b)) b <- Inf
+    ret <- numeric(length(x))
+    attributes(ret) <- attributes(x)
+    nn <- is.infinite(a) & is.infinite(b)
+    nb <- is.infinite(a) & is.finite(b)
+    an <- is.finite(a) & is.infinite(b)
+    ab <- is.finite(a) & is.finite(b)
+    ret[nn] <- 1
+    ret[nb] <- -1 / (b[nb] - x[nb])
+    ret[an] <- 1 / (x[an] - a[an])
+    ret[ab] <- 1/(x[ab] - a[ab]) + 1/(b[ab] - x[ab])
+    ret
+}
+
+# d/dx log( (x-a)/(b-x) )    = (b-x)/(x-a) * (1/(b-x) + (x-a)/(b-x)^2)
+# = 1/(x-a) + 1/(b-x)
+# = d/dx   log(x-a) - log(b-x)
+
 ## Inverse transform vector of parameters constrained on [a, b]: back
 ## from real line to constrained scale.  Vectorised.  a=-Inf or b=Inf
 ## represent unbounded below or above.
@@ -416,5 +444,23 @@ gexpit <- function(x, a, b) {
     ret[nb] <- b[nb] - exp(x[nb])
     ret[an] <- exp(x[an]) + a[an]
     ret[ab] <- (b[ab]*exp(x[ab]) + a[ab]) / (1 + exp(x[ab]))
+    ret
+}
+
+## Derivative of gexpit w.r.t. x
+
+dgexpit <- function(x, a, b) {
+    if (is.null(a)) a <- -Inf
+    if (is.null(b)) b <- Inf
+    ret <- numeric(length(x))
+    attributes(ret) <- attributes(x)
+    nn <- is.infinite(a) & is.infinite(b)
+    nb <- is.infinite(a) & is.finite(b)
+    an <- is.finite(a) & is.infinite(b)
+    ab <- is.finite(a) & is.finite(b)
+    ret[nn] <- 1
+    ret[nb] <- - exp(x[nb])
+    ret[an] <- exp(x[an])
+    ret[ab] <- (b[ab] - a[ab])*exp(x[ab]) / (1 + exp(x[ab]))^2
     ret
 }
