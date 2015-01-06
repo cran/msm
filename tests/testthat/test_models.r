@@ -32,7 +32,8 @@ test_that("data as global variables",{
     expect_equal(4119.9736299032, cav.msm$minus2loglik)
 })
 
-psor.msm <- msm(state ~ months, subject=ptnum, data=psor, qmatrix = psor.q,  covariates = ~ollwsdrt+hieffusn, constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)))
+psor.msm <- msm(state ~ months, subject=ptnum, data=psor, qmatrix = psor.q,  covariates = ~ollwsdrt+hieffusn, constraint = list(hieffusn=c(1,1,1),ollwsdrt=c(1,1,2)), control=list(fnscale=1))
+
 test_that("psor model: covariates, constraints",{
     expect_equal(1114.89946121717, psor.msm$minus2loglik, tol=1e-06)
     expect_equal(0.0959350004999946, psor.msm$Qmatrices$baseline[1,2], tol=1e-06)
@@ -66,6 +67,19 @@ test_that("exact transition times with death, should be same",{
     (msmtest5 <- msm(state ~ time, qmatrix = fiveq,  subject = ptnum, data = bos, death=5, obstype=rep(2, nrow(bos)), fixedpars=TRUE)) # no warning, inconsistently
     expect_equal(3057.85781916437, msmtest5$minus2loglik, tol=1e-06)
 })
+
+
+cav$statefac <- factor(cav$state)
+cav$statefac2 <- factor(cav$state, labels=c("none","mild","severe","death"))
+test_that("factors as states, death",{
+    cav.msm <- msm( statefac ~ years, subject=PTNUM, data = cav,
+                   qmatrix = twoway4.q, death = TRUE, fixedpars=TRUE,
+                   method="BFGS", control=list(trace=5, REPORT=1))
+    expect_equal(4908.81676837903, cav.msm$minus2loglik)
+    expect_error(msm( statefac2 ~ years, subject=PTNUM, data = cav,
+                   qmatrix = twoway4.q, death = TRUE, fixedpars=TRUE), "state variable should be numeric or a factor with ordinal numbers as levels")
+})
+
 
 test_that("factor covariates with factor() in formula",{
     ## Should be no need for users to do this. factors should already be identified as such in the data frame
@@ -379,6 +393,16 @@ test_that("prevalence.msm",{
     expect_equal(41.46338, p$"Expected percentages"[4,4], tol=1e-03)
     expect_error(prevalence.msm("foo"))
     expect_error(summary.msm("foo"))
+
+    ## lisa edwards bug - can't reproduce
+#    library(msm, lib.loc="~/work/msm/src/1.2")
+#    library(msm, lib.loc="~/work/msm/src/1.3")
+#    p <- prevalence.msm(psor.msm, covariates=list(hieffusn=0, ollwsdrt=1))
+#    b.age <- sample(18:75, size=nrow(psor), replace=TRUE)
+#    psor.contcov.msm <- msm(state ~ months, subject=ptnum, data=psor, qmatrix = psor.q,  covariates = ~b.age)
+#    p <- prevalence.msm(psor.contcov.msm)
+#    p <- prevalence.msm(psor.contcov.msm, covariates=list(b.age=10))
+#    p <- prevalence.msm(psor.contcov.msm, covariates="population")
 })
 
 test_that("pmatrix.piecewise.msm",{
@@ -481,8 +505,7 @@ test_that("observed, expected etc with one covariate, should run",{
 
 test_that("observed, expected etc with PCI, should run",{
     psor1.msm <- msm(state ~ months, covariates=~ollwsdrt+hieffusn, subject=ptnum, data=psor, qmatrix = psor.q, pci=c(5,10))
-    x <- psor1.msm
-    (covhist <- get.covhist(psor1.msm))
+    covhist <- get.covhist(psor1.msm)
     observed.msm(psor1.msm)
     expected.msm(psor1.msm)
     expected.msm(psor1.msm, covariates="mean")
@@ -495,6 +518,7 @@ test_that("subset argument to observed",{
 
 test_that("error handling: formula",{
     ## formula
+    expect_error(msm(), "state ~ time formula not given")
     expect_error(cav.msm <- msm(state, subject=PTNUM, data = cav, qmatrix = twoway4.q, death = TRUE, fixedpars=TRUE), "not found")
     expect_error(cav.msm <- msm(~1, subject=PTNUM, data = cav, qmatrix = twoway4.q, death = TRUE, fixedpars=TRUE), "invalid data")
     expect_error(cav.msm <- msm("foo", subject=PTNUM, data = cav, qmatrix = twoway4.q, death = TRUE, fixedpars=TRUE), "not a formula")

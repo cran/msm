@@ -18,7 +18,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
       qconstraint=NULL, econstraint=NULL, initprobs = NULL,
       est.initprobs=FALSE, initcovariates = NULL, initcovinits = NULL,
       death = FALSE, exacttimes = FALSE, censor=NULL,
-      censor.states=NULL, pci=NULL, cl = 0.95, fixedpars = NULL, center=TRUE,
+      censor.states=NULL, pci=NULL, phase.states=NULL, phase.inits=NULL,
+      cl = 0.95, fixedpars = NULL, center=TRUE,
       opt.method="optim", hessian=NULL, use.deriv=TRUE,
       use.expm=TRUE, analyticp=TRUE, na.action=na.omit, ... )
 }
@@ -28,10 +29,13 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
 
     \code{state ~ time}
 
-    Observed states should be in the set \code{1, \dots, n}, where
-    \code{n} is the number of states.  The times can indicate different
-    types of observation scheme, so be careful to choose the correct
-    \code{obstype}.
+    Observed states should be numeric variables
+    in the set \code{1, \dots, n}, where
+    \code{n} is the number of states.  Factors are allowed only if their
+    levels are called \code{"1", \dots, "n"}.
+
+    The times can indicate different types of observation scheme, so be
+    careful to choose the correct \code{obstype}.
 
     For hidden Markov models, \code{state} refers to the outcome
     variable, which need not be a discrete state.
@@ -72,6 +76,14 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     represents a 'health - disease - death' model, with initial transition intensities
     0.1 from health to disease, 0.01 from health to death, 0.1 from disease to health,
     and 0.2 from disease to death.
+
+    If the states represent ordered levels of severity of a disease,
+    then this matrix should usually only allow transitions between
+    adjacent states.  For example, if someone was observed in state 1
+    ("mild") at their first observation, followed by state 3 ("severe")
+    at their second observation, they are assumed to have passed through
+    state 2 ("moderate") in between, and the 1,3 entry of \code{qmatrix}
+    should be zero.
 
     The initial intensities given here are with any covariates set to
     their means in the data (or set to zero, if \code{center =
@@ -147,7 +159,7 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     A misclassification model, that is, a hidden Markov model where
     the outcomes are misclassified observations of the underlying
     states, can either be specified using a list of \code{\link{hmmCat}}
-    objects, or by using an \code{ematrix}.
+    or \code{\link{hmmIdent}} objects, or by using an \code{ematrix}.
 
     For example, \cr
 
@@ -606,7 +618,67 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
      change at the times when they are observed.  \code{pci} is for when
      you want all intensities to change at the same pre-specified times
      for all subjects.
+   }
+
+   \item{phase.states}{
+     Indices of states which have a two-phase sojourn distribution.
+     This defines a semi-Markov model, in which the hazard of an onward
+     transition depends on the time spent in the state.   
+
+     This uses the technique described by Titman and Sharples (2009).  A
+     hidden Markov model is automatically constructed on an expanded
+     state space, where the phases correspond to the hidden states.  The
+     "tau" proportionality constraint described in this paper is
+     currently not supported.
+
+     Covariates, constraints, \code{death} and \code{censor} are
+     expressed with respect to the expanded state space.  If not
+     supplied by hand, \code{initprobs} is defined automatically so that
+     subjects are assumed to begin in the first of the two phases.
+
+     Hidden Markov models can additionally be given phased states.  The
+     user supplies an outcome distribution for each original state using
+     \code{hmodel}, which is expanded internally so that it is assumed
+     to be the same within each of the phased states.  \code{initprobs}
+     is interpreted on the expanded state space.  Misclassification
+     models defined using \code{ematrix} are not supported, and these
+     must be defined using \code{hmmCat} or \code{hmmIdent} constructors,
+     as described in the \code{hmodel} section of this help page.  Or
+     the HMM on the expanded state space can be defined by hand. 
+
+     Output functions are presented as it were a hidden Markov model on
+     the expanded state space, for example, transition probabilities
+     between states, covariate effects on transition rates, or
+     prevalence counts, are not aggregated over the hidden phases.
+
+     Numerical estimation will be unstable when there is weak evidence
+     for a two-phase sojourn distribution, that is, if the model is
+     close to Markov. 
+     
+     See \code{\link{d2phase}} for the definition of the two-phase
+     distribution and the interpretation of its parameters.
+
+     This is an experimental feature, and some functions are not
+     implemented.  Please report any experiences of using this feature
+     to the author!    
      }
+   
+  \item{phase.inits}{ Initial values for phase-type models.  A list with
+    one component for each "two-phased" state.  Each component is itself
+    a list of two elements.  The first of these elements is a scalar
+    defining the transition intensity from phase 1 to phase 2.  The
+    second element is a matrix, with one row for each potential
+    destination state from the two-phased state, and two columns.  The
+    first column is the transition rate from phase 1 to the destination
+    state, and the second column is the transition rate from phase 2 to
+    the destination state.  If there is only one destination state, then
+    this may be supplied as a vector.
+
+    In phase type models, the initial values for transition rates out of
+    non-phased states are taken from the \code{qmatrix} supplied to msm,
+    and entries of this matrix corresponding to transitions out of
+    phased states are ignored. 
+  }
 
   \item{exacttimes}{By default, the transitions of the Markov process
     are assumed to take place at unknown occasions in between the
@@ -624,9 +696,9 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     with this type of data.  The models which \pkg{msm} fits have the
     strong assumption of constant (or piecewise-constant) transition
     rates.  Knowing the exact transition times allows
-    potentially more realistic models to be fitted with other
+    more realistic models to be fitted with other
     packages.  For example parametric models with sojourn distributions
-    more flexible than the exponential can be fitted with the \pkg{survival} package,
+    more flexible than the exponential can be fitted with the \pkg{flexsurv} package,
     or semi-parametric models can be implemented with \pkg{survival} in
     conjunction with \pkg{mstate}.
   }
@@ -723,13 +795,15 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   }
 
   \item{...}{Optional arguments to the general-purpose \R
-    optimisation routine, \code{\link{optim}} by default. Useful options for \code{\link{optim}} include
-    \code{method="BFGS"} for using a quasi-Newton optimisation
-    algorithm, which can often be faster than the default Nelder-Mead.
-    If the optimisation fails to converge, consider normalising the
-    problem using, for example, \code{control=list(fnscale = 2500)}, for
-    example, replacing 2500 by a number of the order of magnitude of the
-    likelihood. If 'false' convergence is reported and the standard
+    optimisation routine, \code{\link{optim}} by default. For example
+    \code{method="Nelder-Mead"} to change the optimisation 
+    algorithm from the \code{"BFGS"} method that msm calls by default.
+
+    It is often worthwhile to normalize the optimisation using
+    \code{control=list(fnscale = a)}, where \code{a} is the a number of
+    the order of magnitude of the -2 log likelihood.
+    
+    If 'false' convergence is reported and the standard
     errors cannot be calculated due to a non-positive-definite Hessian,
     then consider tightening the tolerance criteria for convergence. If
     the optimisation takes a long time, intermediate steps can be
@@ -856,6 +930,9 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   Jackson, C.H., Sharples, L.D., Thompson, S.G. and Duffy, S.W. and
   Couto, E.  Multi-state Markov models for disease progression with
   classification error. \emph{The Statistician}, 52(2): 193--209 (2003)
+
+  Titman, A.C. and Sharples, L.D.  Semi-Markov models with phase-type
+  sojourn distributions.  \emph{Biometrics} 66, 742-752 (2009).
 
   Venables, W.N. and Ripley, B.D. (2002) \emph{Modern Applied Statistics with
     S}, second edition. Springer.

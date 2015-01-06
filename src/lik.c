@@ -108,8 +108,9 @@ void GetCensored (double obs, cmodel *cm, int *nc, double **states)
     if (cm->ncens == 0)
 	n = 1;
     else {
-	while (!all_equal(obs, cm->censor[k]) && k < cm->ncens)
+	while ((k < cm->ncens) && !all_equal(obs, cm->censor[k])){ 
 	    ++k;
+	}
 	if (k < cm->ncens) {
 	    cens = 1;
 	    n =  cm->index[k+1] - cm->index[k];
@@ -535,7 +536,7 @@ void hmm_deriv(int pt, msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, Array3 pm
     }
     lp *= -2;
     //    printf("lp=%lf\n",lp);
-    Free(curr); Free(aold); Free(anew); Free(phiold); Free(phinew); Free(xiold); Free(xinew); Free(phiold); Free(phinew); Free(dpok);
+    Free(curr); Free(aold); Free(anew); Free(phiold); Free(phinew); Free(xiold); Free(xinew); Free(dxiold); Free(dxinew); Free(dpok);
 }
 
 
@@ -611,7 +612,7 @@ void hmm_info(int pt, msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, Array3 pma
 	    }
 	}
     }
-    Free(curr); Free(potential); Free(aold); Free(anew); Free(phiold); Free(phinew); Free(xiold); Free(xinew); Free(phiold); Free(phinew); Free(dpok);
+    Free(curr); Free(potential); Free(anew); Free(aold); Free(phiold); Free(phinew); Free(xinew); Free(xiold); Free(dxiold); Free(dxinew); Free(dpok);
 }
 
 
@@ -1066,20 +1067,13 @@ void pmax(double *x, int n, int *maxi)
     }
 }
 
-/* Calculates the most likely path through underlying states */
+/* Calculates the most likely path through underlying states
+   and "posterior" probabilities of underlying states 
+ */
 
-void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted)
+void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted, double *pstate)
 {
     int i, j, tru, k, kmax, obs, nc = 1;
-/*
-    double *pmat = (double *) S_alloc((qm->nst)*(qm->nst), sizeof(double));
-    int *ptr = (int *) S_alloc((d->n)*(qm->nst), sizeof(int));
-    double *lvold = (double *) S_alloc(qm->nst, sizeof(double));
-    double *lvnew = (double *) S_alloc(qm->nst, sizeof(double));
-    double *lvp = (double *) S_alloc(qm->nst, sizeof(double));
-    double *curr = (double *) S_alloc (qm->nst, sizeof(double));
-    double *pout = (double *) S_alloc(qm->nst, sizeof(double));
-*/
 
     double *pmat = Calloc((qm->nst)*(qm->nst), double);
     int *ptr = Calloc((d->n)*(qm->nst), int);
@@ -1088,9 +1082,13 @@ void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted)
     double *lvp = Calloc(qm->nst, double);
     double *curr = Calloc (qm->nst, double);
     double *pout = Calloc(qm->nst, double);
+    double *pfwd = Calloc((d->n)*(qm->nst), double);
+    double *pbwd = Calloc((d->n)*(qm->nst), double);
 
-    double dt;
+    double dt, pall, psum;
     double *qmat, *hpars;
+    double *ucfwd = Calloc(d->n, double);
+    double *ucbwd = Calloc(d->n, double);
 
     i = 0;
     if (d->obstrue[i]) {
@@ -1114,16 +1112,19 @@ void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted)
 	    lvold[k] = log(hm->initp[MI(0, k, d->npts)]);
       }
     }
-
+    for (k = 0; k < qm->nst; ++k)
+    	pfwd[MI(i,k,d->n)] = exp(lvold[k]);
+    ucfwd[0] = 0;
+		  
     for (i = 1; i <= d->n; ++i)
 	{
 	    R_CheckUserInterrupt();
-#ifdef VITDEBUG
+#ifdef VITDEBUG0
 	    printf("obs %d\n", i);
 #endif
 	    if ((i < d->n) && (d->subject[i] == d->subject[i-1]))
 		{
-#ifdef VITDEBUG
+#ifdef VITDEBUG0
 		    printf("subject %d\n", d->subject[i]);
 #endif
 		    dt = d->time[i] - d->time[i-1];
@@ -1131,48 +1132,108 @@ void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted)
 		    hpars = &(hm->pars[MI(0, i, hm->totpars)]); /* not i-1 as pre 1.2.3 */
 		    GetCensored(d->obs[i], cm, &nc, &curr);
 		    GetOutcomeProb(pout, curr, nc, hpars, hm, qm, d->obstrue[i]);
-#ifdef VITDEBUG
+#ifdef VITDEBUG0
 		    for (tru=0;tru<nc;++tru) printf("curr[%d] = %1.0lf, ",tru, curr[tru]); printf("\n");
 #endif
 		    Pmat(pmat, dt, qmat, qm->nst,
 			 (d->obstype[i] == OBS_EXACT), qm->iso, qm->perm,  qm->qperm, qm->expm);
 
+		    psum = 0;
 		    for (tru = 0; tru < qm->nst; ++tru)
 			{
 /* lvnew =  log prob of most likely path ending in tru at current obs.
-   kmax  = most likely state at the previous obs
+   kmax  = most likely state at the previous obs  
+   pfwd = p(data up to and including current obs, and hidden state at current obs), then scaled at each step to sum to 1 to avoid underflow.
 */
+			    pfwd[MI(i,tru,d->n)] = 0;
 			    for (k = 0; k < qm->nst; ++k) {
 				lvp[k] = lvold[k] + log(pmat[MI(k, tru, qm->nst)]);
+				pfwd[MI(i,tru,d->n)] += pfwd[MI(i-1,k,d->n)] * pmat[MI(k,tru,qm->nst)];
 			    }
 			    if (d->obstrue[i-1])
 				kmax = d->obs[i-1] - 1;
 			    else pmax(lvp, qm->nst, &kmax);
 			    lvnew[tru] = log ( pout[tru] )  +  lvp[kmax];
 			    ptr[MI(i, tru, d->n)] = kmax;
-#ifdef VITDEBUG
+			    pfwd[MI(i,tru,d->n)] *= pout[tru];
+			    psum += pfwd[MI(i,tru,d->n)];
+#ifdef VITDEBUG0
 			    printf("true %d, pout[%d] = %lf, lvold = %lf, pmat = %lf, lvnew = %lf, ptr[%d,%d]=%d\n",
 				   tru, tru, pout[tru], lvold[tru], pmat[MI(kmax, tru, qm->nst)], lvnew[tru], i, tru, ptr[MI(i, tru, d->n)]);
 #endif
 			}
-		    for (k = 0; k < qm->nst; ++k)
+		    ucfwd[i] = ucfwd[i-1] + log(psum);
+		    for (k = 0; k < qm->nst; ++k){
+			pfwd[MI(i,k,d->n)] /= psum;
 			lvold[k] = lvnew[k];
+		    }
 		}
 	    else
 		{
-		    /* Traceback for current individual */
+		    /* Traceback and backward algorithm for current individual
+		       pall = p(data at all times)
+		       pbwd = p(data at future times | hidden state at current obs)
+		       so that p(hidden state at current obs) = pfwd * pbwd / pall
+		     */
 		    pmax(lvold, qm->nst, &kmax);
 		    obs = i-1;
 		    fitted[obs] = (d->obstrue[obs] ? d->obs[obs]-1 : kmax);
+
+		    pall = 0;  // compute full likelihood.  
+		    ucbwd[obs] = 0;
+		    for (k = 0; k < qm->nst; ++k){
+			pbwd[MI(obs,k,d->n)] = 1;
+			pall += pfwd[MI(obs,k,d->n)]*exp(ucfwd[obs]);
+		    }
+		    for (k = 0; k < qm->nst; ++k){
+			pstate[MI(obs,k,d->n)] = exp(log(pfwd[MI(obs,k,d->n)]) + log(pbwd[MI(obs,k,d->n)]) - log(pall) + ucfwd[obs]);
+		    }
 #ifdef VITDEBUG
 		    printf("traceback for subject %d\n", d->subject[i-1]);
 		    printf("obs=%d,fitted[%d]=%1.0lf\n",obs,obs,fitted[obs]);
+		    for (tru = 0; tru < qm->nst; ++tru){
+			printf("pfwd[%d,%d]=%f, ", obs, tru, pfwd[MI(obs,tru,d->n)]);
+			printf("pbwd[%d,%d]=%f, ", obs, tru, pbwd[MI(obs,tru,d->n)]);
+			printf("pstate[%d,%d]=%f, ", obs, tru, pstate[MI(obs,tru,d->n)]);
+			printf("\n");
+
+		    }
 #endif
 		    while   ( (obs > 0) && (d->subject[obs] == d->subject[obs-1]) )
 			{
 			    fitted[obs-1] = ptr[MI(obs, fitted[obs], d->n)];
 #ifdef VITDEBUG
 			    printf("fitted[%d] = ptr[%d,%1.0lf] = %1.0lf\n", obs-1, obs, fitted[obs], fitted[obs-1]);
+#endif
+
+			    dt = d->time[obs] - d->time[obs-1];
+			    qmat = &(qm->intens[MI3(0, 0, obs-1, qm->nst, qm->nst)]);
+			    hpars = &(hm->pars[MI(0, obs, hm->totpars)]);
+			    GetCensored(d->obs[obs], cm, &nc, &curr);
+			    GetOutcomeProb(pout, curr, nc, hpars, hm, qm, d->obstrue[obs]);
+			    Pmat(pmat, dt, qmat, qm->nst,
+				 (d->obstype[obs] == OBS_EXACT), qm->iso, qm->perm,  qm->qperm, qm->expm);
+
+			    psum=0;
+			    for (tru = 0; tru < qm->nst; ++tru){
+				pbwd[MI(obs-1,tru,d->n)] = 0;
+				for (k = 0; k < qm->nst; ++k)
+				    pbwd[MI(obs-1,tru,d->n)] += pmat[MI(tru,k,qm->nst)] * pout[k] * pbwd[MI(obs,k,d->n)];
+				psum += pbwd[MI(obs-1,tru,d->n)];				
+			    }
+			    ucbwd[obs-1] = ucbwd[obs] + log(psum);
+			    for (tru = 0; tru < qm->nst; ++tru){
+				pbwd[MI(obs-1,tru,d->n)] /= psum;
+				pstate[MI(obs-1,tru,d->n)] = exp(log(pfwd[MI(obs-1,tru,d->n)]) + log(pbwd[MI(obs-1,tru,d->n)]) - log(pall) + ucfwd[obs-1] + ucbwd[obs-1]);
+#ifdef VITDEBUG
+				printf("pfwd[%d,%d]=%f, ", obs-1, tru, pfwd[MI(obs-1,tru,d->n)]);
+				printf("pbwd[%d,%d]=%f, ", obs-1, tru, pbwd[MI(obs-1,tru,d->n)]);
+				printf("pstate[%d,%d]=%f, ", obs-1, tru, pstate[MI(obs-1,tru,d->n)]);
+				printf("\n");
+#endif
+			    }
+#ifdef VITDEBUG
+			    printf("pall=%f\n",pall);
 #endif
 			    --obs;
 			}
@@ -1201,10 +1262,14 @@ void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted)
 				    lvold[k] = log(hm->initp[MI(d->subject[i]-1, k, d->npts)]);
 			    }
 			}
+			for (k = 0; k < qm->nst; ++k)
+			    pfwd[MI(i,k,d->n)] = exp(lvold[k]); 
+			ucfwd[i] = 0;
 		    }
 		}
 	}
     Free(pmat); Free(ptr); Free(lvold); Free(lvnew); Free(lvp); Free(curr); Free(pout);
+    Free(pfwd); Free(pbwd); Free(ucfwd); Free(ucbwd);
 }
 
 /* get the list element named str, or return NULL */
@@ -1244,7 +1309,7 @@ SEXP msmCEntry(SEXP do_what_s, SEXP mf_agg_s, SEXP mf_s, SEXP auxdata_s, SEXP qm
 {
     msmdata d; qmodel qm; cmodel cm; hmodel hm;
     int do_what = INTEGER(do_what_s)[0], nopt;
-    double lik, *ret;
+    double lik, *ret, *fitted, *pfwd;
     SEXP ret_s;
 
 /* type coercion for all these is done in R */
@@ -1331,9 +1396,14 @@ SEXP msmCEntry(SEXP do_what_s, SEXP mf_agg_s, SEXP mf_s, SEXP auxdata_s, SEXP qm
     }
 
     else if (do_what == DO_VITERBI) {
-	ret_s = PROTECT(NEW_NUMERIC(d.n));
-	ret = REAL(ret_s);
-	Viterbi(&d, &qm, &cm, &hm, ret);
+	/* Return a list of a vector (fitted states) and a matrix (hidden state probabilities) */
+        /* see https://stat.ethz.ch/pipermail/r-devel/2013-April/066246.html */
+	ret_s = PROTECT(allocVector(VECSXP, 2));
+	SEXP fitted_s = SET_VECTOR_ELT(ret_s, 0, NEW_NUMERIC(d.n));
+	SEXP pfwd_s = SET_VECTOR_ELT(ret_s, 1, allocMatrix(REALSXP, d.n, qm.nst));
+	fitted = REAL(fitted_s);
+	pfwd = REAL(pfwd_s);
+	Viterbi(&d, &qm, &cm, &hm, fitted, pfwd);
 	UNPROTECT(1);
     }
 

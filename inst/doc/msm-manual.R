@@ -185,20 +185,20 @@ plot(cav.msm, legend.pos=c(8, 1))
 
 
 ###################################################
-### code chunk number 29: msm-manual.Rnw:1699-1701
+### code chunk number 29: msm-manual.Rnw:1697-1699
 ###################################################
 options(digits=3)
 prevalence.msm(cav.msm, times=seq(0,20,2))
 
 
 ###################################################
-### code chunk number 30: msm-manual.Rnw:1703-1704
+### code chunk number 30: msm-manual.Rnw:1701-1702
 ###################################################
 plot.prevalence.msm(cav.msm, mintime=0, maxtime=20)
 
 
 ###################################################
-### code chunk number 31: msm-manual.Rnw:1837-1840
+### code chunk number 31: msm-manual.Rnw:1836-1839
 ###################################################
 options(digits=2)
 pearson.msm(cav.msm, timegroups=2,
@@ -206,7 +206,7 @@ pearson.msm(cav.msm, timegroups=2,
 
 
 ###################################################
-### code chunk number 32: msm-manual.Rnw:1965-1977
+### code chunk number 32: msm-manual.Rnw:1964-1976
 ###################################################
 Qm <- rbind(c(0, 0.148, 0, 0.0171),
             c(0, 0, 0.202, 0.081),
@@ -223,7 +223,7 @@ cavmisc.msm
 
 
 ###################################################
-### code chunk number 33: msm-manual.Rnw:2005-2009
+### code chunk number 33: msm-manual.Rnw:2004-2008
 ###################################################
 cavmiscsex.msm <- msm(state ~ years, subject = PTNUM, data = cav,
                       qmatrix = Qm, ematrix = ematrix,
@@ -232,40 +232,40 @@ cavmiscsex.msm <- msm(state ~ years, subject = PTNUM, data = cav,
 
 
 ###################################################
-### code chunk number 34: msm-manual.Rnw:2011-2012
+### code chunk number 34: msm-manual.Rnw:2010-2011
 ###################################################
 cavmiscsex.msm
 
 
 ###################################################
-### code chunk number 35: msm-manual.Rnw:2032-2034
+### code chunk number 35: msm-manual.Rnw:2031-2033
 ###################################################
 ematrix.msm(cavmiscsex.msm, covariates=list(sex=0))
 ematrix.msm(cavmiscsex.msm, covariates=list(sex=1))
 
 
 ###################################################
-### code chunk number 36: msm-manual.Rnw:2081-2083
+### code chunk number 36: msm-manual.Rnw:2080-2082
 ###################################################
 pearson.msm(cavmisc.msm, timegroups=2,
             transitions=c(1,2,3,4,5,6,7,8,9,9,9,10))
 
 
 ###################################################
-### code chunk number 37: msm-manual.Rnw:2129-2131
+### code chunk number 37: msm-manual.Rnw:2128-2130
 ###################################################
 vit <- viterbi.msm(cavmisc.msm)
 vit[vit$subject==100103,]
 
 
 ###################################################
-### code chunk number 38: msm-manual.Rnw:2329-2330
+### code chunk number 38: msm-manual.Rnw:2328-2329
 ###################################################
 three.q <- rbind(c(0, exp(-6), exp(-9)), c(0, 0, exp(-6)), c(0, 0, 0))
 
 
 ###################################################
-### code chunk number 39: msm-manual.Rnw:2348-2360
+### code chunk number 39: msm-manual.Rnw:2347-2359
 ###################################################
 hmodel1 <- list(hmmNorm(mean=100, sd=16), hmmNorm(mean=54, sd=18),
                 hmmIdent(999))
@@ -282,13 +282,13 @@ sojourn.msm(fev1.msm)
 
 
 ###################################################
-### code chunk number 40: msm-manual.Rnw:2613-2614 (eval = FALSE)
+### code chunk number 40: msm-manual.Rnw:2612-2613 (eval = FALSE)
 ###################################################
 ## help(msm)
 
 
 ###################################################
-### code chunk number 41: msm-manual.Rnw:2622-2623 (eval = FALSE)
+### code chunk number 41: msm-manual.Rnw:2621-2622 (eval = FALSE)
 ###################################################
 ## help.start()
 

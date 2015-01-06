@@ -952,7 +952,7 @@ statetable.msm(state, PTNUM, data=cav)
 @
 Thus there were 148 CAV-free deaths, 48 deaths from state 2, and
 55 deaths from state 3.  On only four occasions was there an
-observation of severe CAV followed by an observation of no CAV.
+observation of severe CAV followed by an observation of no CAV.   
 
 
 \subsection{Specifying a model}
@@ -983,8 +983,8 @@ It is important to remember that this defines which
 that the data are \emph{snapshots} of the process (see
 section \ref{sec:arbitr-observ-times}).  Although there were 44
 occasions on which a patient was observed in state 1 followed by state
-3, the underlying model specifies that the patient must have passed
-through state 2 in between.  If your data represent the exact and
+3, we can still have $q_{13}=0$. The underlying model specifies that the patient must have passed
+through state 2 in between, rather than jumping straight from 1 to 3.  If your data represent the exact and
 complete transition times of the process, then you must specify
 \Rfunarg{exacttimes=TRUE} or \Rfunarg{obstype=2} in the call to
 \Rfunction{msm}.
@@ -1597,13 +1597,11 @@ maximum likelihood, or it may be close to the maximum.
   to run the model for several different initial values to ensure that
   the estimation has converged to a global rather than a local optimum.
 
-\item[Scaling] It is often necessary to apply a scaling factor to
-  normalise the likelihood (\Rfunarg{fnscale}), or certain individual
-  parameters \Rfunarg{(parscale)}.  This may prevent overflow or
-  underflow problems within the optimisation.  For example, if the value
-  of the -2 $\times$ log-likelihood is around 5000, then the following
-  option leads to an minimisation of the -2 $\times$ log-likelihood on
-  an approximate unit scale: \Rfunarg{control = list(fnscale = 5000)}
+\item[Scaling] It is often necessary to apply a scaling factor to normalise the likelihood (\Rfunarg{fnscale}), or certain individual parameters \Rfunarg{(parscale)}.  This may prevent overflow or underflow problems within the optimisation.  For example, if the value of the -2 $\times$ log-likelihood is around 5000, then the following option leads to an minimisation of the -2 $\times$ log-likelihood on an approximate unit scale: \Rfunarg{control = list(fnscale = 5000)}.  
+  % Though since version 1.4.1, \Rfunarg{fnscale} is applied automatically using the likelihood at the initial values, unless the user has already supplied it.
+%    If not provided by the user, \code{control=list(fnscale = a)} is
+%    applied automatically to normalise the optimisation, where \code{a}
+%    is the minus twice log likelihood at the initial values.
 
   It is also advisable to analyse all variables, including covariates
   and the time unit, on a roughly normalised scale. For example,
@@ -1727,9 +1725,10 @@ failure of the Markov assumption.  That is, the transition intensities
 may depend on the time spent in the current state (a semi-Markov
 process) or other characteristics of the process history.  Accounting
 for the process history is difficult as the process is only observed
-through a series of snapshots.  For a multi-state model with one-way
-progression through states, and frequent observations, we may be able
-to estimate the time spent in each state by each individual.
+through a series of snapshots.  Semi-Markov 
+models may in principle be fitted to this type of data using phase-type distributions.  Since
+version 1.4.1 the \Rfunarg{phase.states} option to \Rfunction{msm} can be used to 
+define some phase-type models.  See \Rfunction{help(msm)} for further details.
 
 However, if it is known that individuals who died would not have been
 followed up after a certain time, had they survived to that time, then

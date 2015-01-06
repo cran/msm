@@ -391,6 +391,11 @@ void MatrixExpEXPM(double *mat, int *n, double *expmat, double *t,
     else {
 	for (i=0; i<((*n)*(*n)); ++i) {
 	    matt[i] = (*t) * mat[i];
+	    /* Check whether any of the elements of Q have overflowed.  If
+	       so, Fortran eigen function will hang in a infinite loop, so
+	       bail out before this happens.  */
+	    if (!R_FINITE(matt[i]))
+		error("numerical overflow in calculating likelihood\n");
 	}
 	expm(matt, *n, expmat, Ward_2);
     }

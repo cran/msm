@@ -110,17 +110,26 @@ draic.msm <- function(msm.full,msm.coarse,
 
 drlcv.msm <- function(msm.full,msm.coarse,tl=0.95,cores=NULL,verbose=TRUE,outfile=NULL)
 {
+    if (!inherits(msm.full, "msm")) stop("Expected \"msm.full\" to be a msm model")
+    if (!inherits(msm.coarse, "msm")) stop("Expected \"msm.coarse\" to be a msm model")
+    if (msm.full$hmodel$hidden || msm.coarse$hmodel$hidden) stop("Hidden Markov models not supported")
+    if (msm.full$cmodel$ncens > 0 || msm.coarse$cmodel$ncens >0) stop("Models with censoring not supported")
     ## Reconstruct datasets used to fit each model as dataframes
-    msm.full.data <- reconstruct.data(msm.full$data$mf)
-    msm.coarse.data <- reconstruct.data(msm.coarse$data$mf)
+    msm.full.data <- reconstruct.data(model.frame(msm.full))
+    msm.coarse.data <- reconstruct.data(model.frame(msm.coarse))
     un <- attr(msm.full.data, "usernames")
     subj <- un["subject"]; st <- un["state"]
     unc <- attr(msm.coarse.data, "usernames")
     subjc <- unc["subject"]; stc <- unc["state"]
-
+    if (nrow(msm.full.data) != nrow(msm.coarse.data)) stop("Full dataset has ",nrow(msm.full.data)," rows, but coarse dataset has ",nrow(msm.coarse.data)," rows, these should be equal.")
+    
     ## Determine map from full to coarsened data
     coarsening.ematrix <- matrix(0,nrow=msm.full$qmodel$nstates, ncol=msm.full$qmodel$nstates)
-    map <- unique(cbind(msm.full.data[,st], msm.coarse.data[,stc]))
+    map <- unique(cbind(full=msm.full.data[,st], coarse=msm.coarse.data[,stc]))
+    if (!all(tapply(map[,"coarse"], map[,"full"], function(x)length(unique(x)))==1)){
+        message("Observed the following state mappings in the data:")
+        print(map); stop("Coarse state space not an aggregation of the the full state space")
+    }
     coarsening.ematrix[map] <- 1
 
     ## Initial state occupancy probabilities assumed equal across possible states
@@ -164,7 +173,8 @@ drlcv.msm <- function(msm.full,msm.coarse,tl=0.95,cores=NULL,verbose=TRUE,outfil
 
         ## Loglik of refitted model on left-out subject
         call$data <- msm.coarse.data[msm.coarse.data[,subjc] == unique(msm.coarse.data[,subjc])[i],]
-        call$qmatrix <- qmatrix.msm(res.coarse, ci="none")
+        call$qmatrix <- qmatrix.msm(res.coarse, ci="none", covariates=0)
+        call$center <- FALSE
         call$covinits <- lapply(res.coarse$Qmatrices[res.coarse$qcmodel$covlabels],
                                 function(x){t(x)[res.coarse$qmodel$imatrix==1]})
         ## Workaround to avoid dropping unused levels and breaking model.matrix when factor() used around an existing factor in the data
@@ -191,9 +201,10 @@ drlcv.msm <- function(msm.full,msm.coarse,tl=0.95,cores=NULL,verbose=TRUE,outfil
         call$formula <- as.formula(paste(stc, "~", unc["time"]))
         call$data <- msm.coarse.data[msm.coarse.data[,subjc] == unique(msm.coarse.data[,subjc])[i],]
         call$ematrix <- coarsening.ematrix
-        call$qmatrix <- qmatrix.msm(msm.full, ci="none")
-        call$covinits <- lapply(msm.full$Qmatrices[msm.full$qcmodel$covlabels],
-                                function(x){t(x)[msm.full$qmodel$imatrix==1]})
+        call$qmatrix <- qmatrix.msm(res.full, ci="none", covariates=0)
+        call$center <- FALSE
+        call$covinits <- lapply(res.full$Qmatrices[res.full$qcmodel$covlabels],
+                                function(x){t(x)[res.full$qmodel$imatrix==1]})
         if (!is.null(call$covariates)){
             call$covariates <- as.formula(gsub("factor\\((.+)\\)", "factor(\\1,levels=levels(\\1))", call$covariates))
             names(call$covinits) <- gsub("factor\\((.+)\\)", "factor(\\1, levels = levels(\\1))", names(call$covinits))
@@ -205,8 +216,9 @@ drlcv.msm <- function(msm.full,msm.coarse,tl=0.95,cores=NULL,verbose=TRUE,outfil
         res <- eval(call)
         lsm <- as.numeric(logLik.msm(res))
 
-        resc <- sprintf("i=%d, smallrest = %f, smalli = %f, bigrest = %f, bigi = %f, diff = %f\n",
-                        i,  lssf, lss, lsmf, lsm,  lss - lsm)
+        conv <- ifelse(res.full$opt$convergence==0, "converged", "NOT CONVERGED")
+        resc <- sprintf("i=%d, smallrest = %.12f, smalli = %.12f, bigrest = %.12f, bigi = %.12f, diff = %.12f, %s\n",
+                        i,  lssf, lss, lsmf, lsm,  lss - lsm, conv)
         if (verbose) cat(resc)
         if (!is.null(outfile)) cat(resc, file=outfile, append=TRUE)
 
@@ -215,14 +227,16 @@ drlcv.msm <- function(msm.full,msm.coarse,tl=0.95,cores=NULL,verbose=TRUE,outfil
     if (is.null(cores) || cores==1) parallel <- FALSE else parallel <- TRUE;
     if (parallel){
         if (!is.null(cores) && cores=="default") cores <- NULL
-        require(doParallel)
+        if (requireNamespace("doParallel", quietly = TRUE)){
 ### can't get this working separated out into a function like portable.parallel(). Variable exporting / scoping doesnt' work.
-# no need to export these?   "msm.coarse", "msm.coarse.data", "msm.full", "msm.full.data","coarsening.ematrix", "initp"
-        if (.Platform$OS.type == "windows") {
-            cl <- makeCluster(cores)
-            registerDoParallel(cl)
-        } else registerDoParallel(cores=cores)
-        cv <- foreach(i=1:n, .packages="msm", .export=c(ls(.GlobalEnv))) %dopar% { cv.fn(i) }
+### no need to export these?   "msm.coarse", "msm.coarse.data", "msm.full", "msm.full.data","coarsening.ematrix", "initp"
+            if (.Platform$OS.type == "windows") {
+                cl <- parallel::makeCluster(cores)
+                doParallel::registerDoParallel(cl)
+            } else doParallel::registerDoParallel(cores=cores)
+            cv <- foreach::"%dopar%"(foreach::foreach(i=1:n, .packages="msm", .export=c(ls(.GlobalEnv))),
+                                     { cv.fn(i) })
+        } else stop("\"parallel\" package not available")
     }
     else {
         cv <- vector(mode="list", n)
@@ -237,7 +251,7 @@ drlcv.msm <- function(msm.full,msm.coarse,tl=0.95,cores=NULL,verbose=TRUE,outfil
         logLik.msm(msm.coarse, by.subject=TRUE)
     omega.sq <- mean(dlh*dlh) - mean(dlh)^2
     half.width <- qnorm(1 - 0.5*(1 - tl)) * sqrt(omega.sq / n)
-    prob.DRLCV <- pnorm(-DRLCV * sqrt(omega.sq / n))
+    prob.DRLCV <- pnorm(-DRLCV / sqrt(omega.sq / n))
     res.int <- c("2.5%"=DRLCV-half.width,"97.5%"=DRLCV+half.width,"Prob<0"=prob.DRLCV)
     liks <- cbind("-LL" = c(-lsm, -lss, -(lsm-lss), -(lsm-lss)/n))
     rownames(liks) <- c("complex","simple","complex-simple","(complex-simple)/n")

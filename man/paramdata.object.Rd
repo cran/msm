@@ -4,7 +4,8 @@
 \description{
   An object giving information about the parameters of the multi-state
   model.  Used internally during maximum likelihood estimation and
-  arranging results.  Returned in a fitted \code{\link{msm}} model object.
+  arranging results.  Returned as the \code{paramdata} component of a
+  fitted \code{\link{msm}} model object.
 }
 \value{
   \item{inits}{Vector of initial values for distinct parameters which

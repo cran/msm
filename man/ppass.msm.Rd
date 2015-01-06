@@ -3,7 +3,7 @@
 \title{Passage probabilities}
 \description{
   Probabilities of having visited each state by a particular time
-  in a Markov model.
+  in a continuous time Markov model.
 }
 \usage{
 ppass.msm(x=NULL, qmatrix=NULL, tot, start="all", covariates="mean",

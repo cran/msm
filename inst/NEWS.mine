@@ -3,56 +3,15 @@
 USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
-
-Version 1.5  (2015-01-05)
------------
-
-o CRAN release. Includes the changes from versions 1.4.1 - 1.4.3.
-
-
-Version 1.4.3  (2014-12-12)
+Version 1.4.1
 -------------
-
-o Phase type models now allow an extra hidden Markov model on top.
-
-o R-forge only release. 
-
-
-Version 1.4.2  (2014-12-11)
--------------
-
-o R-forge only release. 
-
-o viterbi.msm now returns the "posterior" probability of each hidden
-  state at each time, given the full data.
-
-o Bug fixes to misclassification models where some states were
-  misclassified as other states with probability 1, for both ematrix
-  and hmmCat specifications.  Thanks to Li Su.
-
-
-Version 1.4.1  (2014-12-10)
--------------
-
-o R-forge only release. 
-
-o Experimental facility for two-phase semi-Markov models.
 
 o Memory leaks in C code fixed.  Thanks to Brian Ripley.
 
-o Don't print CIs for fixed parameters.
+o Three and four-state versions of the BOS data provided.
 
 o Documented that factors are allowed as the state variable as long as
   their levels are called "1", "2",...
-
-o Bug fixes for covariates on initial state occupancy probabilities
-  with structural zeros.  Thanks to Jeffrey Eaton and Tara Mangal.
-
-o Bug fixes for drlcv.msm. Thanks to Howard Thom.
-
-o Give warning that polynomial contrasts aren't supported.
-
-o Three and four-state versions of the BOS data provided.
 
 
 Version 1.4  (2014-07-04)

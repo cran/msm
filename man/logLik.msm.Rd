@@ -18,9 +18,12 @@
 \value{
   The log-likelihood of the model represented by
   'object' evaluated at the maximum likelihood estimates.
+
+  Akaike's information criterion can also be computed using
+  \code{\link{AIC}(object)}.
 }
 \seealso{
-  \code{\link{msm}}
+  \code{\link{msm}},\code{\link{lrtest.msm}}.
 }
 \author{C. H. Jackson \email{chris.jackson@mrc-bsu.cam.ac.uk}}
 \keyword{models}

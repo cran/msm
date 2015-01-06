@@ -12,8 +12,9 @@
   models fitted using the \code{pci} argument to \code{\link{msm}}.
 }
 \usage{
-pmatrix.piecewise.msm(x, t1, t2, times, covariates,
-ci=c("none","normal","bootstrap"), cl=0.95, B=1000, cores=NULL, ...)
+pmatrix.piecewise.msm(x=NULL, t1, t2, times, covariates,
+ci=c("none","normal","bootstrap"), cl=0.95, B=1000, cores=NULL,
+qlist=NULL,...)
 }
 \arguments{
 
@@ -63,6 +64,11 @@ ci=c("none","normal","bootstrap"), cl=0.95, B=1000, cores=NULL, ...)
 
   \item{cores}{Number of cores to use for bootstrapping using parallel
     processing. See \code{\link{boot.msm}} for more details.}
+
+  \item{qlist}{A list of transition intensity matrices, of length one
+  greater than the length of \code{times}.    Either this or
+  a fitted model \code{x} must be supplied.   No confidence intervals
+  are available if (just) \code{qlist} is supplied.}
 
   \item{...}{Optional arguments to be passed to \code{\link{MatrixExp}} to
     control the method of computing the matrix exponential.}

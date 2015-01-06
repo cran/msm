@@ -6,8 +6,9 @@
   model for a given time interval, at a given set of covariate values.
 }
 \usage{
-pmatrix.msm(x, t=1, t1=0, covariates="mean",
-            ci=c("none","normal","bootstrap"), cl=0.95, B=1000, cores=NULL,
+pmatrix.msm(x=NULL, t=1, t1=0, covariates="mean",
+            ci=c("none","normal","bootstrap"), cl=0.95, B=1000,
+            cores=NULL, qmatrix=NULL, 
             ...)
 }
 \arguments{
@@ -75,6 +76,10 @@ pmatrix.msm(x, t=1, t1=0, covariates="mean",
 
   \item{cores}{Number of cores to use for bootstrapping using parallel
     processing. See \code{\link{boot.msm}} for more details.}
+
+  \item{qmatrix}{A transition intensity matrix.   Either this or
+  a fitted model \code{x} must be supplied.   No confidence intervals
+  are available if \code{qmatrix} is supplied.}
 
   \item{...}{Optional arguments to be passed to \code{\link{MatrixExp}} to
     control the method of computing the matrix exponential.}

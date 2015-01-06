@@ -1,3 +1,110 @@
+2015-01-05 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* DESCRIPTION: Version 1.5 released to CRAN.
+
+2014-12-12 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R,R/phase.R. Phase type models now allow HMM on top.  Bug
+	fixes to these models.
+
+	* DESCRIPTION: Version 1.4.3 released to r-forge.
+
+2014-12-11 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	*  Posterior probability of the hidden state at each time in the
+	Viterbi algorithm now conditions on all the data.
+
+	* R/msm.R,R/outputs.R(various): Bug fixes to misclassification
+	models where some states were misclassified as other states with
+	probability 1, for both ematrix and hmmCat specifications.  Thanks
+	to Li Su for the report.
+
+	* DESCRIPTION: Version 1.4.2 released to r-forge.
+
+2014-12-10 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* src/lik.c, R/outputs.R: Viterbi algorithm now also returns the
+	probability of each hidden state at each time given the data up to
+	that point.
+
+	* data/msmdata.rda: statemax added to CAV data.
+
+	* man: Document that generic AIC function AIC() works for msm
+	models.
+
+	* DESCRIPTION: Version 1.4.1 released to r-forge.
+
+2014-12-08 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/phase.R,R/msm.R,Rd/2phase.Rd: New features for phase-type
+	models.
+
+2014-12-04 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/draic.R: Bug fixes in drlcv.msm (likelihood of big model on
+	left-one-out subject was using the original instead of the
+	refitted model, and used covariate centering
+	inconsistently). Thanks to Howard Thom.
+
+2014-12-02 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R(msm.initprobs2mat,msm.form.houtput): Bug fixes for
+	covariates on initial state occupancy probabilities with
+	structural zeros in.  Thanks to Jeffrey Eaton and Tara Mangal.
+
+	* R/msm.R(msm.form.output): Clean up code, also ensure models
+	fitted with 1.4 can be printed with 1.4.1.
+
+2014-11-27 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/draic.R: Bug fix in "prob > 0" in drlcv.msm. Thanks to Howard
+	Thom.
+
+	* R/msm.R: colSums efficiency improvement in msm.add.qcovs,
+	msm.form.dq.  Thanks to Jeffrey Eaton.
+
+2014-11-19 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: Allow qmatrix to be passed to pmatrix.msm, and a
+	list of qmatrices to pmatrix.piecewise.msm, instead of a fitted
+	model.
+
+2014-11-18 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R: qmatrix.msm and related functions tidied up.
+
+	* R/outputs.R,R/msm.R: Don't print CIs for fixed parameters in
+	output formatting functions.
+
+	* R/msm.R: Warn that polynomial contrasts aren't supported.
+
+2014-11-11 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* src/pijt.c(MatrixExpEXPM): give error if optimiser has chosen
+	overflowing parameter values.  Stops infinite loops seen on
+	Windows.
+
+2014-11-10 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R: Documentation and error message for factor states.
+
+2014-10-31 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R(efpt.msm): Support tostate as character.
+
+	* man/plot.survfit.msm: Reference Turnbull method.
+
+	* src/lik.c(GetCensored): Fixed valgrind uninitialized value warning.
+
+2014-09-22 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/optim.R(deriv.test): require namespace instead of loading
+	numDeriv
+
+2014-07-04 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* src/analyticp.c: memory leaks removed.
+
 2014-07-04 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* DESCRIPTION: Version 1.4 released to CRAN.

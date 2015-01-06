@@ -73,8 +73,20 @@ msm.optim.fixed <- function(p, gr, hessian, msmdata, qmodel, qcmodel, cmodel, hm
 msm.optim.optim <- function(p, gr, hessian, msmdata, qmodel, qcmodel, cmodel, hmodel, ...) {
     optim.args <- list(...)
     if (is.null(optim.args$method))
-        optim.args$method <- if (deriv.supported(hmodel, cmodel)) "BFGS" else "Nelder-Mead"
-#        optim.args$method <- if (length(p$inits)==1) "BFGS" else "Nelder-Mead"
+        optim.args$method <- if (deriv.supported(hmodel, cmodel) || (length(p$inits)==1)) "BFGS" else "Nelder-Mead"
+
+    if (is.null(optim.args$control)) optim.args$control <- list()
+
+# this might cause more trouble than it solves.    
+
+#    	* R/optim.R: Pass fnscale to optim() automatically, if not already
+#	provided, using the likelihood at the initial values.  Wastes a
+#	likelihood calculation but should improve convergence.
+
+#    if (is.null(optim.args$control$fnscale))
+#        optim.args$control$fnscale <- lik.msm(p$inits, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
+#                                              cmodel=cmodel, hmodel=hmodel, paramdata=p)
+    
     optim.args <- c(optim.args, list(par=p$inits, fn=lik.msm, hessian=hessian, gr=gr,
                                      msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
                                      cmodel=cmodel, hmodel=hmodel, paramdata=p))
@@ -170,12 +182,13 @@ msm.optim.fisher <- function(p, gr, hessian, msmdata, qmodel, qcmodel, cmodel, h
 }
 
 msm.optim.bobyqa <- function(p, gr, hessian, msmdata, qmodel, qcmodel, cmodel, hmodel, ...) {
-    require(minqa)
     optim.args <- list(...)
     optim.args <- c(optim.args, list(par=p$inits, fn=lik.msm,
                                      msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel,
                                      cmodel=cmodel, hmodel=hmodel, paramdata=p))
-    opt <- do.call("bobyqa", optim.args)
+    if (requireNamespace("minqa", quietly = TRUE)){
+        opt <- do.call("bobyqa", optim.args)
+    } else stop("\"minqa\" package not available")
     if (opt$ierr %in% 1:5)
         warning(opt$msg, ". Reported estimates are not the maximum likelihood. See help(bobyqa) and help(msm).")
     if (hessian)
@@ -198,7 +211,7 @@ msm.optim.bobyqa <- function(p, gr, hessian, msmdata, qmodel, qcmodel, cmodel, h
 deriv.test <- function(msmdata, qmodel, qcmodel, cmodel, hmodel, p){
     an.d <- deriv.msm(p$inits, msmdata, qmodel, qcmodel, cmodel, hmodel, p)
 
-    if (0){
+#    if (0){
     ## fiddly method using stats::numericDeriv
     likwrap <- function(x, ...){
         pars <- list(unlist(list(...)))
@@ -212,12 +225,13 @@ deriv.test <- function(msmdata, qmodel, qcmodel, cmodel, hmodel, p){
     foo <- numericDeriv(as.call(lapply(as.list(c("likwrap", "x", pvec)), as.name)), pvec, myenv)
     num.d <- attr(foo,"gradient")
     err <- mean(abs(an.d - num.d))
-}
-    err <- num.d <- NULL
+#}
+#    err <- num.d <- NULL
 
     ## much cleaner method. appears to be more accurate as well
-    require(numDeriv)
-    numd2 <- grad(lik.msm, p$inits, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel, cmodel=cmodel, hmodel=hmodel, paramdata=p)
+    if (requireNamespace("numDeriv", quietly = TRUE))
+        numd2 <- numDeriv::grad(lik.msm, p$inits, msmdata=msmdata, qmodel=qmodel, qcmodel=qcmodel, cmodel=cmodel, hmodel=hmodel, paramdata=p)
+    else stop("\"numDeriv\" package not available")
     err2 <- mean(abs(an.d - numd2))
 
     res <- cbind(analytic=an.d, numeric.base=as.vector(num.d), numeric.nd=numd2)

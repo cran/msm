@@ -99,15 +99,19 @@ boot.msm <- function(x, stat=pmatrix.msm, B=1000, file=NULL, cores=NULL){
     if (is.null(cores) || cores==1) parallel <- FALSE else parallel <- TRUE;
     if (parallel) {
         if (!is.null(cores) && cores=="default") cores <- NULL
-        require(doParallel)
+        if (requireNamespace("doParallel", quietly = TRUE)){
 ### can't get this working separated out into a function like portable.parallel(). Variable exporting / scoping doesnt' work.
-        if (.Platform$OS.type == "windows") {
-            cl <- makeCluster(cores)
-            registerDoParallel(cl)
-        } else registerDoParallel(cores=cores)
-        boot.list <- foreach(i=1:B, .packages="msm", .export=c("x",ls(.GlobalEnv))) %dopar% { boot.fn(i) }
-        if (.Platform$OS.type == "windows")
-            stopCluster(cl)
+            if (.Platform$OS.type == "windows") {
+                cl <- parallel::makeCluster(cores)
+                doParallel::registerDoParallel(cl)
+            } else doParallel::registerDoParallel(cores=cores)
+            boot.list <- foreach::"%dopar%"(foreach::foreach(i=1:B, .packages="msm", .export=c("x",ls(.GlobalEnv))),
+                                            { boot.fn(i) })
+            if (.Platform$OS.type == "windows")
+                parallel::stopCluster(cl)
+        }
+        else stop("\"parallel\" package not available")
+
     }
     else {
         boot.list <- vector(B, mode="list")
@@ -121,8 +125,8 @@ boot.msm <- function(x, stat=pmatrix.msm, B=1000, file=NULL, cores=NULL){
 
 ### Utilities for calculating bootstrap CIs for particular statistics
 
-qematrix.ci.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALSE, cl=0.95, B=1000, cores=NULL) {
-    q.list <- boot.msm(x, function(x)qematrix.msm(x=x, covariates=covariates, intmisc=intmisc)$estimates, B=B, cores=cores)
+qmatrix.ci.msm <- function(x, covariates="mean", sojourn=FALSE, cl=0.95, B=1000, cores=NULL) {
+    q.list <- boot.msm(x, function(x)qmatrix.msm(x=x, covariates=covariates)$estimates, B=B, cores=cores)
     q.array <- array(unlist(q.list), dim=c(dim(q.list[[1]]), length(q.list)))
     q.ci <- apply(q.array, c(1,2), function(x)(c(quantile(x, c(0.5 - cl/2, 0.5 + cl/2)), sd(x))))
     q.ci <- aperm(q.ci, c(2,3,1))
@@ -132,6 +136,13 @@ qematrix.ci.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALS
         list(q=q.ci, soj=soj.ci)
     }
     else q.ci
+}
+
+ematrix.ci.msm <- function(x, covariates="mean", cl=0.95, B=1000, cores=NULL) {
+    e.list <- boot.msm(x, function(x)ematrix.msm(x=x, covariates=covariates)$estimates, B=B, cores=cores)
+    e.array <- array(unlist(e.list), dim=c(dim(e.list[[1]]), length(e.list)))
+    e.ci <- apply(e.array, c(1,2), function(x)(c(quantile(x, c(0.5 - cl/2, 0.5 + cl/2)), sd(x))))
+    aperm(e.ci, c(2,3,1))
 }
 
 qratio.ci.msm <- function(x, ind1, ind2, covariates="mean", cl=0.95, B=1000, cores=NULL) {
@@ -186,6 +197,13 @@ ppass.ci.msm <- function(x, qmatrix, tot, start, covariates="mean", piecewise.ti
     list(L=matrix(ci[1,],ncol=nst,dimnames=di), U=matrix(ci[2,],ncol=nst, dimnames=di))
 }
 
+phasemeans.ci.msm <- function(x, covariates="mean", cl=0.95, B=1000, cores=NULL, ...) {
+    p.list <- boot.msm(x, function(x)phasemeans.msm(x=x, covariates=covariates, ci="none", ...), B=B, cores=cores)
+    p.array <- array(unlist(p.list), dim=c(dim(p.list[[1]]), length(p.list)))
+    p.ci <- apply(p.array, c(1,2), function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
+    aperm(p.ci, c(2,3,1))
+}
+
 expected.ci.msm <- function(x,
                             times=NULL,
                             timezero=NULL,
@@ -229,11 +247,11 @@ normboot.msm <- function(x, stat, B=1000) {
     for (i in 1:B) {
         x.rep <- x
         x.rep$paramdata$params <- params[i,]
-        output <- msm.form.output("intens", x.rep$qmodel, x.rep$qcmodel, x.rep$paramdata)
-        x.rep$Qmatrices <- output$Matrices
+        output <- msm.form.output(x.rep, "intens")
+        x.rep$Qmatrices <- output$Qmatrices
         if (x$emodel$misc) {
-            output <- msm.form.output("misc", x.rep$emodel, x.rep$ecmodel, x.rep$paramdata)
-            x.rep$Ematrices <- output$Matrices
+            output <- msm.form.output(x.rep, "misc")
+            x.rep$Ematrices <- output$Ematrices
             names(x.rep$Ematrices)[1] <- "logitbaseline"
         }
         sim.stat[[i]] <- stat(x.rep)
@@ -241,8 +259,8 @@ normboot.msm <- function(x, stat, B=1000) {
     sim.stat
 }
 
-qematrix.normci.msm <- function(x, covariates="mean", intmisc="intens", sojourn=FALSE, cl=0.95, B=1000) {
-    q.list <- normboot.msm(x, function(x)qematrix.msm(x=x, covariates=covariates, intmisc=intmisc, ci="none"), B)
+qmatrix.normci.msm <- function(x, covariates="mean", sojourn=FALSE, cl=0.95, B=1000) {
+    q.list <- normboot.msm(x, function(x)qmatrix.msm(x=x, covariates=covariates, ci="none"), B)
     q.array <- array(unlist(q.list), dim=c(dim(q.list[[1]]), length(q.list)))
     q.ci <- apply(q.array, c(1,2), function(x)(c(quantile(x, c(0.5 - cl/2, 0.5 + cl/2)), sd(x))))
     q.ci <- aperm(q.ci, c(2,3,1))
@@ -252,6 +270,13 @@ qematrix.normci.msm <- function(x, covariates="mean", intmisc="intens", sojourn=
         list(q=q.ci, soj=soj.ci)
     }
     else q.ci
+}
+
+ematrix.normci.msm <- function(x, covariates="mean", cl=0.95, B=1000) {
+    e.list <- normboot.msm(x, function(x)ematrix.msm(x=x, covariates=covariates, ci="none"), B)
+    e.array <- array(unlist(e.list), dim=c(dim(e.list[[1]]), length(e.list)))
+    e.ci <- apply(e.array, c(1,2), function(x)(c(quantile(x, c(0.5 - cl/2, 0.5 + cl/2)), sd(x))))
+    aperm(e.ci, c(2,3,1))
 }
 
 qratio.normci.msm <- function(x, ind1, ind2, covariates="mean", cl=0.95, B=1000) {
@@ -327,4 +352,11 @@ expected.normci.msm <- function(x,
     res <- list(aperm(e.tab.ci, c(2,3,1)),  aperm(e.perc.ci, c(2,3,1)))
     names(res) <- c("Expected", "Expected percentages")
     res
+}
+
+phasemeans.normci.msm <- function(x, covariates="mean", cl=0.95, B=1000, ...) {
+    p.list <- normboot.msm(x, function(x)phasemeans.msm(x=x, covariates=covariates, ci="none", ...), B)
+    p.array <- array(unlist(p.list), dim=c(dim(p.list[[1]]), length(p.list)))
+    p.ci <- apply(p.array, c(1,2), function(x)(quantile(x, c(0.5 - cl/2, 0.5 + cl/2))))
+    aperm(p.ci, c(2,3,1))
 }

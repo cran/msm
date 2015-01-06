@@ -105,4 +105,5 @@ test_that("various errors",{
     expect_error(misc.msm <- msm(state ~ years, subject = PTNUM, data = cav, qmatrix = oneway4.q, ematrix=wrong.e, death = 4, fixedpars=TRUE),"Number of rows and columns of ematrix should be equal")
     wrong.e <- cbind(c(0,1), c(0,2))
     expect_error(misc.msm <- msm(state ~ years, subject = PTNUM, data = cav, qmatrix = oneway4.q, ematrix=wrong.e, death = 4, fixedpars=TRUE),"Dimensions of qmatrix and ematrix should be the same")
+    expect_warning(msm(state ~ years, subject = PTNUM, data = cav, qmatrix = oneway4.q, ematrix=ematrix, death = 4, fixedpars=TRUE, gen.inits=TRUE), "gen.inits not supported for hidden Markov models, ignoring")
 })

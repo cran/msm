@@ -7,6 +7,12 @@
   cross-validation criterion, for comparing the predictive ability of two
   multi-state models with nested state spaces.  This is evaluated based
   on the restricted or aggregated data which the models have in common.
+
+  Note that standard AIC can be computed for one or more fitted
+  \code{msm} models \code{x,y,...} using \code{\link{AIC}(x,y,...)}, and
+  this can be used to compare models fitted to the same
+  data. \code{draic.msm} and \code{drlcv.msm} are designed for models
+  fitted to data with differently-aggregated state spaces.
 }
 \usage{
 draic.msm(msm.full, msm.coarse, likelihood.only=FALSE,

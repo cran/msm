@@ -91,7 +91,20 @@
   Therefore the Kaplan-Meier estimate of the survival probability will
   be an overestimate.
 
+  The method of Turnbull (1976) could be used to give a non-parametric
+  estimate of the time to an interval-censored event, and compared to
+  the equivalent estimate from a multi-state model.  This is implemented
+  in the CRAN package \pkg{interval} (Fay and Shaw 2010).
+  
   This currently only handles time-homogeneous models. 
+}
+\references{
+  Turnbull, B. W. (1976) The empirical distribution function with arbitrarily grouped, censored and
+  truncated data. J. R. Statist. Soc. B 38, 290-295.
+
+  Fay, MP and Shaw, PA (2010). Exact and Asymptotic Weighted Logrank Tests for Interval Censored
+  Data: The interval R package. Journal of Statistical Software. http://www.jstatsoft.org/v36/
+  i02/. 36 (2):1-34.
 }
 \seealso{\code{\link[survival]{survfit}}, \code{\link[survival]{plot.survfit}}, \code{\link{plot.prevalence.msm}}}
 \keyword{models}

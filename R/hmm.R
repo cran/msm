@@ -373,14 +373,16 @@ in.range <- function(x, interval, strict=FALSE) {
         ( (x >= interval[1]) & (x <= interval[2]) )
 }
 
-## TODO could this be merged with msm.initprobs2mat?
-msm.form.initprobs <- function(hmodel, npts){
-    ## if (!is.null(phase.states)) {
-    ##     hmodel$initpmat <- matrix(0, nrow=msmdata.obs$npts, ncol=qmodel$nstates)
-    ##     initstate <- msmdata.obs$state[!duplicated(msmdata.obs$subject)]
-    ##     hmodel$initpmat[cbind(1:npts, match(initstate, pars))] <- 1
-    ##     hmodel$initpbysubj <- TRUE
-    ## }
+msm.form.initprobs <- function(hmodel, initprobs, mf){
+    npts <- attr(mf,"npts")
+    if (!is.null(hmodel$phase.states) && is.null(initprobs)) {
+        hmodel$initprobs <- matrix(0, nrow=npts, ncol=hmodel$nstates)
+        initstate <- mf$"(state)"[!duplicated(mf$"(subject)")]
+        hmodel$initprobs[cbind(1:npts, match(initstate, hmodel$pars))] <- 1
+        if (hmodel$est.initprobs)
+            warning("Not estimating initial state occupancy probabilities: assuming everyone starts at first phase")
+        hmodel$est.initprobs <- FALSE
+    }
     if (!hmodel$est.initprobs) {
         if (is.matrix(hmodel$initprobs)) {
             if (nrow(hmodel$initprobs) != npts)

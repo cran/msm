@@ -21,17 +21,13 @@
     \code{years}   \tab (numeric) \tab Examination time (years after transplant)\cr
     \code{dage}    \tab (numeric) \tab Age of heart donor (years) \cr
     \code{sex}   \tab (numeric) \tab sex (0=male, 1=female) \cr
-    \code{pdiag} \tab (factor) \tab Primary diagnosis (reason for
-    transplant)  \cr \tab \tab IHD=ischaemic heart disease, IDC=idiopathic dilated
-    cardiomyopathy. \cr
-    \code{cumrej}     \tab (numeric) \tab Cumulative number of acute rejection
-    episodes \cr
-    \code{state} \tab (numeric) \tab State at the examination. \cr \tab \tab State 1
-    represents no CAV, state 2 is mild/moderate CAV \cr \tab \tab and state 3 is severe
-  CAV.  State 4 indicates death.   \cr
-    \code{firstobs}   \tab (numeric) \tab 0 = record represents an
-    angiogram or date of death.\cr \tab \tab
+    \code{pdiag} \tab (factor) \tab Primary diagnosis (reason for transplant)  \cr \tab \tab IHD=ischaemic heart disease, IDC=idiopathic dilated  cardiomyopathy. \cr
+    \code{cumrej}     \tab (numeric) \tab Cumulative number of acute rejection  episodes \cr
+    \code{state} \tab (numeric) \tab State at the examination. \cr \tab
+    \tab State 1 represents no CAV, state 2 is mild/moderate CAV \cr \tab \tab and state 3 is severe CAV.  State 4 indicates death.   \cr
+    \code{firstobs}   \tab (numeric) \tab 0 = record represents an angiogram or date of death.\cr \tab \tab
     1 = record represents transplant (patient's first observation) \cr
+    \code{statemax}  \tab (numeric) \tab Maximum observed state so far for this patient (added in version 1.5.1) 
   }}
 \source{
   Papworth Hospital, U.K.

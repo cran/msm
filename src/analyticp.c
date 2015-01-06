@@ -78,7 +78,7 @@ void AnalyticP(Matrix pmat, double t, int nstates, int iso, int *perm, int *qper
 	for (j=0; j<nstates; ++j) {
 	    pmat[MI(i,j,nstates)] = pmat_base[MI(perm[i]-1,perm[j]-1,nstates)];
 	}
-    Free(pmat_base);
+    Free(pmat_base); Free(qmat_base);
 }
 
 

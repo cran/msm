@@ -24,6 +24,7 @@ lrtest.msm,
 odds.msm,
 pearson.msm,
 persp.msm,
+phasemeans.msm,    
 plot.msm,
 plotprog.msm,
 plot.prevalence.msm,
@@ -81,7 +82,12 @@ dpexp,
 ppexp,
 qpexp,
 rpexp,
-qgeneric
+qgeneric,
+d2phase,
+p2phase,
+q2phase,
+r2phase,
+h2phase   
 )
 
 importFrom(graphics, plot)

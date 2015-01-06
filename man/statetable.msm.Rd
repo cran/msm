@@ -4,7 +4,7 @@
 \description{
   Calculates a frequency table counting the number of times each pair of
   states were observed in successive observation times.  This can be a
-  useful way of summarising multi-state data. 
+  useful way of summarising multi-state data.
 }
 \usage{
 statetable.msm(state, subject, data=NULL)
@@ -21,6 +21,16 @@ statetable.msm(state, subject, data=NULL)
 \value{
   A frequency table with starting states as rows and finishing states as
   columns.
+}
+\details{
+  If the data are intermittently observed (panel data) this table should
+  not be used to decide what transitions should be allowed in the
+  \eqn{Q} matrix, which works in continuous time.  This function counts
+  the transitions between states over a time interval, not in real time.
+  There can be observed transitions between state \eqn{r} and \eqn{s}
+  over an interval even if \eqn{q_{rs}=0}, because the process may have
+  passed through one or more intermediate states in the middle of the
+  interval.  
 }
 \seealso{
   \code{\link{crudeinits.msm}}

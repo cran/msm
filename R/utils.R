@@ -344,14 +344,6 @@ rpexp <- function(n=1, rate=1, t=0)
       ret
   }
 
-mean.pexp <- function(rate=1, t=0){
-    if (length(t) != length(rate)) stop("length of t must be equal to length of rate")
-    if (!isTRUE(all.equal(0, t[1]))) stop("first element of t should be 0")
-    if (is.unsorted(t)) stop("t should be in increasing order")
-    t1 <- c(t[-1], Inf)
-    sum(    (t + 1/rate)*exp(-rate*t) - (t1 - 1/rate)*exp(-rate*t1)  )
-}
-
 qgeneric <- function(pdist, p, ...)
 {
     args <- list(...)

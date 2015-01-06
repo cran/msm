@@ -17,7 +17,9 @@ efpt.msm(x=NULL, qmatrix=NULL, tostate, start="all", covariates="mean",
   \item{qmatrix}{Instead of \code{x}, you can simply supply a transition
   intensity matrix in \code{qmatrix}.}
 
-  \item{tostate}{State (as integer), or set of states supplied as a vector, for which to estimate the first passage time into.}
+  \item{tostate}{State, or set of states supplied as a vector, for which
+    to estimate the first passage time into.  Can be integer, or character
+    matched to the row names of the Q matrix.}
 
   \item{start}{Starting state (integer).  By default (\code{start="all"}),
     this will return a vector of expected passage times from each

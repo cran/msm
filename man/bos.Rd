@@ -1,6 +1,8 @@
 \name{bos}
 \docType{data}
 \alias{bos}
+\alias{bos3}
+\alias{bos4}
 \title{Bronchiolitis obliterans syndrome after lung transplants}
 \description{
   A dataset containing histories of bronchiolitis obliterans syndrome
@@ -28,6 +30,10 @@
   beyond six months after transplant.   In the first six months
   the function of each patient's new lung stabilises.  Subsequently BOS
   is diagnosed by comparing the lung function against the "baseline" value. 
+
+  The objects \code{bos3} and \code{bos4} contain the same data, but
+  with mild/moderate/severe combined, and moderate/severe combined,
+  to give 3 and 4-state representations respectively.
 }
 \source{
   Papworth Hospital, U.K.
