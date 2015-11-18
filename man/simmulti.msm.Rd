@@ -24,7 +24,10 @@ simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
     censored, and if \code{cens==k}, say, then all simulated states at that
     time which are in the set \code{censor.states} are replaced by
     \code{k}.
-    Other named columns of the data frame represent any covariates.
+    Other named columns of the data frame represent any covariates,
+    which may be time-constant or time-dependent.  Time-dependent
+    covariates are assumed to be constant between the observation
+    times. 
   }
 
   \item{qmatrix}{
@@ -109,6 +112,8 @@ simmulti.msm(data, qmatrix, covariates=NULL, death = FALSE,  start,
   \item{state}{Simulated (true) state at the corresponding time}
   \item{obs}{Observed outcome at the corresponding time, if
     \code{ematrix} or \code{hmodel} was supplied}
+  \item{keep}{Row numbers of the original data.  Useful when
+    \code{drop.absorb=TRUE}, to show which rows were not dropped}
   plus any supplied covariates.
 }
 \details{

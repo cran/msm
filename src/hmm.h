@@ -1,7 +1,6 @@
 
 typedef double (*hmmfn)(double x, double *pars);
 typedef void (*dhmmfn)(double x, double *pars, double *d);
-typedef double (*linkfn)(double x);
 
 double hmmCat(double x, double *pars);
 double hmmIdent(double x, double *pars);

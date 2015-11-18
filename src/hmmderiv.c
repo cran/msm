@@ -78,6 +78,7 @@ void DhmmBinom(double x, double *pars, double *d)
     f = dbinom(x, size, prob, 0);
     d[0] = 0; // fixed
     d[1] = f*(x/prob - (size-x)/(1-prob));
+//    printf("f=%.3f, dlf=%.3f, d[1]=%.5f\n", f, (x/prob - (size-x)/(1-prob)), d[1]);
 }
  
 /* not sure these three are tractable. don't support */

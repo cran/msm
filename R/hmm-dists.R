@@ -36,6 +36,7 @@ hmmDIST <- function(label, link, r, call, ...)
         stop("Parameter ", .msm.HMODELPARS[[label]][min(miss.pars)], " for ", call[[1]], " not supplied")
     }
     pars <- unlist(lapply(call[.msm.HMODELPARS[[label]]], eval))
+    names(pars) <- .msm.HMODELPARS[[label]]
     hmmCheckInits(pars)
     hdist <- list(label = label,
                   pars = pars,
@@ -43,6 +44,15 @@ hmmDIST <- function(label, link, r, call, ...)
                   r = r)
     class(hdist) <- "hmmdist"
     hdist
+}
+
+### Multivariate distribution composed of independent univariates
+
+hmmMV <- function(...){
+    args <- list(...)
+    if (any(sapply(args, class) != "hmmdist")) stop("All arguments of \"hmmMV\" should be HMM distribution objects")
+    class(args) <- c("hmmMVdist","hmmdist")
+    args
 }
 
 hmmCheckInits <- function(pars)

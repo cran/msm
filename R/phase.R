@@ -90,8 +90,7 @@ msm.phase2hmodel <- function(qmodel, hmodel){
     ## dummy initprobs here: actually defined later in msm.form.initprobs, since needs knowledge of the data
     hmodel <- c(msm.form.hmodel(hmodel=hmodel,
                                 initprobs=c(1,rep(0,qmodel$nstates-1)), 
-                                est.initprobs=FALSE,
-                                qmodel=qmodel),
+                                est.initprobs=FALSE),
                 list(phase.states=qmodel$phase.states))
     hmodel
 }

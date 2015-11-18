@@ -208,7 +208,7 @@ pearson.msm(x, transitions=NULL, timegroups=3, intervalgroups=3,
   See the references for further details of the methods.
   The method used for censored states is a modification of the method
   in the appendix to Titman and Sharples (2008), described at
-  \url{http://www.mrc-bsu.cam.ac.uk/personal/chris/papers/robustcensoring.pdf}
+  \url{http://www.mrc-bsu.cam.ac.uk/wp-content/uploads/robustcensoring.pdf}
   (Titman, 2007).
 
   Groupings of the time since initiation, the time interval and the

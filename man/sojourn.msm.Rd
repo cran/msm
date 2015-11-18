@@ -11,7 +11,7 @@ sojourn.msm(x, covariates="mean", ci=c("delta","normal","bootstrap","none"),
 }
 \arguments{
 
-  \item{x}{A fitted multi-state model, as returned by \code{\link{msm}}}.
+  \item{x}{A fitted multi-state model, as returned by \code{\link{msm}}.}
 
   \item{covariates}{
     The covariate values at which to estimate the mean sojourn times. This can either be:\cr
@@ -72,6 +72,11 @@ sojourn.msm(x, covariates="mean", ci=c("delta","normal","bootstrap","none"),
   times and the probability that each state is next (\code{\link{pnext.msm}}).
   This is a more intuitively meaningful description of a model than the transition intensity
   matrix (\code{\link{qmatrix.msm}}).
+
+  Time dependent covariates, or time-inhomogeneous models, are not
+  supported.  This would require the mean of a piecewise exponential
+  distribution, and the package author is not aware of any general
+  analytic form for that.
 }
 \seealso{
   \code{\link{msm}}, \code{\link{qmatrix.msm}}, \code{\link{deltamethod}}

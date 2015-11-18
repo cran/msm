@@ -36,7 +36,6 @@ computations, and returned in a fitted \code{\link{msm}} model object.
   element is the state corresponding to the \eqn{i}th parameter.}
 \item{firstpar}{A vector of length \code{nstates} giving the index in
   \code{pars} of the first parameter for each state.}
-\item{links}{Link function used for the outcome for each state. }
 \item{locpars}{Index in \code{pars} of parameters which can
   have covariates on them. }
 \item{initprobs}{Initial state occupancy probabilities, as supplied to

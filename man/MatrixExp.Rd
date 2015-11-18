@@ -74,11 +74,9 @@ intensity matrix
   values.  However it is the default when calculating likelihoods for models fitted
   by \code{\link{msm}}.
 
-  The \pkg{msm} implementation of the Pade approximation was taken from
-  JAGS by Martyn Plummer (\url{http://www-fis.iarc.fr/~martyn/software/jags}).
-
-  The series approximation method was adapted from the corresponding
-  function in Jim Lindsey's R package \code{rmutil} (\url{http://popgen.unimaas.nl/~jlindsey/rcode.html}).
+  The implementation of the Pade approximation used by
+  \code{method="pade"} was taken from
+  JAGS by Martyn Plummer (\url{http://mcmc-jags.sourceforge.net}).
 }
 \references{
   Cox, D. R. and Miller, H. D. \emph{The theory of stochastic
@@ -86,8 +84,6 @@ intensity matrix
 
   Moler, C and van Loan, C (2003).  Nineteen dubious ways to compute
   the exponential of a matrix, twenty-five years later.
-  \emph{SIAM Review} \bold{45},
-  3--49. \cr
-  At \url{http://epubs.siam.org/sam-bin/dbq/article/41801}
+  \emph{SIAM Review} \bold{45}, 3--49.
 }
 \keyword{math}

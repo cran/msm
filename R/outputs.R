@@ -527,13 +527,13 @@ msm.form.qoutput <- function(x, covariates="mean", cl=0.95, digits=4, ...){
     colnames(fres) <- c("Baseline", x$qcmodel$covlabels)
     rownames(fres) <- rownames(y)
     fres[,1] <- format.ci(y[,1],y[,2],y[,3],y[,4],digits=digits,...)
-    im <- t(x$qmodel$imatrix); diag(im) <- -1; nd <- which(im[im!=0]==1)
+    im <- t(x$qmodel$imatrix); diag(im) <- -colSums(im); nd <- which(im[im!=0]==1)
     for (i in seq(length=x$qcmodel$ncovs)){
         nm <- x$qcmodel$covlabels[[i]]
         hrs <- mattotrans(x, x$Qmatrices[[nm]], x$QmatricesL[[nm]], x$QmatricesU[[nm]], x$QmatricesFixed[[nm]], keep.diag=FALSE)
         hrs[,1:3] <- exp(hrs[,1:3])
         ret[nm] <- matrix(ncol=3, nrow=nrow(ret), dimnames=list(NULL,colnames(hrs)[1:3]))
-        ret[nd,nm] <- hrs[,1:3]
+        ret[nd,nm] <- hrs[,1:3,drop=FALSE]
         fres[nd,1+i] <- format.ci(hrs[,1], hrs[,2], hrs[,3], hrs[,4], digits=digits, ...)
     }
     attr(ret, "formatted") <- fres # as strings with formatted CIs instead of numbers
@@ -551,7 +551,7 @@ msm.form.eoutput <- function(x, covariates="mean", cl=0.95, digits=4, ...){
     colnames(frese) <- c("Baseline", x$ecmodel$covlabels)
     rownames(frese) <- rownames(y)
     frese[,1] <- format.ci(y[,1],y[,2],y[,3],y[,4],digits=digits,...)
-    im <- t(x$emodel$imatrix); diag(im) <- -1; nd <- which(im[im!=0]==1)
+    im <- t(x$emodel$imatrix); diag(im) <- -colSums(im); nd <- which(im[im!=0]==1)
     for (i in seq(length=x$ecmodel$ncovs)){
         nm <- x$ecmodel$covlabels[[i]]
         ors <- mattotrans(x, x$Ematrices[[nm]], x$EmatricesL[[nm]], x$EmatricesU[[nm]], x$EmatricesFixed[[nm]], keep.diag=FALSE, intmisc="misc")
@@ -1836,9 +1836,9 @@ viterbi.msm <- function(x)
         hmod <- vector(x$qmodel$nstates, mode="list")
         for (i in 1:x$qmodel$nstates)
             hmod[[i]] <- hmmIdent(i)
-        x$hmodel <- msm.form.hmodel(hmod, est.initprobs=FALSE, qmodel=x$qmodel)
+        x$hmodel <- msm.form.hmodel(hmod, est.initprobs=FALSE)
         x$hmodel <- c(x$hmodel, list(ncovs=rep(rep(0,x$hmodel$nstates),x$hmodel$npars), ncoveffs=0, nicovs=rep(0,x$hmodel$nstates-1), nicoveffs=0))
-        x$data$mf$"(obstrue)" <- ifelse(x$data$mf$"(state)" %in% x$cmodel$censor, 0, 1)
+        x$data$mf$"(obstrue)" <- ifelse(x$data$mf$"(state)" %in% x$cmodel$censor, 0, (x$data$mf$"(state)"))
         x$data$mm.hcov <- vector(mode="list", length=x$hmodel$nstates) # reqd by msm.add.hmmcovs
         for (i in seq_len(x$hmodel$nstates))
             x$data$mm.hcov[[i]] <- model.matrix(~1, x$data$mf)
@@ -1868,7 +1868,7 @@ viterbi.msm <- function(x)
 
 scoreresid.msm <- function(x, plot=FALSE){
     if (!inherits(x, "msm")) stop("expected x to be a msm model")
-    if (!deriv.supported(x$hmodel, x$cmodel))
+    if (!deriv.supported(x$data, x$hmodel, x$cmodel))
         stop("Score residuals not available, since analytic derivatives not implemented for this model")
     derivs <- Ccall.msm(x$paramdata$opt$par, do.what="deriv.subj", expand.data(x), x$qmodel, x$qcmodel, x$cmodel, x$hmodel, x$paramdata)
     cov <- x$paramdata$covmat[x$paramdata$optpars,x$paramdata$optpars]

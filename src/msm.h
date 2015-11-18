@@ -53,6 +53,7 @@ struct msmdata {
     int npts;
     int ntrans;
     int npcombs;
+    int nout;
 };
 
 struct qmodel {
@@ -77,6 +78,7 @@ struct cmodel {
 
 struct hmodel {
     int hidden;
+    int mv;
     int *models;
     int totpars;
     int *npars;

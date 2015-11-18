@@ -5,7 +5,7 @@
 \description{
   A modification of Akaike's information criterion, and a leave-one-out likelihood
   cross-validation criterion, for comparing the predictive ability of two
-  multi-state models with nested state spaces.  This is evaluated based
+  Markov multi-state models with nested state spaces.  This is evaluated based
   on the restricted or aggregated data which the models have in common.
 
   Note that standard AIC can be computed for one or more fitted
@@ -21,10 +21,13 @@ drlcv.msm(msm.full, msm.coarse, tl=0.95, cores=NULL,
           verbose=TRUE,outfile=NULL)
 }
 \arguments{
-  \item{msm.full}{Big model.}
+  \item{msm.full}{Model on the bigger state space.}
 
-  \item{msm.coarse}{Smaller model.
+  \item{msm.coarse}{Model on the smaller state space.
 
+    The two models must both be non-hidden Markov models without
+    censored states.
+    
     The two models must be fitted to the same datasets, except that the
     state space of the coarse model must be an aggregated version of the
     state space of the full model.  That is, every state in the full
@@ -73,7 +76,9 @@ drlcv.msm(msm.full, msm.coarse, tl=0.95, cores=NULL,
     \eqn{D_{RLCV}}{D_RLCV} (\code{drlcv.msm}), its component terms, and tracking intervals.
 }
 \details{
-  The difference in restricted AIC (Liquet and Commenges, 2011) is defined as
+  
+  The difference in restricted AIC (Liquet and Commenges, 2011), as
+  computed by this function, is defined as
 
   \deqn{D_{RAIC} = l(\gamma_n |\mathbf{x}'' ) - l(\theta_n |\mathbf{x}'' ) + trace ( J(\theta_n |\mathbf{x}'')J(\theta_n |\mathbf{x})^{-1} - J(\gamma_n |\mathbf{x}'' )J(\gamma_n |\mathbf{x}' )^{-1})}{D_RAIC = l(gamma_n |x'' ) - l(theta_n |x'' ) + trace ( J(theta_n |x'')J(theta_n |x)^{-1} - J(gamma_n |x'' )J(gamma_n |x' )^{-1})}
 
@@ -102,9 +107,10 @@ drlcv.msm(msm.full, msm.coarse, tl=0.95, cores=NULL,
   Tracking intervals are analogous to confidence intervals, but not strictly the same, since the quantity which D_RAIC aims to estimate, the difference in expected Kullback-Leibler discrepancy for predicting a replicate dataset, depends on the sample size.  See the references.
 }
 \references{
-  Thom, H. and Jackson, C. and Commenges, D. and Sharples, L. (2014)
-  State-selection in multistate models with application to quality of
-  life in psoriatic arthritis.  Submitted.
+  Thom, H. and Jackson, C. and Commenges, D. and Sharples, L. (2015)
+  State selection in multistate models with application to quality of
+  life in psoriatic arthritis.  Statistics In Medicine 34(16) 2381 -
+  2480. 
 
   Liquet, B. and Commenges D. (2011) Choice of estimators based on
   different observations: Modified AIC and LCV criteria. Scandinavian

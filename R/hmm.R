@@ -1,14 +1,20 @@
 ### FUNCTIONS FOR HIDDEN MARKOV MODELS IN CONTINUOUS TIME
 ### WITH ARBITRARY RESPONSE DISTRIBUTION
 
+print.hmmMVdist <- function(x, ...)
+{
+    cat(sprintf("Multivariate hidden Markov model with %d outcomes:\n", length(x)))
+    for (i in x) print(i)
+}
+
 print.hmmdist <- function(x, ...)
-  {
-      cat("Hidden Markov model", x$label, "distribution\n\n")
-      pnames <- if(x$label=="categorical") paste("P(",seq(x$pars[1]),")",sep="") else names(x$pars)
-      pars <- if(x$label=="categorical") x$pars[3:(2+x$pars[1])] else x$pars
-      cat("Parameters: ", paste(paste(pnames, pars, sep=" = "), collapse=", "))
-      cat("\n")
-  }
+{
+    cat("Hidden Markov model", x$label, "distribution\n\n")
+    pnames <- if(x$label=="categorical") paste("P(",seq(x$pars[1]),")",sep="") else names(x$pars)
+    pars <- if(x$label=="categorical") x$pars[3:(2+x$pars[1])] else x$pars
+    cat("Parameters: ", paste(paste(pnames, pars, sep=" = "), collapse=", "))
+    cat("\n")
+}
 
 msm.check.hmodel <- function(hmodel, nstates)
   {
@@ -16,7 +22,7 @@ msm.check.hmodel <- function(hmodel, nstates)
       if (!is.list(hmodel)) stop("Hidden model should be a list")
       if (length(hmodel) != nstates) stop("hmodel of length ", length(hmodel), ", expected ", nstates)
       for (i in hmodel) {
-          if (class(i) != "hmmdist") stop("hmodel should be a list of HMM distribution objects")
+          if (!inherits(i, "hmmdist")) stop("hmodel should be a list of HMM distribution objects")
       }
   }
 
@@ -31,7 +37,7 @@ msm.check.hcovariates <- function(hcovariates, qmodel)
       }
   }
 
-msm.form.hmodel <- function(hmodel, hconstraint=NULL, initprobs=NULL, est.initprobs, qmodel)
+msm.form.hmodel <- function(hmodel, hconstraint=NULL, initprobs=NULL, est.initprobs)
   {
       nst <- length(hmodel)
       if (is.null(initprobs))
@@ -54,30 +60,75 @@ msm.form.hmodel <- function(hmodel, hconstraint=NULL, initprobs=NULL, est.initpr
           }
       }
       nipars <- if (est.initprobs) nst else 0
-      labels <- sapply(hmodel, function(x) x$label)
-      models <- match(labels, .msm.HMODELS)
-      pars <- lapply(hmodel, function(x) x$pars)
-      plabs <- lapply(hmodel, function(x) names(x$pars))
-      ## where non-misclassified outcome for hmmIdent distribution is not specified, this is
-      ## just the state
-      pars[labels=="identity"][sapply(pars[labels=="identity"], length) == 0] <- which(labels=="identity")
-      plabs[labels=="identity"] <- "which"
-      names(plabs) <- paste("state", 1:nst, sep=".")
-      npars <- sapply(pars, length)
-      links <- lapply(hmodel, function(x) x$link)
-      links <- match(links, .msm.LINKFNS)
-      parstate <- rep(1:nst, npars)
-      firstpar <- c(0, cumsum(npars)[-qmodel$nstates])
-      pars <- unlist(pars)
-      plabs <- unlist(plabs)
-      locpars <- which(plabs == rep(.msm.LOCPARS[labels], npars))
-      names(pars) <- plabs
-      hmod <- list(hidden=TRUE, nstates=qmodel$nstates, fitted=FALSE, models=models, labels=labels,
-                   npars=npars, nipars=nipars, totpars=sum(npars), pars=pars, plabs=plabs, parstate=parstate,
-                   firstpar=firstpar, links=links, locpars=locpars, initprobs=initprobs, est.initprobs=est.initprobs)
+      if (any(sapply(hmodel, inherits, "hmmMVdist"))){
+          hmod <- msm.form.mvhmodel(hmodel)
+      } else hmod <- msm.form.univhmodel(hmodel)
+      hmod <- c(list(hidden=TRUE, nstates=nst, fitted=FALSE, nipars=nipars,
+                     initprobs=initprobs, est.initprobs=est.initprobs),
+                hmod)
       class(hmod) <- "hmodel"
       hmod
   }
+
+msm.form.univhmodel <- function(hmodel){
+    nst <- length(hmodel)    
+    labels <- sapply(hmodel, function(x) x$label)
+    models <- match(labels, .msm.HMODELS)
+    pars <- lapply(hmodel, function(x) x$pars)
+    plabs <- lapply(hmodel, function(x) names(x$pars))
+    ## where non-misclassified outcome for hmmIdent distribution is not specified, this is
+    ## just the state
+    pars[labels=="identity"][sapply(pars[labels=="identity"], length) == 0] <- which(labels=="identity")
+    plabs[labels=="identity"] <- "which"
+    names(plabs) <- paste("state", 1:nst, sep=".")
+    npars <- sapply(pars, length)
+    parstate <- rep(1:nst, npars)
+    firstpar <- c(0, cumsum(npars)[-nst])
+    pars <- as.numeric(unlist(pars))
+    plabs <- unlist(plabs)
+    locpars <- which(plabs == rep(.msm.LOCPARS[labels], npars))
+    names(pars) <- plabs
+    list(models=models, labels=labels, npars=npars, nout=rep(1, nst), mv=FALSE,
+         totpars=sum(npars), pars=pars, plabs=plabs, parstate=parstate,
+         firstpar=firstpar, locpars=locpars)
+}
+
+### CHANGES FROM UNIVARIATE TO MULTIVARIATE OUTCOME HMMS
+### models should be matrix instead of vector, new dim given by nout   (same for labels)
+### npars was vector with one for each state.  now matrix
+### pars was ragged array, mapped to states with parstate.  should still be.  (same for plabs)
+### need new vector parout to map pars to outcomes. 
+### firstpar, used in C to point to first parameters for a univariate model.  was one for each state.  now needs to be a matrix
+
+msm.form.mvhmodel <- function(hmodel){
+    nst <- length(hmodel)    
+    for (i in seq_along(hmodel))
+        if (!inherits(hmodel[[i]], "hmmMVdist")) hmodel[[i]] <- list(hmodel[[i]])
+
+    nout <- sapply(hmodel, length)
+    models <- labels <- firstpar <- matrix(nrow=max(nout), ncol=nst)
+    npars <- matrix(0, nrow=max(nout), ncol=nst)
+    pars <- plabs <- parstate <- parout <- vector(nst, mode="list")
+    for (i in 1:nst){
+        labels[1:nout[i],i] <- sapply(hmodel[[i]], function(x) x$label)
+        models[1:nout[i],i] <- match(labels[1:nout[i],i], .msm.HMODELS)
+        pars[[i]] <- lapply(hmodel[[i]], function(x)x$pars)
+        npars[1:nout[i],i] <- sapply(pars[[i]], length)
+        pars[[i]][labels[,i]=="identity" & npars[,i]==0] <- i # TESTME - hmmIdent with no arg: par is the state
+        plabs[[i]][labels[,i]=="identity" & npars[,i]==0] <- "which"
+        plabs[[i]] <- lapply(hmodel[[i]], function(x)names(x$pars))
+        parstate[[i]] <- rep(i, sum(npars[,i]))
+        parout[[i]] <- rep(1:nout[i], npars[1:nout[i],i])
+    }
+    firstpar <- matrix(c(0, cumsum(npars)[-length(npars)]), nrow=max(nout), ncol=nst)
+    firstpar[npars==0] <- NA
+    pars <- unlist(pars); plabs <- unlist(plabs); parout <- unlist(parout); parstate <- unlist(parstate)
+    locpars <- which(plabs == rep(.msm.LOCPARS[labels], npars))
+    names(pars) <- plabs
+    list(models=models, labels=labels, npars=npars, nout=nout, mv=TRUE,
+         totpars=sum(npars), pars=pars, plabs=plabs, parstate=parstate, parout=parout,
+         firstpar=firstpar, locpars=locpars)  
+}
 
 ## NOTE removed whichcovh, whichcovh.orig
 
@@ -172,12 +223,11 @@ msm.emodel2hmodel <- function(emodel, qmodel)
           pars <- unlist(pars)
           plabs <- unlist(plabs)
           names(pars) <- plabs
-          links <- ifelse(models==1, "log", "identity")
-          links <- match(links, .msm.LINKFNS)
           labels <- .msm.HMODELS[models]
           locpars <- which(plabs == rep(.msm.LOCPARS[labels], npars))
           hmod <- list(hidden=TRUE, fitted=FALSE, nstates=nst, models=models, labels=labels,
-                       npars=npars, totpars=sum(npars), links=links, locpars=locpars,
+                       nout=rep(1, nst), mv=FALSE,
+                       npars=npars, totpars=sum(npars), locpars=locpars,
                        pars=pars, plabs=plabs, parstate=parstate, firstpar=firstpar, nipars=emodel$nipars, initprobs=emodel$initprobs, est.initprobs=emodel$est.initprobs)
           hmod$constr <- msm.econstr2hconstr(emodel$constr, hmod)
       }
@@ -231,7 +281,7 @@ print.hmodel <- function(x, ...)
         cat("Non-hidden Markov model\n")
       else {
           cat("Hidden Markov model, ")
-          nst <- length(x$models)
+          nst <- x$nstates
           cat(nst, "states\n")
           if (x$est.initprobs){
               cat("Initial state occupancy probabilities: ")
@@ -248,34 +298,53 @@ print.hmodel <- function(x, ...)
               else cat(paste(x$initprobs, collapse=","), "\n\n")
           }
           for (i in 1:nst) {
-              cat("State", i, "-", x$labels[i], "distribution\n")
-              cat("Parameters: \n")
-              if (x$label[i]=="categorical")
-                pars <- print.hmmcat(x, i)
-              else {
-                  pars <- as.matrix(x$pars[x$parstate==i])
-                  if (ci) pars <- cbind(pars, matrix(x$ci[x$parstate==i ,], ncol=2))
-                  dimnames(pars) <- list(x$plabs[x$parstate==i], cols)
+              if (x$mv){
+                  cat("State", i, "\n")
+                  for (j in 1:x$nout[i]){
+                      cat("Outcome", j, "-", x$labels[j,i], "distribution\n")
+                      if (x$labels[j,i]=="categorical")
+                          pars <- print.hmmcat(x, i, j, mv=TRUE)   ## TESTME
+                      else {
+                          inds <- x$parstate==i & x$parout==j
+                          pars <- as.matrix(x$pars[inds])
+                          if (ci) pars <- cbind(pars, matrix(x$ci[inds,], ncol=2))
+                          dimnames(pars) <- list(x$plabs[inds], cols)
+                      }
+                      ## covs not supported for the moment
+                      print(pars)
+                      cat("\n")
+                  }
+              } else { 
+                  cat("State", i, "-", x$labels[i], "distribution\n")
+                  cat("Parameters: \n")
+                  if (x$label[i]=="categorical")
+                      pars <- print.hmmcat(x, i)
+                  else {
+                      pars <- as.matrix(x$pars[x$parstate==i])
+                      if (ci) pars <- cbind(pars, matrix(x$ci[x$parstate==i ,], ncol=2))
+                      dimnames(pars) <- list(x$plabs[x$parstate==i], cols)
+                  }
+                  if (any(x$ncovs[x$parstate==i] > 0)){
+                      coveffs <- as.matrix(x$coveffect[x$coveffstate==i])
+                      if (ci) coveffs <- cbind(coveffs, matrix(x$covci[x$coveffstate==i,], ncol=2))
+                      rownames(coveffs) <- x$covlabels[x$coveffstate==i]
+                      pars <- rbind(pars, coveffs)
+                  }
+                  print(pars)
+                  cat("\n")
               }
-              if (any(x$ncovs[x$parstate==i] > 0)){
-                  coveffs <- as.matrix(x$coveffect[x$coveffstate==i])
-                  if (ci) coveffs <- cbind(coveffs, matrix(x$covci[x$coveffstate==i,], ncol=2))
-                  rownames(coveffs) <- x$covlabels[x$coveffstate==i]
-                  pars <- rbind(pars, coveffs)
-              }
-              print(pars)
-              cat("\n")
           }
       }
   }
 
-print.hmmcat <- function(x, i)
+print.hmmcat <- function(x, i, j=NULL, mv=FALSE)
 {
-    pars <- x$pars[x$parstate==i]
+    inds <- if (mv) x$parstate==i & x$parout==j else x$parstate==i
+    pars <- x$pars[inds]
     res <- matrix(pars[3:(2+pars[1])], ncol=1)
     rownames(res) <- paste("P(",seq(length=pars[1]),")",sep="")
     if (x$fitted && x$foundse) {
-        ci <- matrix(x$ci[x$parstate==i,], ncol=2)
+        ci <- matrix(x$ci[inds,], ncol=2)
         res <- cbind(res,  ci[3:(2+pars[1]),])
         colnames(res) <- c("Estimate","LCL","UCL")
     }

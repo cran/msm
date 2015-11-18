@@ -225,6 +225,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
     state <- numeric()
     keep.data <- numeric()
     subj <- split(subject, subject)
+    subj.num <- match(subject, unique(subject))
     for (pt in 1:n)
     {
         sim.mod <- sim.msm(qmatrix, max(times[[pt]]), covs[[pt]], beta, times[[pt]], start[pt], min(times[[pt]]))
@@ -234,9 +235,11 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
         if (!is.null(misccovnames)) pt.data <- cbind(pt.data, misccovs[[pt]][obsd$keep,,drop=FALSE])
         if (!is.null(hcovnames)) pt.data <- cbind(pt.data, hcovs[[pt]][obsd$keep,,drop=FALSE])
         if (!is.null(extravars)) pt.data <- cbind(pt.data, extradat[[pt]][obsd$keep,,drop=FALSE])
+        inds <- which(subj.num==pt)
+        pt.data <- cbind(pt.data, keep=inds[obsd$keep])
         keep.data <- rbind(keep.data, pt.data)
       }
-    colnames(keep.data) <- c("subject","time","state","cens",union(union(covnames,misccovnames),hcovnames),extravars)
+    colnames(keep.data) <- c("subject","time","state","cens",union(union(covnames,misccovnames),hcovnames),extravars,"keep")
     keep.data <- as.data.frame(keep.data)
 
 ### Simulate some misclassification or a HMM conditionally on the underlying state
@@ -257,7 +260,7 @@ simmulti.msm <- function(data,           # data frame with subject, times, covar
       keep.data$state <- ifelse(keep.data$cens > 0 & keep.data$state %in% censor.states, keep.data$cens, keep.data$state)
     keep.data$cens <- NULL
 
-    attr(keep.data, "keep") <- obsd$keep
+#    attr(keep.data, "keep") <- obsd$keep
     keep.data
 }
 

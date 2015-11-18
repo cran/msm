@@ -304,8 +304,9 @@ void Eigen(Matrix mat, int n, vector revals, vector ievals, Matrix evecs, int *e
 	/* Check whether any of the elements of Q have overflowed.  If
 	   so, Fortran eigen function will hang in a infinite loop, so
 	   bail out before this happens.  */
-	if (!R_FINITE(mat[i]))
+	if (!R_FINITE(mat[i])) { 
 	    error("numerical overflow in calculating likelihood\n");
+	}
 	temp[i] = mat[i];
     }
 #ifdef _USE_LINPACK_EIGEN_
@@ -382,7 +383,7 @@ void MatrixExpR(double *mat, int *n, double *expmat, double *t,
 
 void MatrixExpEXPM(double *mat, int *n, double *expmat, double *t,
 		int *method, int *iso, int *perm, int *qperm,
-		int *degen){
+		   int *degen, int *err){
     int i;
     int nsq = (*n)*(*n);
     double *matt = Calloc(nsq, double);
@@ -394,8 +395,15 @@ void MatrixExpEXPM(double *mat, int *n, double *expmat, double *t,
 	    /* Check whether any of the elements of Q have overflowed.  If
 	       so, Fortran eigen function will hang in a infinite loop, so
 	       bail out before this happens.  */
-	    if (!R_FINITE(matt[i]))
+	/* Could we return loglik = -Inf instead of halting by setting
+	   error code?  return all zeros for pmat in that case?
+	   Doesn't help convergence with test case in test/rory.r: lik
+	   stays at zero.
+	 */
+	    if (!R_FINITE(matt[i])){
+//		*err = -1; return;
 		error("numerical overflow in calculating likelihood\n");
+	    }
 	}
 	expm(matt, *n, expmat, Ward_2);
     }
@@ -408,7 +416,7 @@ void MatrixExpEXPM(double *mat, int *n, double *expmat, double *t,
 
 void Pmat(Matrix pmat, double t, Matrix qmat, int nstates, int exacttimes, int iso, ivector perm, ivector qperm, int use_expm)
 {
-    int i,j,method=MEXP_PADE,degen=0;
+    int i,j,method=MEXP_PADE,degen=0,err=0;
     double pii;
     if (exacttimes) {
 	for (i=0; i<nstates; ++i) {
@@ -420,12 +428,13 @@ void Pmat(Matrix pmat, double t, Matrix qmat, int nstates, int exacttimes, int i
     }
     else {
 	if (use_expm)
-	    MatrixExpEXPM(qmat, &nstates, pmat, &t, &method, &iso, perm, qperm, &degen);
+	    MatrixExpEXPM(qmat, &nstates, pmat, &t, &method, &iso, perm, qperm, &degen, &err);
 	else
 	    MatrixExpR(qmat, &nstates, pmat, &t, &method, &iso, perm, qperm, &degen);
 	/* Floating point fuzz sometimes causes trouble */
 	for (i=0; i<nstates; ++i)
 	    for (j=0; j<nstates; ++j) {
+		/* if (err==-1) pmat[MI(i, j, nstates)] = 0;  */ /* leads to zero likelihood */
 		if (pmat[MI(i, j, nstates)] < DBL_EPSILON) pmat[MI(i, j, nstates)] = 0;
 		if (pmat[MI(i, j, nstates)] > 1 - DBL_EPSILON) pmat[MI(i, j, nstates)] = 1;
 	    }

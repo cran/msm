@@ -4,7 +4,7 @@
 \title{Total length of stay, or expected number of visits}
 \description{
   Estimate the expected total length of stay, or the expected number of visits, in each state, for
-a given period of evolution of a multi-state model.
+an individual in a given period of evolution of a multi-state model.
 }
 \usage{
 totlos.msm(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean",

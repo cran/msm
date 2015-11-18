@@ -4,6 +4,54 @@ USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
 
+Version 1.6  (2015-11-17)
+-------------
+
+o CRAN release. Includes the changes from versions 1.5.1 - 1.5.3, plus
+  also:
+
+o Analytic derivatives for HMMs with multiple outcomes.
+
+o Bug fix for printing model output when only one transition rate is
+  affected by covariates.  Thanks to Jordi Blanch for the report.
+
+
+Version 1.5.3  (2015-09-14)
+-------------
+
+o More underflow correction for probabilities of hidden states in
+  viterbi.msm. Thanks to Hannah Linder for the report.
+
+o "death" argument in msm() is deprecated and renamed to "deathexact".
+
+o censor.states now defaults to all transient states if not supplied,
+  instead of complaining, even if there is no absorbing state.  Thanks
+  to Jonathan Williams for the report.
+
+
+Version 1.5.2  (2015-02-17)
+-------------
+
+o HMMs can now have multiple observations at each time generated from
+  different distributions.  See new function hmmMV().
+
+o obstrue can now contain the actual true state, instead of an
+  indicator.  This allows the information from HMM outcomes generated
+  conditionally on this state to be included in the model.
+
+
+Version 1.5.1  (2015-01-15)
+-------------
+
+o R-forge only release. 
+
+o HMMs can now have multiple observations at each time from the same
+  distribution.  The "state" in the "formula" argument of msm() is
+  supplied as a matrix.
+
+o Up-to-date version of the vignette included in the package.
+
+
 Version 1.5  (2015-01-05)
 -----------
 
@@ -13,9 +61,9 @@ o CRAN release. Includes the changes from versions 1.4.1 - 1.4.3.
 Version 1.4.3  (2014-12-12)
 -------------
 
-o Phase type models now allow an extra hidden Markov model on top.
-
 o R-forge only release. 
+
+o Phase type models now allow an extra hidden Markov model on top.
 
 
 Version 1.4.2  (2014-12-11)

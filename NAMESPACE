@@ -27,12 +27,12 @@ persp.msm,
 phasemeans.msm,    
 plot.msm,
 plotprog.msm,
-plot.prevalence.msm,
-plot.survfit.msm,
 pmatrix.msm,
 pmatrix.piecewise.msm,
 pnext.msm,
 ppass.msm,
+plot.prevalence.msm,
+plot.survfit.msm,
 prevalence.msm,
 printold.msm,
 printnew.msm,
@@ -66,6 +66,7 @@ hmmMEUnif,
 hmmNBinom,
 hmmBeta,
 hmmT,
+hmmMV,    
 dtnorm,
 ptnorm,
 qtnorm,
@@ -116,3 +117,17 @@ S3method(print, msm.est)
 S3method("[", msm.est)
 S3method(print, pearson.msm)
 
+S3method(plot, prevalence.msm)
+S3method(plot, survfit.msm)
+
+importFrom("grDevices", "rainbow")
+importFrom("graphics", "filled.contour", "legend", "lines", "par",
+           "text")
+importFrom("stats", "as.formula", "deriv", "dexp", "dnorm",
+           "integrate", "logLik", "model.extract", "model.frame",
+           "model.matrix", "na.fail", "na.omit", "na.pass",
+           "numericDeriv", "optimHess", "pchisq", "pexp", "plogis",
+           "pnorm", "qlogis", "qnorm", "quantile", "rbeta", "rbinom",
+           "reformulate", "rexp", "rgamma", "rlnorm", "rnbinom",
+           "rnorm", "rpois", "rt", "runif", "rweibull", "sd",
+           "setNames", "terms", "uniroot")

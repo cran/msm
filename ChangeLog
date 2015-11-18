@@ -1,3 +1,86 @@
+2015-11-17 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* DESCRIPTION: Version 1.6 released to r-forge and CRAN.
+
+2015-11-10 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* src/lik.c: Several bug fixes in calculation of the derivatives
+	for multivariate HMMs.
+
+	* R/msm.R(msm.form.obstrue): Better detection of when obstrue is
+	supplied as an indicator or a true state + NA.
+
+2015-10-07 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R(msm.form.qoutput): Bug fix for printing model output
+	when only one transition rate is affected by covariates.  Thanks
+	to Jordi Blanch for the report.
+
+2015-09-14 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* src/lik.c: More underflow correction for probabilities of hidden
+	states in viterbi.msm. Thanks to Hannah Linder for the report.
+
+	* R/msm.R: "death" argument in msm() is deprecated and renamed to
+	"deathexact".
+
+	* R/msm.R: censor.states now defaults to all transient states if
+	not supplied, instead of complaining, even if there is no
+	absorbing state.  Thanks to Jonathan Williams for the report.
+
+	* DESCRIPTION: Version 1.5.3 released to r-forge.
+
+2015-04-10 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R(statetable.msm): Code simplified, now row names work
+	with factor states.
+
+2015-02-17 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* DESCRIPTION: Version 1.5.2 released to r-forge.
+
+2015-02-10 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/msm.R, src/lik.c: obstrue can now contain the actual true
+	state, instead of an indicator.  This allows the information from
+	HMM outcomes generated conditionally on this state to be included
+	in the model.
+
+	* R/msm.R(na.find.msmdata): Fix of bug in na.find.msmdata that
+	could lead to NAs being passed through to C and causing a crash.
+	Triggered when state or time were NA and there were covariates.
+
+2015-02-09 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/hmm-dists.R(hmmDIST): Fix of bug when HMM parameters come from
+	named vectors.
+
+2015-01-29 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/outputs.R(msm.form.qoutput) Bug fix in printing fitted model
+	objects.
+
+2015-01-16 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* hmm.R: "links" component dropped from hmodel objects, as it is
+	no longer used.
+
+	* simul.R: "keep" component added to simmulti.msm result.
+
+	* R/hmm.R and others: Multivariate observations in HMMs with
+	different models for each variable.  Limited testing so far.
+
+2015-01-15 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	*  Correct version of the built vignette restored to the package
+	(1.5 instead of 1.3.2).
+
+	*  Experimental feature: multivariate observations in HMMs.  Start
+	by supporting multiple outcomes from the same distribution at the
+	same time, with the data supplied as a matrix.
+
+	* DESCRIPTION: Version 1.5.1 released to r-forge.
+
 2015-01-05 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* DESCRIPTION: Version 1.5 released to CRAN.

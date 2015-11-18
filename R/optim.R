@@ -1,15 +1,20 @@
-deriv.supported <- function(hmodel, cmodel){
+deriv.supported <- function(msmdata, hmodel, cmodel){
     (!hmodel$hidden || (hmodel$hidden &&
+                        ## Models where derivatives not supported: 
+                        ## multiple outcomes 
+#                        (is.null(ncol(msmdata$mf$"(state)")) || (ncol(msmdata$mf$"(state)")==1)) &&
+                        ## unknown initial state probs
                         !hmodel$est.initprobs &&
+                        ## constraints on misclassification / categorical outcome probabilities
                         (!any(duplicated(hmodel$constr[hmodel$plabs=="p"]))) &&
                         (!any(duplicated(hmodel$covconstr[.msm.HMODELS[hmodel$models[hmodel$coveffstate]]=="categorical"]))) &&
-                        all(.msm.HMODELS[hmodel$models %in% .msm.HMODELS.DERIV])
+                        all(.msm.HMODELS[hmodel$models %in% .msm.HMODELS.DERIV]) 
                         ))
 }
 
 info.supported <- function(msmdata, hmodel, cmodel){
     ## only panel data and either non-hidden or misclassification models
-    deriv.supported(hmodel, cmodel) &&
+    deriv.supported(msmdata, hmodel, cmodel) &&
         all(msmdata$mf$"(obstype)"==1) &&
             (!hmodel$hidden || (hmodel$hidden &&
                                 all(.msm.HMODELS[hmodel$models] %in% .msm.HMODELS.INFO)))
@@ -19,7 +24,7 @@ info.supported <- function(msmdata, hmodel, cmodel){
 
 msm.optim <- function(opt.method, p, hessian, use.deriv, msmdata, qmodel, qcmodel, cmodel, hmodel, ...){
     p$params <- p$allinits
-    gr <- if (deriv.supported(hmodel,cmodel) && use.deriv) deriv.msm else NULL
+    gr <- if (deriv.supported(msmdata,hmodel,cmodel) && use.deriv) deriv.msm else NULL
     optfn <- paste("msm.optim", opt.method, sep=".")
     if (!exists(optfn)) stop("Unknown optimisation method \"", opt.method, "\"")
 
@@ -31,14 +36,14 @@ msm.optim <- function(opt.method, p, hessian, use.deriv, msmdata, qmodel, qcmode
     assign("nliks", 0, envir=msm.globals)
 
     if (isTRUE(getOption("msm.test.analytic.derivatives"))){
-        if (!deriv.supported(hmodel,cmodel)) warning("Analytic derivatives not available for this model")
+        if (!deriv.supported(msmdata,hmodel,cmodel)) warning("Analytic derivatives not available for this model")
         else p$deriv.test <- deriv.test(msmdata, qmodel, qcmodel, cmodel, hmodel, msm.unfixallparams(p))
     }
     ## Attach derivative and information matrix at the MLE.
     ## If all parameters fixed, do this at the initial values for all.
     pp <- if (opt.method=="fixed") msm.unfixallparams(p) else p
     pi <- pp$params[pp$optpars]
-    if (deriv.supported(hmodel,cmodel)) {
+    if (deriv.supported(msmdata,hmodel,cmodel)) {
         p$deriv <- deriv.msm(pi, msmdata, qmodel, qcmodel, cmodel, hmodel, pp)
         if (info.supported(msmdata,hmodel,cmodel)) {
             p$information <- information.msm(pi, msmdata, qmodel, qcmodel, cmodel, hmodel, pp)
@@ -73,7 +78,7 @@ msm.optim.fixed <- function(p, gr, hessian, msmdata, qmodel, qcmodel, cmodel, hm
 msm.optim.optim <- function(p, gr, hessian, msmdata, qmodel, qcmodel, cmodel, hmodel, ...) {
     optim.args <- list(...)
     if (is.null(optim.args$method))
-        optim.args$method <- if (deriv.supported(hmodel, cmodel) || (length(p$inits)==1)) "BFGS" else "Nelder-Mead"
+        optim.args$method <- if (deriv.supported(msmdata, hmodel, cmodel) || (length(p$inits)==1)) "BFGS" else "Nelder-Mead"
 
     if (is.null(optim.args$control)) optim.args$control <- list()
 
