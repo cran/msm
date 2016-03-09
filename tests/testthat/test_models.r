@@ -155,11 +155,14 @@ test_that("piecewise constant intensities with pci",{
                     pci = c(5), covinits = list("timeperiod[5,Inf)"=rep(0.01,7)),
                     )
     expect_equal(4906.01423796805, cav5.msm$minus2loglik, tol=1e-06)
+
     cav10.msm <- msm( state ~ years, subject=PTNUM, data = cav,
                      qmatrix = twoway4.q, deathexact = TRUE, pci = c(5,10), fixedpars=TRUE,
                      covinits = list("timeperiod[5,10)"=rep(0.01,7), "timeperiod[10,Inf)"=rep(0.01,7)),
                      )
     expect_equal(4905.61646158639, cav10.msm$minus2loglik, tol=1e-06)
+    
+
 })
 
 test_that("piecewise constant intensities with pci, cut points outside data",{
@@ -548,7 +551,7 @@ test_that("error handling: obstype",{
     expect_error(cav.msm <- msm(state~years, subject=PTNUM, data = cav, qmatrix = twoway4.q, obstype=rep(4, nrow(cav)), deathexact = TRUE, fixedpars=TRUE),"elements of obstype should be 1, 2, or 3")
     obstype <- rep(1, nrow(cav))
     obstype[c(1,8)] <- 5
-    expect_that(cav.msm <- msm(state~years, subject=PTNUM, data = cav, qmatrix = twoway4.q, obstype=obstype, deathexact = TRUE, fixedpars=TRUE), not(throws_error())) # no error: obstype for first subject doesn't matter
+    expect_error(cav.msm <- msm(state~years, subject=PTNUM, data = cav, qmatrix = twoway4.q, obstype=obstype, deathexact = TRUE, fixedpars=TRUE), NA) # no error: obstype for first subject doesn't matter
     obstype[2] <- 5
     expect_error(cav.msm <- msm(state~years, subject=PTNUM, data = cav, qmatrix = twoway4.q, obstype=obstype, deathexact = TRUE, fixedpars=TRUE),"elements of obstype should be 1, 2, or 3") # error
 })
@@ -592,7 +595,7 @@ expect_error(cav.msm <- msm( state ~ years, subject=PTNUM, data = cav, qmatrix =
 test_that("error handling: initprobs",{
     expect_error(cav.msm <- msm( state ~ years, subject=PTNUM, data = cav, qmatrix = oneway4.q, ematrix=ematrix, initprobs="poo", fixedpars=TRUE),"initprobs should be numeric")
     expect_error(cav.msm <- msm( state ~ years, subject=PTNUM, data = cav, qmatrix = oneway4.q, ematrix=ematrix, initprobs=c(1,2), fixedpars=TRUE),"initprobs vector of length 2, should be vector of length 4 or a matrix")
-    expect_that(cav.msm <- msm( state ~ years, subject=PTNUM, data = cav, qmatrix = oneway4.q, ematrix=ematrix, initprobs=c(2,1,1,1), fixedpars=TRUE), not(throws_error())) # scaled to sum to 1.
+    expect_error(cav.msm <- msm( state ~ years, subject=PTNUM, data = cav, qmatrix = oneway4.q, ematrix=ematrix, initprobs=c(2,1,1,1), fixedpars=TRUE), NA) # scaled to sum to 1.
 })
 
 test_that("error handling: check states",{

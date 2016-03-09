@@ -79,6 +79,7 @@ struct cmodel {
 struct hmodel {
     int hidden;
     int mv;
+    int ematrix;
     int *models;
     int totpars;
     int *npars;

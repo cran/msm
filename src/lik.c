@@ -176,12 +176,12 @@ void GetOutcomeProb(double *pout, double *outcome, int nc, int nout, double *hpa
 		}
 	    } else {
 		pout[i] = 0;
-		if (hm->hidden && nc == 1){ /* "state" data contain an actual observation. 
+		if (hm->hidden && nc == 1 && !hm->ematrix){ /* "state" data contain an actual observation. 
 				 get its distribution here conditional on the supplied true state */
 		    if (obstrue == i+1){
 			pout[i] = (HMODELS[hm->models[i]])(outcome[0], &(hpars[hm->firstpar[i]]));
 		    } 
-		} else {  /* "state" data contain a censor indicator */
+		} else {  /* "state" data contain the true state (for hm->ematrix with obstrue) or censor indicator */
 		    for (j=0; j<nc; ++j){
 			if ((int) outcome[j] == i+1)
 			    pout[i] = 1;
@@ -216,7 +216,7 @@ void GetDOutcomeProb(double *dpout, /* qm->nst x hm->nopt */
     for (i=0; i<qm->nst; ++i) {
 	for (l=0; l<hm->nopt; ++l)
 	    dpout[MI(i,l,qm->nst)] = 0;
-	if (hm->hidden && (!obstrue || (obstrue==(i+1)))) {
+	if (hm->hidden && (!obstrue || (obstrue==(i+1) && !hm->ematrix))) {
 	    if (nout > 1) {  /* multivariate outcomes. Censored states not supported			
 				TODO.  This is fiddlier than first thought.
 				not considered what hm->dpars should be, particularly with constraints  */ 
@@ -1536,6 +1536,7 @@ SEXP msmCEntry(SEXP do_what_s, SEXP mf_agg_s, SEXP mf_s, SEXP auxdata_s, SEXP qm
 
     hm.hidden = list_int(hmodel_s,"hidden");
     hm.mv = list_int(hmodel_s,"mv");
+    hm.ematrix = list_int(hmodel_s,"ematrix");
     hm.models = list_int_vec(hmodel_s,"models");
     hm.totpars = list_int(hmodel_s,"totpars");
     hm.npars = list_int_vec(hmodel_s,"npars");

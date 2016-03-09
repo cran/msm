@@ -4,6 +4,21 @@ USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
 
+Version 1.6.1  (2016-03-09)
+-------------
+
+o Fix of bug introduced in 1.5.2 for models with "obstrue" and
+  "ematrix".  This affected the first misclassification model
+  presented in the PDF manual.  Documented behaviour of "obstrue"
+  clarified: with "ematrix" models, the state data are assumed to
+  contain the true state if "obstrue" is turned on at the
+  corresponding observation, and with "hmodel" models, the state data
+  are generated from the HMM outcome model conditionally on the true
+  state.
+
+o Fix of minor bugs in draic.msm and output printing.
+
+
 Version 1.6  (2015-11-17)
 -------------
 

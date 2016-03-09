@@ -28,13 +28,14 @@ dat$dobs2[dat$state==2] <- rbinom(sum(dat$state==2), 40, 0.5)
 dat$dobs <- cbind(dobs1 = dat$dobs1, dobs2 = dat$dobs2)
 
 options(msm.test.analytic.derivatives=TRUE)
+err <- 1e-04
 
 test_that("HMMs with multiple responses from the same distribution",{
     hmm <- msm(obs ~ time, subject=subject, data=dat, qmatrix=two.q,
                hmodel = list(hmmBinom(size=40, prob=0.2),
                hmmBinom(size=40, prob=0.2)), fixedpars=TRUE)
     expect_equal(hmm$minus2loglik, 4387.58552977954, tol=1e-06)
-    expect_that(hmm, has_accurate_derivs())
+    expect_lt(deriv_error(hmm), err)
 })
 
 test_that("HMMs with multiple responses from different distributions",{
@@ -45,7 +46,7 @@ test_that("HMMs with multiple responses from different distributions",{
                      hmmBinom(size=40, prob=0.3))),
                fixedpars=TRUE)
     expect_equal(hmm$minus2loglik, 3767.11569380418, tol=1e-06)
-    expect_that(hmm, has_accurate_derivs())
+    expect_lt(deriv_error(hmm), err)
 })
 
 test_that("HMMs with multiple responses from different distributions: non-default initprobs, different probs",{
@@ -56,7 +57,7 @@ test_that("HMMs with multiple responses from different distributions: non-defaul
                              hmmMV(hmmBinom(size=40, prob=0.4),
                                    hmmBinom(size=40, prob=0.4))),
                fixedpars=TRUE)
-    expect_that(hmm, has_accurate_derivs())
+    expect_lt(deriv_error(hmm), err)
 })
 
 dat$dobsmiss <- dat$dobs
@@ -69,7 +70,7 @@ test_that("HMMs with multiple responses from different distributions: missing da
                hmmMV(hmmBinom(size=40, prob=0.3),
                      hmmBinom(size=40, prob=0.3))),
                fixedpars=TRUE)
-    expect_that(hmm, has_accurate_derivs())
+    expect_lt(deriv_error(hmm), err)
 })
 
 ## not tested: different number of models by design for different obs 
@@ -87,7 +88,7 @@ test_that("HMMs with multiple responses: true state known sometimes",{
                      hmmBinom(size=40, prob=0.3))),
                fixedpars=TRUE)
     expect_equal(hmm$minus2loglik, 3804.03972787726, tol=1e-06)
-    expect_that(hmm, has_accurate_derivs())
+    expect_lt(deriv_error(hmm), err)
 })
 
 ## analytic derivatives

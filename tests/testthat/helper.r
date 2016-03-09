@@ -20,13 +20,8 @@ ns <- c(cav$state[2:nrow(cav)], 0)
 cav.cens3$state[cav$state==4][1:50] <- 99
 cav.cens3$state[ns==4][1:50] <- 999
 
-
-has_accurate_derivs <- function(){
+deriv_error <- function(object){
     if (!isTRUE(getOption("msm.test.analytic.derivatives")))
         stop("msm.test.analytic.derivatives option not set")
-    function(object){
-        deriv.error <- object$paramdata$deriv.test$error["nd"]
-        passed <- deriv.error < 1e-04
-        expectation(passed, paste("derivative error is", deriv.error))
-    }
+    object$paramdata$deriv.test$error["nd"]    
 }

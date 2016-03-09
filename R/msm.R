@@ -38,7 +38,6 @@ msm <- function(formula, subject=NULL, data=list(), qmatrix, gen.inits=FALSE,
         emodel <- msm.form.emodel(ematrix, econstraint, initprobs, est.initprobs, qmodel)
     }
     else emodel <- list(misc=FALSE, npars=0, ndpars=0)
-    if (emodel$npars==0) emodel <- list(misc=FALSE, npars=0, ndpars=0) # user supplied degenerate ematrix with no misclassification
 
 ### GENERAL HIDDEN MARKOV MODEL
     if (!is.null(hmodel)) {
@@ -60,7 +59,10 @@ msm <- function(formula, subject=NULL, data=list(), qmatrix, gen.inits=FALSE,
     if (emodel$misc) {
         hmodel <- msm.emodel2hmodel(emodel, qmodel)
     }
-    else emodel <- list(misc=FALSE, npars=0, ndpars=0, nipars=0, nicoveffs=0)
+    else {
+        emodel <- list(misc=FALSE, npars=0, ndpars=0, nipars=0, nicoveffs=0)
+        hmodel$ematrix <- FALSE
+    }
 
 ### EXACT DEATH TIMES. Logical values allowed for backwards compatibility (TRUE means final state has exact death time, FALSE means no states with exact death times)
     if (!is.null(deathexact)) death <- deathexact
@@ -460,8 +462,13 @@ msm.form.emodel <- function(ematrix, econstraint=NULL, initprobs=NULL, est.initp
     else
         constr <- seq(length=npars)
     ndpars <- if(npars>0) max(constr) else 0
-    emodel <- list(misc=TRUE, npars=npars, nstates=nstates, imatrix=imatrix, ematrix=ematrix, inits=inits,
-                   constr=constr, ndpars=ndpars, nipars=nipars, initprobs=initprobs, est.initprobs=est.initprobs)
+
+    nomisc <- isTRUE(all.equal(as.vector(diag(ematrix)),rep(1,nrow(ematrix)))) # degenerate ematrix with no misclassification: all 1 on diagonal
+    if (nomisc)
+        emodel <- list(misc=FALSE, npars=0, ndpars=0)
+    else                                     
+        emodel <- list(misc=TRUE, npars=npars, nstates=nstates, imatrix=imatrix, ematrix=ematrix, inits=inits,
+                       constr=constr, ndpars=ndpars, nipars=nipars, initprobs=initprobs, est.initprobs=est.initprobs)
     class(emodel) <- "msmemodel"
     emodel
 }
@@ -487,7 +494,8 @@ msm.check.state <- function(nstates, state, censor, hmodel)
             if (length(setdiff(unique(state), states)) > 0)
                 stop("State vector contains elements not in ",statelist)
             miss.state <- setdiff(states, unique(state))
-            if (length(miss.state) > 0)
+            ## Don't do this for misclassification models: it's OK to have particular state not observed by chance
+            if (length(miss.state) > 0 && !hmodel$ematrix)
                 warning("State vector doesn't contain observations of ",paste(miss.state, collapse=","))
         }
     }
@@ -575,6 +583,9 @@ msm.form.obstype <- function(mf, obstype, dmodel, exacttimes)
 ### On exit, obstrue will contain the true state (if known) or 0 (if unknown)
 ### Any NAs should be replaced by 0 - logically if you don't know whether the state is known or not, that means you don't know the state
 
+### TODO For cases where true state is known, 
+### distinguish between cases where the state data contains the true state or a misclassified version of the true state
+
 msm.form.obstrue <- function(mf, hmodel, cmodel) {
     obstrue <- mf$"(obstrue)"
     if (!is.null(obstrue)) {
@@ -585,7 +596,7 @@ msm.form.obstrue <- function(mf, hmodel, cmodel) {
         else if (!is.numeric(obstrue) && !is.logical(obstrue)) stop("obstrue should be logical or numeric")
         else {
             if (is.logical(obstrue) || (all(na.omit(obstrue) %in% 0:1) && !any(is.na(obstrue)))){
-                ## obstrue is an indicator: actual state is supplied in the outcome vector
+                ## obstrue is an indicator.  Actual state should then be supplied in the outcome vector
                 ## (typically misclassification models)
                 ## interpret presence of NAs as indicating true state supplied here
                 if (!is.null(ncol(mf$"(state)")) && ncol(mf$"(state)") > 1)
@@ -597,6 +608,21 @@ msm.form.obstrue <- function(mf, hmodel, cmodel) {
                     stop("Interpreting \"obstrue\" as containing true states, but it contains values not in 0,1,...,", hmodel$nstates)
                 }
                 obstrue[is.na(obstrue)] <- 0 # true state assumed unknown if NA
+
+                ## If misclassification model specified through "ematrix", interpret the state data as the true state.
+
+                ## If specified through hmodel (including hmmCat), interpret the state as a misclassified/HMM outcome generated conditionally on the true state.
+
+                ## Though that doesn't allow a mixture of true/misclassified states in the same model
+
+                ## If we know the true state, we might sometimes want
+                ## to model a misclassified version of it to
+                ## strengthen estimation of misclassification probs.
+
+                ## In theory we could put NA in the state then to
+                ## indicate that true state is passed through from
+                ## obstrue, and misclassified version isn't known.
+                ## But don't do this until someone asks for it.
             }
         }
     }
@@ -1407,7 +1433,7 @@ Ccall.msm <- function(params, do.what="lik", msmdata, qmodel, qcmodel, cmodel, h
                "(state)" = as.double(t(mf$"(state)")), 
                "(obstype)" = as.integer(mf$"(obstype)"),
               "(obstrue)" = as.integer(mf$"(obstrue)"), "(pcomb)" = as.integer(mf$"(pcomb)"))
-   auxdata <- list(nagg=as.integer(nagg),n=as.integer(nrow(mf)),npts=as.integer(attr(mf,"npts")),
+    auxdata <- list(nagg=as.integer(nagg),n=as.integer(nrow(mf)),npts=as.integer(attr(mf,"npts")),
                    ntrans=as.integer(ntrans), npcombs=as.integer(npcombs),
                    nout = as.integer(if(is.null(ncol(mf$"(state)"))) 1 else ncol(mf$"(state)")),
                    nliks=as.integer(get("nliks",msm.globals)),firstobs=as.integer(firstobs))
@@ -1420,7 +1446,8 @@ Ccall.msm <- function(params, do.what="lik", msmdata, qmodel, qcmodel, cmodel, h
    hmodel <- list(hidden=as.integer(hmodel$hidden), mv=as.integer(hmodel$mv),
                   models=as.integer(hmodel$models),
                   totpars=as.integer(hmodel$totpars), firstpar=as.integer(hmodel$firstpar),
-                  npars=as.integer(hmodel$npars), nopt=as.integer(hmodel$nopt))
+                  npars=as.integer(hmodel$npars), nopt=as.integer(hmodel$nopt),
+                  ematrix=as.integer(hmodel$ematrix))
     pars <- list(Q=as.double(Q),DQ=as.double(DQ),H=as.double(H),DH=as.double(DH),
                 initprobs=as.double(initprobs),nopt=as.integer(nopt))
     .Call("msmCEntry",  as.integer(match(do.what, .msm.CTASKS) - 1),
@@ -1467,11 +1494,11 @@ msm.form.output <- function(x, whichp)
         else mat[mat==1] <- Inf ## if no parinds are "p", then there are off-diag 1s in ematrix
         mat <- t(mat)
         dimnames(mat) <- dimnames(model$imatrix)
+        fixed <- array(FALSE, dim=dim(model$imatrix))
         if (p$foundse && !p$fixed){
             intenscov <- p$covmat[parinds, parinds]
             intensse <- sqrt(diag(as.matrix(intenscov)))
             semat <- lmat <- umat <- t(model$imatrix)
-            fixed <- array(FALSE, dim=dim(model$imatrix))
             if (any(parinds)){
                 semat[t(model$imatrix)==1] <- intensse
                 lmat[t(model$imatrix)==1] <- p$ci[parinds,1]
@@ -1482,7 +1509,8 @@ msm.form.output <- function(x, whichp)
             semat <- t(semat); lmat <- t(lmat); umat <- t(umat); fixed <- t(fixed)
             diag(semat) <- diag(lmat) <- diag(umat) <- 0
             for (i in 1:nrow(fixed)){
-                fixed[i,i] <- all(fixed[i,-i][model$imatrix[i,-i]==1])
+                foff <- fixed[i,-i][model$imatrix[i,-i]==1]
+                fixed[i,i] <- (length(foff)>1) && all(foff)
             }
             if (whichp=="misc")
                 fixed[which(x$hmodel$model==match("identity", .msm.HMODELS)),] <- TRUE
@@ -1490,7 +1518,7 @@ msm.form.output <- function(x, whichp)
             dimnames(semat)  <- dimnames(mat)
         }
         else {
-            semat <- lmat <- umat <- fixed <- NULL
+            semat <- lmat <- umat <- NULL
         }
         Matrices[[matrixname]] <- mat
         MatricesSE[[matrixname]] <- semat

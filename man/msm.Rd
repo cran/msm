@@ -231,19 +231,20 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     are of type 3.
   }
   
-  \item{obstrue}{A vector of logicals (\code{TRUE} or \code{FALSE}) or
-  numerics (1 or 0) specifying which observations (\code{TRUE}, 1) are
-  observations of the underlying state without error, and which
-  (\code{FALSE}, 0) are realisations of a hidden Markov model. Only
-  used in misclassification or hidden Markov models.
+  \item{obstrue}{In misclassification models specified with
+  \code{ematrix}, \code{obstrue} is a vector of logicals (\code{TRUE} or
+  \code{FALSE}) or numerics (1 or 0) specifying which observations
+  (\code{TRUE}, 1) are observations of the underlying state without
+  error, and which (\code{FALSE}, 0) are realisations of a hidden Markov
+  model.
 
-  In HMMs with where the response is from a general distribution, and
-  the hidden state is known at some times, then the actual state data at
-  these times can be supplied in \code{obstrue}.  Elements of
-  \code{obstrue} at times when the hidden state is unknown are set to
-  \code{NA}.  This allows the information from HMM outcomes generated
-  conditionally on the known state to be included in the model, thus
-  improving the estimation of the HMM outcome distributions.
+  In HMMs specified with \code{hmodel}, where the hidden state is known
+  at some times, if \code{obstrue} is supplied it is assumed to contain
+  the actual true state data.  Elements of \code{obstrue} at times when
+  the hidden state is unknown are set to \code{NA}.  This allows the
+  information from HMM outcomes generated conditionally on the known
+  state to be included in the model, thus improving the estimation of
+  the HMM outcome distributions.
   
   In HMMs where there are also censored states, \code{obstrue} should be
   set to 1 for observed states which are \emph{censored} but not
@@ -561,7 +562,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     rather than the \emph{event time}.  If at the end of a study, an individual
     has not died, but their true state is \emph{known}, then \code{censor} is
     unnecessary, since the standard multi-state model likelihood is
-    applicable.
+    applicable.   Also a "censored" state here can be at any time, not
+    just at the end.
 
     Note in particular that general time-inhomogeneous Markov models with
     piecewise constant transition

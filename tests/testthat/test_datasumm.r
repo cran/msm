@@ -17,7 +17,7 @@ test_that("crudeinits.msm", {
 
 test_that("crudeinits.msm ignores inconsistent transitions unless exact times", {
     cav.wrong <- cav; cav.wrong$state[4] <- 1
-    expect_that(crudeinits.msm(state ~ years, PTNUM, oneway4.q, cav), not(throws_error()))
+    expect_error(crudeinits.msm(state ~ years, PTNUM, oneway4.q, cav), NA)
     expect_warning(msm(state ~ years, subject=PTNUM, data = cav.wrong, qmatrix = twoway4.q, exacttimes=TRUE, fixedpars=TRUE), "inconsistent with intensity")
     obstype <- rep(2, nrow(cav)); obstype[10] <- 1
     expect_warning(msm(state ~ years, subject=PTNUM, data = cav.wrong, qmatrix = twoway4.q, obstype=obstype, fixedpars=TRUE), "inconsistent with intensity")

@@ -49,7 +49,10 @@ drlcv.msm(msm.full, msm.coarse, tl=0.95, cores=NULL,
   \item{likelihood.only}{Don't calculate Hessians and trace term (DRAIC).}
 
   \item{information}{Use observed or expected information in the DRAIC
-  trace term.  Expected is the default, and much faster.}
+  trace term.  Expected is the default, and much faster, though is only
+  available for models fitted to pure panel data (all \code{obstype=1}
+  in the call to \code{\link{msm}}, thus not exact transition times or
+  exact death times) }
 
   \item{tl}{Width of symmetric tracking interval, by default 0.95 for a
     95\% interval.}
@@ -105,6 +108,9 @@ drlcv.msm(msm.full, msm.coarse, tl=0.95, cores=NULL,
   where \eqn{\gamma_{-i}} and \eqn{\theta_{-i}} are the maximum likelihood estimates from the smaller and bigger models fitted to datasets with subject \eqn{i} left out, \eqn{g()} and \eqn{h()} are the densities of the corresponding models, and \eqn{x_i''} is the restricted data from subject \eqn{i}.
 
   Tracking intervals are analogous to confidence intervals, but not strictly the same, since the quantity which D_RAIC aims to estimate, the difference in expected Kullback-Leibler discrepancy for predicting a replicate dataset, depends on the sample size.  See the references.
+
+  Positive values for these criteria indicate the coarse model is
+  preferred, while negative values indicate the full model is preferred.
 }
 \references{
   Thom, H. and Jackson, C. and Commenges, D. and Sharples, L. (2015)

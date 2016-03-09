@@ -64,7 +64,7 @@ msm.form.hmodel <- function(hmodel, hconstraint=NULL, initprobs=NULL, est.initpr
           hmod <- msm.form.mvhmodel(hmodel)
       } else hmod <- msm.form.univhmodel(hmodel)
       hmod <- c(list(hidden=TRUE, nstates=nst, fitted=FALSE, nipars=nipars,
-                     initprobs=initprobs, est.initprobs=est.initprobs),
+                     initprobs=initprobs, est.initprobs=est.initprobs, ematrix=FALSE),
                 hmod)
       class(hmod) <- "hmodel"
       hmod
@@ -226,13 +226,14 @@ msm.emodel2hmodel <- function(emodel, qmodel)
           labels <- .msm.HMODELS[models]
           locpars <- which(plabs == rep(.msm.LOCPARS[labels], npars))
           hmod <- list(hidden=TRUE, fitted=FALSE, nstates=nst, models=models, labels=labels,
+                       ematrix=TRUE, ## remember if obtained from ematrix, since could change meaning of obstrue
                        nout=rep(1, nst), mv=FALSE,
                        npars=npars, totpars=sum(npars), locpars=locpars,
                        pars=pars, plabs=plabs, parstate=parstate, firstpar=firstpar, nipars=emodel$nipars, initprobs=emodel$initprobs, est.initprobs=emodel$est.initprobs)
           hmod$constr <- msm.econstr2hconstr(emodel$constr, hmod)
       }
       else {
-          hmod <- list(hidden=FALSE, fitted=FALSE, models=rep(0, qmodel$nstates), npars=0, ndpars=0)
+          hmod <- list(hidden=FALSE, fitted=FALSE, ematrix=FALSE, models=rep(0, qmodel$nstates), npars=0, ndpars=0)
       }
       class(hmod) <- "hmodel"
       hmod

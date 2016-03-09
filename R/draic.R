@@ -29,7 +29,7 @@ draic.msm <- function(msm.full,msm.coarse,
     
     ## Initial state occupancy probabilities, assumed equal across possible states
     initstate <- msm.full.data[,st][!duplicated(msm.full.data[,subj])]
-    init.probs <- prop.table(table(initstate))
+    init.probs <- prop.table(table(factor(initstate, levels=1:msm.full$qmodel$nstates)))
     initp <- matrix(0, nrow=attr(msm.full.data,"npts"), ncol=msm.full$qmodel$nstates)
     for(i in 1:length(initstate)) {
         j<-coarsening.ematrix[initstate[i],]==1
@@ -68,6 +68,7 @@ draic.msm <- function(msm.full,msm.coarse,
 
     if (!likelihood.only) {
         information <- match.arg(information)
+        if (!all(msm.full$data$mf$"(obstype)" == 1)) information <- "observed"
         if (information=="observed") {
             ## Information matrix of complex model on complex data
             I.complex <- -0.5*(1/n)*msm.full$opt$hessian
@@ -96,7 +97,8 @@ draic.msm <- function(msm.full,msm.coarse,
         half.width <- qnorm(1 - 0.5*(1 - tl)) * sqrt(omega.sq / n)
         prob.DRAIC <- pnorm(-DRAIC / sqrt(omega.sq / n))
         res.int <- c("2.5%"=DRAIC-half.width,"97.5%"=DRAIC+half.width,"Prob<0"=prob.DRAIC)
-
+        if (!isTRUE(all.equal(tl,0.95))) names(res.int)[1:2] <- c("Lower","Upper")
+                          
         liks <- cbind("-LL" = res.lik,
                       npars=c(npars.restricted, msm.coarse$paramdata$npars,
                       npars.restricted - msm.coarse$paramdata$npars, dcompl))
@@ -134,7 +136,7 @@ drlcv.msm <- function(msm.full,msm.coarse,tl=0.95,cores=NULL,verbose=TRUE,outfil
 
     ## Initial state occupancy probabilities assumed equal across possible states
     initstate <- msm.full.data[,st][!duplicated(msm.full.data[,subj])]
-    init.probs <- prop.table(table(initstate))
+    init.probs <- prop.table(table(factor(initstate, levels=1:msm.full$qmodel$nstates)))
     initp <- matrix(0, nrow=attr(msm.full.data,"npts"), ncol=msm.full$qmodel$nstates)
     for(i in 1:length(initstate)) {
         j<-coarsening.ematrix[initstate[i],]==1
@@ -253,6 +255,7 @@ drlcv.msm <- function(msm.full,msm.coarse,tl=0.95,cores=NULL,verbose=TRUE,outfil
     half.width <- qnorm(1 - 0.5*(1 - tl)) * sqrt(omega.sq / n)
     prob.DRLCV <- pnorm(-DRLCV / sqrt(omega.sq / n))
     res.int <- c("2.5%"=DRLCV-half.width,"97.5%"=DRLCV+half.width,"Prob<0"=prob.DRLCV)
+    if (!isTRUE(all.equal(tl,0.95))) names(res.int)[1:2] <- c("Lower","Upper")
     liks <- cbind("-LL" = c(-lsm, -lss, -(lsm-lss), -(lsm-lss)/n))
     rownames(liks) <- c("complex","simple","complex-simple","(complex-simple)/n")
     res <- list(lik.restricted = liks, drlcv = as.numeric(DRLCV), ti=res.int)

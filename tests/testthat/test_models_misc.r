@@ -41,6 +41,11 @@ test_that("misclassification model with no misclassification reduces to simple",
     expect_equal(nomisc.msm$minus2loglik, simple.msm$minus2loglik)
 })
 
+test_that("misclassification model with obstrue",{
+    misc.msm <- msm(state ~ years, subject = PTNUM, data = cav, qmatrix = oneway4.q, ematrix=ematrix, deathexact = 4, fixedpars=TRUE, obstrue=firstobs)
+    expect_equal(4165.84711809003, misc.msm$minus2loglik, tol=1e-06)
+})
+
 test_that("misclassification model with exact times",{
     miscexact.msm <- msm(state ~ years, subject = PTNUM, data = cav, qmatrix = oneway4.q, ematrix=ematrix, exacttimes=TRUE, fixedpars=TRUE)
     expect_equal(4864.14764195147, miscexact.msm$minus2loglik, tol=1e-06)
