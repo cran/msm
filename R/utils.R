@@ -357,20 +357,29 @@ qgeneric <- function(pdist, p, ...)
     ret[p == 0] <- args$lbound
     ret[p == 1] <- args$ubound
     args[c("lower.tail","log.p","lbound","ubound")] <- NULL
+    ## Other args assumed to contain params of the distribution.
+    ## Replicate all to their maximum length, along with p 
+    maxlen <- max(sapply(c(args, p=list(p)), length))
+    for (i in seq(along=args))
+        args[[i]] <- rep(args[[i]], length.out=maxlen)
+    p <- rep(p, length.out=maxlen)
+
     ret[p < 0 | p > 1] <- NaN
     ind <- (p > 0 & p < 1)
     if (any(ind)) {
         hind <- seq(along=p)[ind]
         h <- function(y) {
+            args <- lapply(args, function(x)x[hind[i]])
+            p <- p[hind[i]]
             args$q <- y
-            (do.call(pdist, args) - p)[hind[i]]
+            (do.call(pdist, args) - p)
         }
         ptmp <- numeric(length(p[ind]))
         for (i in 1:length(p[ind])) {
             interval <- c(-1, 1)
             while (h(interval[1])*h(interval[2]) >= 0) {
               interval <- interval + c(-1,1)*0.5*(interval[2]-interval[1])
-          }
+            }
             ptmp[i] <- uniroot(h, interval, tol=.Machine$double.eps)$root
         }
         ret[ind] <- ptmp

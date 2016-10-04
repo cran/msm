@@ -59,8 +59,10 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
             if (identical(x$cmodel$states[x$cmodel$index[i] : (x$cmodel$index[i+1]-1)], as.numeric(transient.msm(x))))
             {ind <- i; break}
         }
-        if (is.null(ind))
+        if (is.null(ind)){
             warning("Omitting all censored states")
+            cens.drop <- od$state %in% x$cmodel$censor
+        }
         else {
             cens.drop <- od$state %in% x$cmodel$censor[-ind]
             warning("Omitting censored states of types other than ",x$cmodel$censor[ind])

@@ -10,6 +10,9 @@
 \usage{
 surface.msm(x, params=c(1,2), np=10, type=c("contour","filled.contour","persp","image"),
                         point=NULL, xrange=NULL, yrange=NULL,...)
+\method{contour}{msm}(x, ...)
+\method{persp}{msm}(x, ...)
+\method{image}{msm}(x, ...)
 }
 \arguments{
   \item{x}{Output from \code{\link{msm}}, representing a fitted msm model.}

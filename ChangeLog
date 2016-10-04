@@ -1,3 +1,25 @@
+2016-10-02 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* Vignette sources moved from "src/doc" to "vignettes" on CRAN
+	request.
+
+	* DESCRIPTION: Version 1.6.4 released to CRAN and r-forge
+
+2016-06-03 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+
+	* R/utils.R: Bug fix for qtnorm with vectorised arguments.  Thanks
+	to James Gibbons for the report.
+
+	* DESCRIPTION: Version 1.6.3 released to r-forge.
+
+2016-03-09 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
+
+	* R/pearson.R: Bug fix for dropping censored states. Thanks to
+	Casimir Sofeu for the report.
+
+	* DESCRIPTION: Version 1.6.2 released to r-forge.
+
 2016-03-09 Chris Jackson  <chris.jackson@mrc-bsu.cam.ac.uk>
 
 	* DESCRIPTION: Version 1.6.1 released to CRAN.

@@ -4,6 +4,27 @@ USER-VISIBLE CHANGES (for detailed changes see ChangeLog in the source package)
 --------------------
 
 
+Version 1.6.4  (2016-10-02)
+-------------
+
+o CRAN release.  Vignette source included in vignettes directory, on
+  request of CRAN.
+
+
+Version 1.6.3  (2016-06-03)
+-------------
+
+o r-forge release only.  Fix of bug for qtnorm with vectorised
+  arguments.  Thanks to James Gibbons for the report.
+
+
+Version 1.6.2  (2016-03-17)
+-------------
+
+o r-forge release only.  Fix of bug for Pearson test with censored
+  states.  Thanks to Casimir Sofeu for the report.
+
+
 Version 1.6.1  (2016-03-09)
 -------------
 
@@ -20,7 +41,7 @@ o Fix of minor bugs in draic.msm and output printing.
 
 
 Version 1.6  (2015-11-17)
--------------
+------------
 
 o CRAN release. Includes the changes from versions 1.5.1 - 1.5.3, plus
   also:

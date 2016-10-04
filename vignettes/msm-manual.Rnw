@@ -3,7 +3,24 @@
 \documentclass{article}
 
 %% Need to modify Sweave.sty to pass pdftex option to graphicx.
-\usepackage{Sweave-local}
+%\usepackage{Sweave-local}
+\usepackage{graphics}
+\RequirePackage[T1]{fontenc}
+%%Check if we are compiling under latex or pdflatex
+\ifx\pdftexversion\undefined
+  \RequirePackage[dvips]{graphicx}
+\else
+  \RequirePackage[pdftex]{graphicx}
+  \RequirePackage{epstopdf}
+\fi
+\RequirePackage{ae,fancyvrb}
+\IfFileExists{upquote.sty}{\RequirePackage{upquote}}{}
+\setkeys{Gin}{width=0.8\textwidth}
+\DefineVerbatimEnvironment{Sinput}{Verbatim}{fontshape=sl}
+\DefineVerbatimEnvironment{Soutput}{Verbatim}{}
+\DefineVerbatimEnvironment{Scode}{Verbatim}{fontshape=sl}
+\newenvironment{Schunk}{}{}
+
 \usepackage{times}
 \usepackage{url}
 \addtolength{\textwidth}{2cm}
@@ -16,6 +33,7 @@
 \newcommand{\Rmethod}[1]{{\texttt{#1}}}
 \newcommand{\Rfunarg}[1]{{\texttt{#1}}}
 \newcommand{\Rclass}[1]{{\textit{#1}}}
+
 
 
 %% version <- 1.3

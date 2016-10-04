@@ -24,6 +24,7 @@ test_that("truncated normal",{
     expect_equal(rl, qtnorm(ptnorm(rl)), tol=1e-03)
     expect_warning(qtnorm(c(-1, 0, 1, 2)), "NaN")
     expect_warning(qtnorm(c(-1, 0, 1, 2),lower=-1,upper=1), "NaN")
+    expect_equal(rl, qtnorm(ptnorm(rl, mean=1:10), mean=1:10))
 })
 
 test_that("Measurement error distributions: normal",{
