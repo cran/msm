@@ -50,7 +50,7 @@ bootdata.trans.msm <- function(x) {
     data.boot <- as.data.frame(data.boot)
     ## label every transition in new data as from a different subject
     data.boot[,un["subject"]] <- rep(1:ntrans, each=2)
-    for (i in which(sapply(dat, is.factor)))
+    for (i in which(sapply(data.boot, is.factor)))
         data.boot[,i] <- factor(data.boot[,i], labels=sort(unique(dat[,i])))
     data.boot
 }
@@ -65,7 +65,7 @@ bootdata.subject.msm <- function(x) {
     subj.num <- match(dat$"(subject)", unique(dat$"(subject)"))
     subjs <- sample(unique(subj.num), replace=TRUE)
     inds <- new.subj <- NULL
-    for (i in seq(along=subjs)) {
+    for (i in seq_along(subjs)) {
         subj.inds <- which(subj.num == subjs[i])
         inds <- c(inds, subj.inds)
         new.subj <- c(new.subj, rep(i, length(subj.inds)))

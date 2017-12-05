@@ -330,8 +330,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     The maximum likelihood estimation chooses the combination of signs
     which has the higher likelihood.
 
-    For categorical covariates, defined using \code{factor(covname)},
-    specify constraints as follows:\cr
+    For categorical covariates, defined as factors, specify constraints
+    as follows:\cr
 
     \code{list(..., covnameVALUE1 = c(...), covnameVALUE2 = c(...), ...)}\cr
 
@@ -614,6 +614,11 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
      Thus if \code{pci} is supplied, you cannot have a
      previously-existing variable called \code{timeperiod} as a
      covariate in any part of a \code{msm} model.
+
+     To assume piecewise constant intensities for some transitions but
+     not others with \code{pci}, use the
+     \code{fixedpars} argument to fix the appropriate covariate effects
+     at their default initial values of zero. 
 
      Internally, this works by inserting censored observations in the
      data at times when the intensity changes but the state is not

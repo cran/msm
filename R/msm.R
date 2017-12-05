@@ -63,7 +63,7 @@ msm <- function(formula, subject=NULL, data=list(), qmatrix, gen.inits=FALSE,
         emodel <- list(misc=FALSE, npars=0, ndpars=0, nipars=0, nicoveffs=0)
         hmodel$ematrix <- FALSE
     }
-
+    
 ### EXACT DEATH TIMES. Logical values allowed for backwards compatibility (TRUE means final state has exact death time, FALSE means no states with exact death times)
     if (!is.null(deathexact)) death <- deathexact
     dmodel <- msm.form.dmodel(death, qmodel, hmodel)  # returns death, ndeath,
@@ -106,8 +106,19 @@ msm <- function(formula, subject=NULL, data=list(), qmatrix, gen.inits=FALSE,
     temp[["na.action"]] <- na.pass # run na.action later so we can pass aux info to it
     temp[["data"]] <- data
     mf <- eval(temp, parent.frame())
+    
     ## remember user-specified names for later (e.g. bootstrap/cross validation)
-    attr(mf, "usernames") <- c(state=all.vars(formula[[2]]), time=all.vars(formula[[3]]), subject=as.character(temp$subject), obstype=as.character(substitute(obstype)), obstrue=as.character(temp$obstrue))
+    usernames <- c(state=all.vars(formula[[2]]), time=all.vars(formula[[3]]), subject=as.character(temp$subject), obstype=as.character(substitute(obstype)), obstrue=as.character(temp$obstrue))
+    attr(mf, "usernames") <- usernames
+
+    ## handle matrices in state outcome constructed in formula with cbind()
+    indx <- match(c("formula", "data"), names(call), nomatch = 0)
+    temp <- call[c(1, indx)]
+    temp[[1]] <- as.name("model.frame")
+    mfst <- eval(temp, parent.frame())
+    if (is.matrix(mfst[[1]]) && !is.matrix(mf$"(state)"))
+        mf$"(state)" <- mfst[[1]]
+
     if (is.factor(mf$"(state)")){
         if (!all(grepl("^[[:digit:]]+$", as.character(mf$"(state)"))))
             stop("state variable should be numeric or a factor with ordinal numbers as levels")
@@ -140,6 +151,7 @@ msm <- function(formula, subject=NULL, data=list(), qmatrix, gen.inits=FALSE,
         mf <- na.fail.msmdata(mf)
     else stop ("na.action should be \"na.omit\" or \"na.fail\"")
     attr(mf, "npts") <- length(unique(mf$"(subject)"))
+    attr(mf, "ntrans") <- nrow(mf) - attr(mf, "npts")
 
 ### UTILITY FOR PIECEWISE-CONSTANT INTENSITIES.  Insert censored
     ## observations into the model frame, add a factor "timeperiod" to
@@ -474,7 +486,7 @@ msm.form.emodel <- function(ematrix, econstraint=NULL, initprobs=NULL, est.initp
 }
 
 ### Check elements of state vector. For simple models and misc models specified with ematrix
-### No check is performed for hidden models
+### Only check performed for hidden models is that data and model dimensions match
 
 msm.check.state <- function(nstates, state, censor, hmodel)
 {
@@ -484,7 +496,12 @@ msm.check.state <- function(nstates, state, censor, hmodel)
             pl2 <- if (max(hmodel$nout) > 1) "s" else ""
             if ((ncol(state) != max(hmodel$nout)) && (max(hmodel$nout) > 1))
                 stop(sprintf("outcome matrix in data has %d column%s, but outcome models have a maximum of %d dimension%s", ncol(state), pl1, max(hmodel$nout), pl2))
+        } else {
+            if (max(hmodel$nout) > 1) {
+                stop("Only one column in state outcome data, but multivariate hidden model supplied")
+            }
         }
+
     }  else { 
         states <- c(1:nstates, censor)
         state <- na.omit(state) # NOTE added in 1.4
@@ -495,7 +512,7 @@ msm.check.state <- function(nstates, state, censor, hmodel)
                 stop("State vector contains elements not in ",statelist)
             miss.state <- setdiff(states, unique(state))
             ## Don't do this for misclassification models: it's OK to have particular state not observed by chance
-            if (length(miss.state) > 0 && !hmodel$ematrix)
+            if (length(miss.state) > 0 && (!hmodel$hidden || !hmodel$ematrix))
                 warning("State vector doesn't contain observations of ",paste(miss.state, collapse=","))
         }
     }
@@ -574,8 +591,10 @@ msm.form.obstype <- function(mf, obstype, dmodel, exacttimes)
         obstype <- rep(2, nrow(mf))
     else {
         obstype <- rep(1, nrow(mf))
-        if (dmodel$ndeath > 0)
-            obstype[mf$"(state)" %in% dmodel$obs] <- 3
+        if (dmodel$ndeath > 0){
+            dobs <- if (is.matrix(mf$"(state)")) apply(mf$"(state)", 1, function(x) any(x %in% dmodel$obs)) else (mf$"(state)" %in% dmodel$obs)
+            obstype[dobs] <- 3
+        }
     }
     obstype
 }
@@ -767,7 +786,7 @@ msm.form.covmodel <- function(mf,
         msm.check.constraint(constraint, mm)
         constr <- inits <- numeric()
         maxc <- 0
-        for (i in seq(along=covlabels)){
+        for (i in seq_along(covlabels)){
             ## build complete vectorised list of constraints for covariates in covariates statement
             ## so. e.g. constraints = (x1=c(3,3,4,4,5), x2 = (0.1,0.2,0.3,0.4,0.4))
             ##     turns into constr = c(1,1,2,2,3,4,5,6,7,7) with seven distinct covariate effects
@@ -789,7 +808,7 @@ msm.form.covmodel <- function(mf,
     inits <- numeric()
     if (!is.null(covinits))
         msm.check.covinits(covinits, covlabels)
-    for (i in seq(along=covlabels)) {
+    for (i in seq_along(covlabels)) {
         if (!is.null(covinits) && is.element(covlabels[i], names(covinits))) {
             thisinit <- covinits[[covlabels[i]]]
             if (!is.numeric(thisinit)) {
@@ -834,7 +853,7 @@ msm.form.covmodel.byrate <- function(mf, mm,
     ## Convert short form constraints to long form
     msm.check.constraint(constraint, mm)
     constr <- inits <- numeric()
-    for (i in seq(along=covs)){
+    for (i in seq_along(covs)){
         if (covs[i] %in% names(constraint)){
             if (length(constraint[[covs[i]]]) != sum(cri[,i]))
                 stop("\"",covs[i],"\" constraint of length ",
@@ -847,7 +866,7 @@ msm.form.covmodel.byrate <- function(mf, mm,
     }
     ## convert short to long initial values in the same way
     if (!is.null(covinits)) msm.check.covinits(covinits, covs)
-    for (i in seq(along=covs)) {
+    for (i in seq_along(covs)) {
         if (!is.null(covinits) && (covs[i] %in% names(covinits))) {
             if (!is.numeric(covinits[[covs[i]]])) {
                 warning("initial values for covariates should be numeric, ignoring")
@@ -877,18 +896,21 @@ msm.form.dmodel <- function(death, qmodel, hmodel)
         states <- nstates
     else if (is.logical(death) && death==FALSE)
         states <- numeric(0) ## Will be changed to -1 when passing to C
-    else if (!is.numeric(death)) stop("Death states indicator must be numeric")
+    else if (!is.numeric(death)) stop("Exact death states indicator must be numeric")
     else if (length(setdiff(death, 1:nstates)) > 0)
-        stop("Death states indicator contains states not in ",statelist)
+        stop("Exact death states indicator contains states not in ",statelist)
     else states <- death
     ndeath <- length(states)
     if (hmodel$hidden) {
         ## Form death state info from hmmIdent parameters.
         ## Special observations in outcome data which denote death states
         ## are given as the parameter to hmmIdent()
-        if (!all(hmodel$models[states] == match("identity", .msm.HMODELS)))
-            stop("Death states should have the identity hidden distribution hmmIdent()")
-        obs <- ifelse(hmodel$npars[states]>0, hmodel$pars[hmodel$parstate %in% states], states)
+        mods <- if(is.matrix(hmodel$models)) hmodel$models[1,] else hmodel$models
+        if (!all(mods[states] == match("identity", .msm.HMODELS)))
+            stop("Exact death states should have the identity hidden distribution hmmIdent()")
+        obs <- ifelse(hmodel$npars[states]>0, 
+                      hmodel$pars[hmodel$parstate %in% states],
+                      states)
     }
     else obs <- states
     if (any (states %in% transient.msm(qmatrix=qmodel$qmatrix)))
@@ -968,7 +990,8 @@ msm.mninvlogit.transform <- function(pars, plabs, states){
         }
         else {
             psum <- tapply(exp(pars[plabs=="p"]), states[plabs=="p"], sum)
-            res[plabs=="pbase"][unique(states[plabs=="p"])] <- 1 / (1 + psum) # don't transform pbase if no p's for this state, i.e. if no/perfect misclassification
+            ## only transform pbases where there also exists p's for the same state, i.e don't transform if no/perfect misclassification
+            res[plabs=="pbase" & states %in% unique(states[plabs=="p"])] <- 1 / (1 + psum)             
             res[plabs=="p"] <- exp(pars[plabs=="p"]) / (1 + psum[whichst])
         }
     }
@@ -1450,6 +1473,7 @@ Ccall.msm <- function(params, do.what="lik", msmdata, qmodel, qcmodel, cmodel, h
                   ematrix=as.integer(hmodel$ematrix))
     pars <- list(Q=as.double(Q),DQ=as.double(DQ),H=as.double(H),DH=as.double(DH),
                 initprobs=as.double(initprobs),nopt=as.integer(nopt))
+
     .Call("msmCEntry",  as.integer(match(do.what, .msm.CTASKS) - 1),
          mfac, mfc, auxdata, qmodel, cmodel, hmodel, pars, PACKAGE="msm")
 }
@@ -1746,7 +1770,7 @@ msm.check.covlist <- function(covlist, qemodel) {
         badnums <- paste(badnums, collapse=",")
         stop("Name", plural1, " ", badnames, " of \"covariates\" formula", plural2, " ", badnums, " not in format \"number-number\"")
     }
-    for (i in seq(along=covlist))
+    for (i in seq_along(covlist))
         if (!inherits(covlist[[i]], "formula"))
             stop("\"covariates\" should be a formula or list of formulae")
     trans <- sapply(strsplit(names(covlist), "-"), as.numeric)
@@ -1808,7 +1832,7 @@ na.find.msmdata <- function(object, ...) {
     lastobs <- !duplicated(subj, fromLast=TRUE)
     nm <- names(object)
     omit <- FALSE
-    for (j in seq(along=object)) {
+    for (j in seq_along(object)) {
         ## Drop all NAs in time, subject as usual
         if (nm[j] %in% c("(time)", "(subject)"))
             omit <- omit | is.na(object[[j]])

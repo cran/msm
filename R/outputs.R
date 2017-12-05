@@ -30,7 +30,7 @@ qmatrix.msm <- function(x, covariates="mean", sojourn=FALSE, ci=c("delta","norma
             ## expit(sum covs)  / (1 + expit(sum(covs)))    or   1  /  (1  +  expit(sum(covs)))
             ## Use delta method to find approximate SE of the transform on log scale
             ## Work out a CI for this by assuming normal and transforming back
-            coefs <- c(1, covlist)
+            coefs <- as.numeric(c(1, covlist))
             semat <- lsemat <- lmat <- umat <- matrix(0, nst, nst)
             form <- as.formula(paste("~", expsum(seq(nc + 1), coefs)))
             lform <- as.formula(paste("~", lsum(seq(nc + 1), coefs)))
@@ -221,7 +221,7 @@ factorcov2numeric.msm <- function(covariates, x, mod=NULL) {
     cfac <- covariates[names(covariates) %in% covnames[which(covfactor)]]
     cnum <- covariates[! names(covariates) %in% covnames[which(covfactor)]]
     cfac.new <- list()
-    for (i in seq(along=cfac)) {
+    for (i in seq_along(cfac)) {
         levs.i <- covfactorlevels[[names(cfac)[[i]]]]
         cfac.i <- rep(0, length(levs.i))
         if (! cfac[[i]] %in% levs.i) stop("Level \"", cfac[[i]], "\" of covariate ", names(cfac)[[i]], " unknown")
@@ -230,7 +230,7 @@ factorcov2numeric.msm <- function(covariates, x, mod=NULL) {
         cfac.i <- as.list(cfac.i[-1])
         cfac.new <- c(cfac.new, cfac.i)
     }
-    covlabels.noint <- covnames.mm[setdiff(seq(along=covnames.mm), grep(":", covnames.mm))]
+    covlabels.noint <- covnames.mm[setdiff(seq_along(covnames.mm), grep(":", covnames.mm))]
     covs.out <- as.list(numeric(length(covlabels.noint)))
     names(covs.out) <- covlabels.noint
     covs.out[names(cnum)] <- cnum
@@ -252,7 +252,7 @@ p.se.msm <- function(x, covariates)
     ni <- emodel$npars
     covlist <- msm.parse.covariates(x, covariates, ecmodel)
     nc <- length(covlist) 
-    coefs <- c(1, covlist)
+    coefs <- as.numeric(c(1, covlist))
     ppars <- hmodel$plabs %in% c("p","pbase")
     res <- data.frame(lab=hmodel$plabs[ppars])
     hmmallpars <- !(paramdata$plabs %in% c("qbase","qcov","initp","initp0","initpcov"))
@@ -311,7 +311,7 @@ qratio.se.msm <- function(x, ind1, ind2, covariates, cl=0.95)
     indmat[indmat == 1] <- seq(length = x$qmodel$npars)
     indmat <- t(indmat) # matrix of indices of estimate vector
     inds <- seq(length = x$qmodel$npars+x$qcmodel$npars) # identifiers for q and beta parameters
-    coefs <- c(1, unlist(covlist))
+    coefs <- as.numeric(c(1, unlist(covlist)))
     parinds <- numeric()
     indmatrow.n <- indmat[ind1[1],-ind1[1]]
     nir.n <- sum(indmatrow.n > 0)
@@ -390,7 +390,7 @@ qmatrix.diagse.msm <- function(x, covlist, sojourn, ni, ivector, nc)
     indmat <- t(indmat) # matrix of indices of estimate vector
     inds <- seq(length = ni + ni*nc)
     cur.i <- 1
-    coefs <- c(1, unlist(covlist))
+    coefs <- as.numeric(c(1, unlist(covlist)))
     for (i in 1:nst){
         ## Transformation for delta method is
         ## exp(x1 + x2 (cov1 - covmean1) + x3 (cov2 - covmean2) + ... ) +
@@ -684,8 +684,11 @@ plot.msm <- function(x, from=NULL, to=NULL, range=NULL, covariates="mean", legen
         if (any (! (from %in% 1:x$qmodel$nstates ) ) )
             stop("from must be a vector of states in 1, ..., ", x$qmodel$nstates)
     }
-    if (is.null(to))
+    if (is.null(to)){
+        if (length(absorbing.msm(x))==0)
+            stop("\"to\" not specified, and no absorbing state in the model")
         to <- max(absorbing.msm(x))
+    }
     else {
         if (!is.numeric(to)) stop("to must be numeric")
         if (! (to %in% absorbing.msm(x) ) ) stop("to must be an absorbing state")
@@ -1105,18 +1108,22 @@ pmatrix.piecewise.msm <- function(x=NULL, # fitted msm model
 
 sojourn.msm <- function(x, covariates = "mean", ci=c("delta","normal","bootstrap","none"), cl=0.95, B=1000)
 {
+    ci <- match.arg(ci)
     qmatrix <- qmatrix.msm(x, covariates, sojourn=TRUE, ci=ci, cl=cl, B=B)
     sojstates <- (1 : x$qmodel$nstates) [transient.msm(x)]
-    soj <- qmatrix$sojourn[sojstates]
-    names (soj) <- rownames(x$qmodel$qmatrix)[sojstates]
     if (x$foundse && (ci != "none")){
+        soj <- qmatrix$sojourn[sojstates]
+        names (soj) <- rownames(x$qmodel$qmatrix)[sojstates]
         sojse <- qmatrix$sojournSE[sojstates]
         sojl <- qmatrix$sojournL[sojstates]
         soju <- qmatrix$sojournU[sojstates]
         names(sojse) <- names(sojl) <- names(soju) <- names(soj)
         res <- data.frame(estimates=soj, SE=sojse, L=sojl, U=soju)
     }
-    else res <- list(estimates=soj)
+    else if (ci != "none") {
+        res <- list(estimates=qmatrix$sojourn[sojstates])
+    }
+    else res <- list(estimates=qmatrix[sojstates])
     res
 }
 
@@ -1267,7 +1274,7 @@ totlos.msm <- function(x, start=1, end=NULL, fromt=0, tot=Inf, covariates="mean"
             for (j in rem){
                 f <- function(time) {
                     y <- numeric(length(time))
-                    for (k in seq(along=y))
+                    for (k in seq_along(y))
                         y[k] <- (start %*% pmatrix.msm(x, time[k], t1=0, covariates=covs[[i]], ci="none")) [j]
                     y
                 }
@@ -1391,24 +1398,25 @@ get.covhist <- function(x, subset=NULL) {
             subs <- mf$"(subject)" %in% subset
             mf <- mf[subs,,drop=FALSE]
         }
-        n <- length(mf$"(subject)")
+        subj <- match(mf$"(subject)", unique(mf$"(subject)"))
+        n <- length(subj)
         apaste <- do.call("paste", mf[,attr(mf,"covnames"),drop=FALSE])
-        first <- !duplicated(mf$"(subject)"); last <- rev(!duplicated(rev(mf$"(subject)")))
+        first <- !duplicated(subj); last <- rev(!duplicated(rev(subj)))
         keep <- (c(0, apaste[1:(n-1)]) != apaste) | first | last
         ## Keep and tabulate unique covariate series
-        covseries <- split(apaste[keep], mf$"(subject)"[keep]) # as a list of char vectors
+        covseries <- split(apaste[keep], subj[keep]) # as a list of char vectors
         covseries <- sapply(covseries, paste, collapse=" , ") # as one char vector, one series per pt.
         ## also need p matrices for different times as well as different covs.
         ## but only interested in cov change times if there's more than one
         ## transition (at least one times change point)
         change.times <- mf$"(time)"; change.times[first] <- change.times[last] <- 0
-        change.times <- split(change.times[keep & (!(first|last))], mf$"(subject)"[keep & (!(first|last))])
+        change.times <- split(change.times[keep & (!(first|last))], subj[keep & (!(first|last))])
         change.times <- sapply(change.times, paste, collapse= " , ")
         covseries.t <- paste(covseries, change.times, sep="; ")
-        ids <- unique(mf$"(subject)")[!duplicated(covseries.t)] # subj ids, one with each distinct series
+        ids <- unique(subj)[!duplicated(covseries.t)] # subj ids, one with each distinct series
         ncombs <- table(covseries.t)[unique(covseries.t)]# how many per series
-        covmat <- cbind(subject=mf$"(subject)", time=mf$"(time)", mf[,attr(mf,"covnames"),drop=FALSE])
-        covmat <- covmat[(mf$"(subject)" %in% ids) & keep,]
+        covmat <- cbind(subject=subj, time=mf$"(time)", mf[,attr(mf,"covnames"),drop=FALSE])
+        covmat <- covmat[(subj %in% ids) & keep,]
         list(example=covmat, # rows of the original data sufficient to define the distinct histories
              hist=covseries.t) # one per subject listing their covariate history as a string
     }
@@ -1426,16 +1434,26 @@ observed.msm <- function(x, times=NULL, interp=c("start","midpoint"), censtime=I
     if (!is.null(x$pci)) {
         state <- x$data$mf$"(state)"[!x$data$mf$"(pci.imp)"]
         time <- x$data$mf$"(time)"[!x$data$mf$"(pci.imp)"]
-        subject <- x$data$mf$"(subject)"[!x$data$mf$"(pci.imp)"]
+        subject <- x$data$mf$"(subject)"
+        subject <- subject[!x$data$mf$"(pci.imp)"]
     } else {
-        state <- if ((x$hmodel$hidden && !x$emodel$misc) || (!x$hmodel$hidden && x$cmodel$ncens>0) )
-            viterbi.msm(x)$fitted else x$data$mf$"(state)"
+        if ((x$hmodel$hidden && !x$emodel$misc) ||
+            (!x$emodel$misc && x$cmodel$ncens>0) )
+            state <- viterbi.msm(x)$fitted
+        else if (x$emodel$misc && x$cmodel$ncens>0) {
+            vit <- viterbi.msm(x)$fitted
+            state <- x$data$mf$"(state)"
+            state[state %in% x$cmodel$censor] <- vit[state %in% x$cmodel$censor]
+            ## TODO for misc models with censoring, impute only censored obs states from viterbi
+        }  else
+            state <- x$data$mf$"(state)"
+
         time <- x$data$mf$"(time)"; subject <- x$data$mf$"(subject)"
     }
     if (is.null(subset)) subset <- unique(subject)
     time <- time[subject %in% subset]
     state <- state[subject %in% subset]
-    subject <- subject[subject %in% subset] ## fixme subj char/factor?
+    subject <- subject[subject %in% subset]
     if (is.null(times))
         times <- seq(min(time), max(time), (max(time) - min(time))/10)
     states.expand <- matrix(nrow=length(unique(subject)), ncol=length(times))
@@ -1445,7 +1463,7 @@ observed.msm <- function(x, times=NULL, interp=c("start","midpoint"), censtime=I
     if (!is.numeric(censtime)) stop("censtime should be numeric")
     if (length(censtime)==1) censtime <- rep(censtime, length(pts))
     else if (length(censtime)!=length(pts)) stop("censtime of length ", length(censtime), ", should be 1 or ", length(pts))
-    for (i in seq(along=pts)){
+    for (i in seq_along(pts)){
         state.i <- state[(subject==pts[i])]
         time.i <- time[(subject==pts[i])]
         j <- 1
@@ -1484,7 +1502,7 @@ observed.msm <- function(x, times=NULL, interp=c("start","midpoint"), censtime=I
         if (is.null(covhist)) rep(1, length(unique(subject)))
         else match(covhist$hist, unique(covhist$hist))
     risk <- matrix(nrow=length(times), ncol=length(unique(covcat)), dimnames = list(times, unique(covhist$hist)))
-    for (i in seq(along=unique(covcat))) {
+    for (i in seq_along(unique(covcat))) {
         obst <- t(apply(states.expand[covcat==unique(covcat)[i],,drop=FALSE], 2,
                         function(y) table(factor(y, levels=seq(length=x$qmodel$nstates)))))
         risk[,i] <- rowSums(obst)
@@ -1492,33 +1510,6 @@ observed.msm <- function(x, times=NULL, interp=c("start","midpoint"), censtime=I
 
     list(obstab=obstab, obsperc=obsperc, risk=risk)
 }
-
-### TODO cleaner observed.msm.   Works for interp=start.
-### TODO debug midpoint. apply censoring times
-
-## times <- seq(0, 2, 0.5)
-## dat <- data.frame(time=msm_export_r$fu_year, state=msm_export_r$state3)
-## pt <- msm_export_r$ptid
-## nstates <- 3
-## trans <- c(1,2) # transient states
-
-## if (interp=="midpoint"){
-## t <- dat$time; n <- length(t)
-## t[duplicated(pt)] <- ((t + t[c(1, 1:(n-1))])/2)[duplicated(pt)]
-## dat$time <- t
-## }
-## spl <- split(dat, pt)
-## ## findInterval returns 0 if before first time.
-## st <- sapply(spl, function(x){y <- findInterval(times, x$time)
-##                               y[y==0] <- NA
-##                               res <- x$state[y]
-##                               res[(y==length(x$time)) & (res %in% trans)] <- NA
-##                               res
-##                           })
-## obstab <- t(apply(st, 1, function(x){table(factor(na.omit(x), levels=1:nstates))}))
-
-## observed.msm(pap.msm.noskip, times=times)
-## observed.msm(pap.msm.noskip, times=times, interp="midpoint")
 
 
 expected.msm <- function(x,
@@ -1677,25 +1668,26 @@ plot.prevalence.msm <- function(x, mintime=NULL, maxtime=NULL, timezero=NULL, in
 }
 
 ### Empirical versus fitted survival curve
-### For t,   plot   1 - P(dead at t given
 
 plot.survfit.msm <- function(x, from=1, to=NULL, range=NULL, covariates="mean",
                              interp=c("start","midpoint"), ci=c("none","normal","bootstrap"), B=100,
                              legend.pos=NULL, xlab="Time", ylab="Survival probability",
                              lty=1, lwd=1, col="red", lty.ci=2, lwd.ci=1, col.ci="red",
                              mark.time=TRUE, col.surv="blue", lty.surv=2, lwd.surv=1,
+                             survdata=FALSE, 
                              ...) {
-    if (!inherits(x, "msm")) stop("expected x to be a msm model")
+    if (!inherits(x, "msm")) stop("expected \"x\" to be a msm model")
     if (is.null(to))
         to <- max(absorbing.msm(x))
     else {
-        if (!is.numeric(to)) stop("to must be numeric")
-        if (! (to %in% absorbing.msm(x) ) ) stop("to must be an absorbing state")
+        if (!is.numeric(to)) stop("\"to\" must be numeric")
+        if (! (to %in% absorbing.msm(x) ) ) stop("\"to\" must be an absorbing state")
     }
+    if (! (from %in% transient.msm(x) ) ) stop("\"from\" must be a non-absorbing state")
     if (is.null(range))
         rg <- range(model.extract(x$data$mf, "time"))
     else {
-        if (!is.numeric(range) || length(range)!= 2) stop("range must be a numeric vector of two elements")
+        if (!is.numeric(range) || length(range)!= 2) stop("\"range\" must be a numeric vector of two elements")
         rg <- range
     }
     interp <- match.arg(interp)
@@ -1720,17 +1712,35 @@ plot.survfit.msm <- function(x, from=1, to=NULL, range=NULL, covariates="mean",
         lines(times, 1 - upper, lty=lty.ci, col=col.ci, lwd=lwd.ci)
     }
     dat <- x$data$mf[,c("(subject)", "(time)", "(state)")]
-    st <- as.data.frame(
-                        do.call("rbind", by(dat, dat$"(subject)", function(x)
-                                        {
-                                            dind <- which(x[,"(state)"] == to)
-                                            if(any(x[,"(state)"]==to))
-                                                mintime <- if(interp=="start") min(x[dind, "(time)"]) else 0.5 * (x[dind, "time"] + x[dind-1, "time"])
-                                            else mintime <- max(x[,"(time)"])
-                                            c(anystate = as.numeric(any(x[,"(state)"]==to)), mintime = mintime)
-                                        }
-                                            ))) # slow
-    lines(survfit(Surv(st$mintime,st$anystate) ~ 1), mark.time=mark.time, col=col.surv, lty=lty.surv, lwd=lwd.surv,...)
+    dat$"(subject)" <- match(dat$"(subject)", unique(dat$"(subject)")) # guard against factor
+    dat$subjstate <- paste(dat$"(subject)", dat$"(state)")
+
+    ## restrict data to subjects with any observations of "from" 
+    anyfrom <- tapply(dat$"(state)", dat$"(subject)", function(x)any(x==from))[as.character(dat$"(subject)")]
+    dat <- dat[anyfrom,]
+    obspt <- sequence(table(dat$"(subject)")) # observation numbers, starting at 1 for each subject
+    ## number of first observation of "from" for current subject 
+    minfrom <- rep(which(dat$"(state)"==from  & !duplicated(dat$subjstate)) - which(!duplicated(dat$"(subject)")), table(dat$"(subject)")) + 1
+    ## restrict data to observations after and including first observation of "from" for each person 
+    dat <- dat[obspt>=minfrom,]
+    
+    first <- !duplicated(dat$"(subject)")
+    last <- !duplicated(dat$"(subject)", fromLast=TRUE) 
+    ## does each subject have an absorbing state
+    anyabs <- tapply(dat$"(state)", dat$"(subject)", function(x)any(x==to))[as.character(dat$"(subject)")]
+    subjstate <- paste(dat$"(subject)", dat$"(state)")
+    ## index of first occurrence of absorbing state, or last obs if no absorbing state
+    minabs <- dat$"(state)"==to  & !duplicated(subjstate)
+    dtime <- dat$"(time)" - tapply(dat$"(time)", dat$"(subject)", min)[as.character(dat$"(subject)")]
+    if (interp=="midpoint"){
+        ## index of state just before first occurrence of abs state
+        prevminabs <- c(minabs[-1], FALSE)
+        dtime[minabs] <- 0.5*(dtime[minabs] + dtime[prevminabs])
+    }
+    minabs[!anyabs] <- last[!anyabs]
+    survdat <- data.frame(survtime =  dtime[minabs], died = as.numeric(anyabs[minabs]))
+
+    lines(survfit(Surv(survdat$survtime, survdat$died) ~ 1), mark.time=mark.time, col=col.surv, lty=lty.surv, lwd=lwd.surv,...)
     timediff <- (rg[2] - rg[1]) / 50
     if (!is.numeric(legend.pos) || length(legend.pos) != 2)
         legend.pos <- c(max(x$data$mf$"(time)") - 25*timediff, 1)
@@ -1740,7 +1750,7 @@ plot.survfit.msm <- function(x, from=1, to=NULL, range=NULL, covariates="mean",
     else legend(legend.pos[1], legend.pos[2], lty=c(lty, lty.ci, lty.surv), lwd=c(lwd,lwd.ci, lwd.surv), col=c(col ,col.ci, col.surv),
                 legend=c("Fitted","Fitted (confidence interval)", "Empirical"))
 
-    invisible()
+    if (survdata) survdat else invisible()
 }
 
 ### Obtain hazard ratios from estimated effects of covariates on log-transition rates
@@ -1826,8 +1836,7 @@ odds.msm <- function(x, odds.scale = 1, cl = 0.95)
     odds.list
 }
 
-
-viterbi.msm <- function(x)
+viterbi.msm <- function(x, normboot=FALSE)
 {
     if (!inherits(x, "msm")) stop("expected x to be a msm model")
     if (x$cmodel$ncens > 0 && !x$hmodel$hidden) {
@@ -1843,10 +1852,14 @@ viterbi.msm <- function(x)
         for (i in seq_len(x$hmodel$nstates))
             x$data$mm.hcov[[i]] <- model.matrix(~1, x$data$mf)
         x$paramdata$allinits <- c(x$paramdata$allinits,x$hmodel$pars)
-        x$paramdata$constr <- c(x$paramdata$constr,max(x$paramdata$constr)+seq(along=x$hmodel$pars))
+        x$paramdata$constr <- c(x$paramdata$constr,max(x$paramdata$constr)+seq_along(x$hmodel$pars))
     }
-    if (x$hmodel$hidden) {
-        ret <- Ccall.msm(x$paramdata$opt$par, do.what="viterbi", expand.data(x),
+    if (x$hmodel$hidden) {        
+        params <-
+          if (normboot)
+              rmvnorm(1, x$paramdata$opt$par, x$covmat[x$paramdata$optpars,x$paramdata$optpars])
+          else x$paramdata$opt$par
+        ret <- Ccall.msm(params, do.what="viterbi", expand.data(x),
                                x$qmodel, x$qcmodel, x$cmodel, x$hmodel, x$paramdata)
         fitted <- ret[[1]]; pstate <- ret[[2]]
         fitted <- fitted + 1
@@ -1876,7 +1889,7 @@ scoreresid.msm <- function(x, plot=FALSE){
     names(sres) <- unique(x$data$mf$"(subject)")
     if (plot) {
         plot(sres, type="n")
-        text(seq(along=sres), sres, names(sres))
+        text(seq_along(sres), sres, names(sres))
     }
     sres
 }

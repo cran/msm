@@ -35,7 +35,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
     ## Do minimum needed to port this to msm version 1.4
     od <- dat[,c("(subject)","(time)","(state)","(obstype)")]
     names(od) <- c("subject","time","state","obstype")
-    od$cov <- dat[,attr(dat,"covnames.q")]
+    od$cov <- dat[,attr(dat,"covnames.q"),drop=FALSE]
     if (x$emodel$misc) od$misccov <- dat[,attr(dat,"covnames.e")]
     ncovs <- x$qcmodel$ncovs
     od$state <- factor(od$state, levels=sort(unique(od$state)))
@@ -174,7 +174,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
             centime <- md$maxtimes[deathindex[i]] # - md$time[deathindex[i]] + mintime
             tg <- md$timegroup[deathindex[i]]
             ## returns list of times, whether would have ended in censoring, and time category.
-            st <- sampletimes(mintime, centime, empiricaldist[,tg,empiricaldist["time",tg,]>0], N, tg, intervalq)
+            st <- sampletimes(mintime, centime, empiricaldist[,tg,empiricaldist["time",tg,]>0,drop=FALSE], N, tg, intervalq)
             for (j in c("times","cens","intervalgroup"))
                 imputation[i,,j] <- st[,j]
         }
@@ -405,7 +405,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
         psi <- function(u)prod((1 - 2i*lambda*u)^(-0.5))
         fn <- function(u){
             res <- numeric(length(u))
-            for (i in seq(along=u))
+            for (i in seq_along(u))
                 res[i] <- Im(psi(u[i])*exp(-1i*u[i]*stat) / (2*pi*u[i]))
             res
         }
@@ -573,6 +573,7 @@ empiricaldists  <-  function(timeinterval, state, obgroup, obgroups, ndstates) {
 
 sampletimes <- function(mintime, centime, dist, N, obgroup, intervalq) {
     ## dist takes the overall distribution from the relevant obgroup, but since we supply obgroup it might be better to just supply the whole thing
+    dist <- array(dist, dim=dim(dist)[c(1,3)], dimnames=dimnames(dist)[c(1,3)])
     dist <- dist[,dist[1,]>mintime,drop=FALSE] # Remove times before the minimum possible time.
     if (length(dist) > 0) {
         dist[c("surv","pdeath"),] <- dist[c("surv","pdeath"),] / dist["surv",1] # Normalise

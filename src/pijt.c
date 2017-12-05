@@ -26,16 +26,9 @@
 #define MEXP_SERIES 2
 #include "R_ext/Lapack.h"
 #include "R_ext/Rdynload.h"
+#include "expm.h"
 
 #define NODERIVDEBUG
-
-/* Interface to expm package. */
-typedef enum {Ward_2, Ward_1, Ward_buggy_octave} precond_type;
-void (*expm)(double *x, int n, double *z, precond_type precond_kind);
-void R_init_msm(DllInfo *dll)
-{
-    expm = (void (*) (double*, int, double*, precond_type)) R_GetCCallable("expm", "expm");
-}
 
 /* Set A to be an n x n identity matrix */
 
@@ -401,7 +394,7 @@ void MatrixExpEXPM(double *mat, int *n, double *expmat, double *t,
 	   stays at zero.
 	 */
 	    if (!R_FINITE(matt[i])){
-//		*err = -1; return;
+/*		*err = -1; return; */
 		error("numerical overflow in calculating likelihood\n");
 	    }
 	}
@@ -434,7 +427,7 @@ void Pmat(Matrix pmat, double t, Matrix qmat, int nstates, int exacttimes, int i
 	/* Floating point fuzz sometimes causes trouble */
 	for (i=0; i<nstates; ++i)
 	    for (j=0; j<nstates; ++j) {
-		/* if (err==-1) pmat[MI(i, j, nstates)] = 0;  */ /* leads to zero likelihood */
+		/* if (err==-1) pmat[MI(i, j, nstates)] = 0; */ /* leads to zero likelihood */
 		if (pmat[MI(i, j, nstates)] < DBL_EPSILON) pmat[MI(i, j, nstates)] = 0;
 		if (pmat[MI(i, j, nstates)] > 1 - DBL_EPSILON) pmat[MI(i, j, nstates)] = 1;
 	    }
