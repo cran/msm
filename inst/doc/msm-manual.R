@@ -259,13 +259,13 @@ vit[vit$subject==100103,]
 
 
 ###################################################
-### code chunk number 38: msm-manual.Rnw:2345-2346
+### code chunk number 38: msm-manual.Rnw:2347-2348
 ###################################################
 three.q <- rbind(c(0, exp(-6), exp(-9)), c(0, 0, exp(-6)), c(0, 0, 0))
 
 
 ###################################################
-### code chunk number 39: msm-manual.Rnw:2364-2376
+### code chunk number 39: msm-manual.Rnw:2366-2378
 ###################################################
 hmodel1 <- list(hmmNorm(mean=100, sd=16), hmmNorm(mean=54, sd=18),
                 hmmIdent(999))
@@ -282,13 +282,13 @@ sojourn.msm(fev1.msm)
 
 
 ###################################################
-### code chunk number 40: msm-manual.Rnw:2643-2644 (eval = FALSE)
+### code chunk number 40: msm-manual.Rnw:2658-2659 (eval = FALSE)
 ###################################################
 ## help(msm)
 
 
 ###################################################
-### code chunk number 41: msm-manual.Rnw:2652-2653 (eval = FALSE)
+### code chunk number 41: msm-manual.Rnw:2667-2668 (eval = FALSE)
 ###################################################
 ## help.start()
 

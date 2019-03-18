@@ -130,12 +130,14 @@ test_that("simple exponential",{
 
 test_that("Information matrix",{
     nobs <- 1000
+    suppressWarnings(RNGversion("3.5.0"))
     set.seed(1)
     test.df <- data.frame(time=1:nobs, obs=sample(c(1,2),size=nobs,replace=TRUE))
     p1 <- 0.2; p2 <- 0.2;  pr1 <- c(1-p1, p1) # P obs(1,2) | true 1
     pr2 <- c(p2, 1-p2) # P obs(1,2) | true 2
     (tm <- msm(obs ~ time, qmatrix=rbind(c(0,1),c(0,0)), hmodel=list(hmmCat(pr1),hmmCat(pr2)), data=test.df, fixedpars=TRUE, hessian=TRUE))
-    expect_equal(c(0.88475550512612, 0.202501688704573, -0.474183198550202), tm$paramdata$info[1:3], tol=1e-05)
+    expect_equal(c(0.88475550512612, 0.202501688704573, -0.474183198550202),
+                 tm$paramdata$info[1:3], tol=1e-05)
     tm$paramdata$opt$hessian
 })
 
@@ -163,6 +165,22 @@ test_that("binomial",{
     sim.hid <- msm(obs ~ time, subject=subject, data=sim2.df, qmatrix=three.q, hmodel=hmodel3, fixedpars=TRUE)
     expect_lt(deriv_error(sim.hid), err)
 })
+
+
+## Derivatives not working yet for beta-binomial
+if (0){ 
+test_that("betabinomial",{
+    hmodel3 <- list(hmmBetaBinom(20, 0.7, 0.1), hmmBetaBinom(20, 0.3, 0.1), hmmIdent(999))
+    three.q <- rbind(c(0, exp(-2), exp(-4)), c(0, 0, exp(-2)), c(0, 0, 0))
+    sim2.df <- simmulti.msm(sim.df[,1:2], qmatrix=three.q, hmodel = hmodel3)
+    sim.hid <- msm(obs ~ time, subject=subject, data=sim2.df[1:2,], qmatrix=three.q, hmodel=hmodel3, fixedpars=TRUE)
+    sim.hid
+    sim.hid$paramdata$deriv.test
+    deriv_error(sim.hid)
+    expect_lt(deriv_error(sim.hid), err)
+    sim.hid <- msm(obs ~ time, subject=subject, data=sim2.df, qmatrix=three.q, hmodel=hmodel3)
+})
+}
 
 test_that("negative binomial",{
     hmodel3 <- list(hmmNBinom(10, 0.1), hmmNBinom(20, 0.3), hmmIdent(999))
