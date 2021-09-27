@@ -134,7 +134,7 @@ void GetCensored (double obs, cmodel *cm, int *nc, double **states)
 /* New obstrue facility 
 On entry, obstrue will contain 0 if state unknown, and state if state known
 But how do we know if there are any extra outcome data in the outcome variable?
-If this is NA, we can ignore it but still use obstrue (TODO put in na.find.msmdata)
+If this is NA, we ignore it but still use obstrue, by setting pout = 1
 If this is a state (eg in misc models) prob of observing it cond on true state is 1. 
 If this is a general outcome,  get prob of observing it from HMODELS
 */
@@ -176,11 +176,13 @@ void GetOutcomeProb(double *pout, double *outcome, int nc, int nout, double *hpa
 		}
 	    } else {
 		pout[i] = 0;
-		if (hm->hidden && nc == 1 && !hm->ematrix){ /* "state" data contain an actual observation. 
-				 get its distribution here conditional on the supplied true state */
-		    if (obstrue == i+1){
-			pout[i] = (HMODELS[hm->models[i]])(outcome[0], &(hpars[hm->firstpar[i]]));
-		    } 
+		if (hm->hidden && nc == 1 && !hm->ematrix){
+		  pout[i] = 1;
+		  /* "outcome" data contain an actual observation. 
+		     get its distribution here conditional on the supplied true state */
+		  if (!ISNA(outcome[0])  &&  obstrue == i+1){
+		    pout[i] = (HMODELS[hm->models[i]])(outcome[0], &(hpars[hm->firstpar[i]]));
+		  } 
 		} else {  /* "state" data contain the true state (for hm->ematrix with obstrue) or censor indicator */
 		    for (j=0; j<nc; ++j){
 			if ((int) outcome[j] == i+1)
@@ -806,6 +808,9 @@ void update_likcensor(int obsno, double *prev, double *curr, int np, int nc,
 
 		}
 		else {
+#ifdef DEBUG
+		    printf("i=%d, j=%d, pm=%lf\n", i, j, pmat[MI((int) prev[j]-1, (int) curr[i]-1, qm->nst)]);
+#endif	    
 		    newp[i] += cump[j] * pmat[MI((int) prev[j]-1, (int) curr[i]-1, qm->nst)];
 		}
 	    }
@@ -872,9 +877,9 @@ double liksimple(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm)
 		contrib = pmat[MI(d->fromstate[i], d->tostate[i], qm->nst)];
 	    lik += d->nocc[i] * log(contrib);
 #ifdef DEBUG
-/*	    printf("obs %d, from %d, to %d, time %lf, obstypea %d, ", i, d->fromstate[i], d->tostate[i], d->timelag[i], d->obstypea[i]);
-	    printf("nocc %d, con %lf, lik %lf\n", d->nocc[i], log(contrib), lik);*/
-//	    printf("%d-%d in %lf, q=%lf,%lf, lik=%20.20lf, ll=%lf\n",d->fromstate[i], d->tostate[i], d->timelag[i],qmat[0],qmat[1], contrib, d->nocc[i] * log(contrib));
+	    printf("obs %d, from %d, to %d, time %lf, obstypea %d, ", i, d->fromstate[i], d->tostate[i], d->timelag[i], d->obstypea[i]);
+	    printf("nocc %d, con %lf, lik %lf\n", d->nocc[i], log(contrib), lik);
+	    printf("%d-%d in %lf, q=%lf,%lf, lik=%20.20lf, ll=%lf\n",d->fromstate[i], d->tostate[i], d->timelag[i],qmat[0],qmat[1], contrib, d->nocc[i] * log(contrib));
 #endif
 	}
     Free(pmat);
@@ -1237,7 +1242,7 @@ void pmax(double *x, int n, int *maxi)
 
 void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted, double *pstate)
 {
-    int i, j, tru, k, kmax, obs, nc = 1;
+    int i, j, tru, k, kmax, obs, nc = 1, first_obs;
 
     double *pmat = Calloc((qm->nst)*(qm->nst), double);
     int *ptr = Calloc((d->n)*(qm->nst), int);
@@ -1256,8 +1261,10 @@ void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted, dou
 
     i = 0;
     if (d->obstrue[i]) {
-      for (k = 0; k < qm->nst; ++k)
+      for (k = 0; k < qm->nst; ++k){
 	lvold[k] = (k+1 == d->obstrue[i] ? 0 : R_NegInf);
+	pout[k] = 1;
+      }
     }
     else {
       if (d->nout > 1) outcome = &d->obs[MI(0, i, d->nout)];
@@ -1273,16 +1280,22 @@ void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted, dou
 	    ++j;
 	  }
 	  else lvold[k] = R_NegInf;
+	  pout[k] = 1;
 	}
       }
       else { /* use initprobs */
 	for (k = 0; k < qm->nst; ++k)
 	    lvold[k] = log(hm->initp[MI(0, k, d->npts)]);
+	hpars = &(hm->pars[MI(0, i, hm->totpars)]);
+	GetOutcomeProb(pout, outcome, nc, d->nout, hpars, hm, qm, d->obstrue[i]);
       }
     }
-    for (k = 0; k < qm->nst; ++k)
-    	pfwd[MI(i,k,d->n)] = exp(lvold[k]);
+    for (k = 0; k < qm->nst; ++k){
+	lvp[k] = lvold[k] + log(pout[k]);
+    	pfwd[MI(i,k,d->n)] = exp(lvp[k]);
+    }
     ucfwd[0] = 0;
+    first_obs = 1;
 		  
     for (i = 1; i <= d->n; ++i)
 	{
@@ -1305,7 +1318,8 @@ void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted, dou
 		    }
 		    GetOutcomeProb(pout, outcome, nc, d->nout, hpars, hm, qm, d->obstrue[i]);
 #ifdef VITDEBUG0
-		    for (tru=0;tru<nc;++tru) printf("outcome[%d] = %1.0lf, ",tru, outcome[tru]); printf("\n");
+		    for (tru=0;tru<nc;++tru) printf("outcome[%d] = %1.0lf, ",tru, outcome[tru]);
+		    printf("\n");
 #endif
 		    Pmat(pmat, dt, qmat, qm->nst,
 			 (d->obstype[i] == OBS_EXACT), qm->iso, qm->perm,  qm->qperm, qm->expm);
@@ -1319,11 +1333,12 @@ void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted, dou
 */
 			    pfwd[MI(i,tru,d->n)] = 0;
 			    for (k = 0; k < qm->nst; ++k) {
+			      if (!first_obs){
 				lvp[k] = lvold[k] + log(pmat[MI(k, tru, qm->nst)]);
-				pfwd[MI(i,tru,d->n)] += pfwd[MI(i-1,k,d->n)] * pmat[MI(k,tru,qm->nst)];
+			      }
+			      pfwd[MI(i,tru,d->n)] += pfwd[MI(i-1,k,d->n)] * pmat[MI(k,tru,qm->nst)];
 			    }
 			    if (d->obstrue[i-1])
-//				kmax = d->obs[MI(0, i-1, d->nout)] - 1;
 				kmax = d->obstrue[i-1] - 1;
 			    else pmax(lvp, qm->nst, &kmax);
 			    lvnew[tru] = log ( pout[tru] )  +  lvp[kmax];
@@ -1335,6 +1350,7 @@ void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted, dou
 				   tru, tru, pout[tru], lvold[tru], pmat[MI(kmax, tru, qm->nst)], lvnew[tru], i, tru, ptr[MI(i, tru, d->n)]);
 #endif
 			}
+		    if (first_obs) first_obs = 0;
 		    ucfwd[i] = ucfwd[i-1] + log(psum);
 		    for (k = 0; k < qm->nst; ++k){
 			pfwd[MI(i,k,d->n)] /= psum;
@@ -1427,9 +1443,10 @@ void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted, dou
 #endif
 		    if (i < d->n) {
 			if (d->obstrue[i]) {
-			    for (k = 0; k < qm->nst; ++k)
-//				lvold[k] = (k+1 == d->obs[MI(0,i,d->nout)] ? 0 : R_NegInf);
-				lvold[k] = (k+1 == d->obstrue[i] ? 0 : R_NegInf);
+			  for (k = 0; k < qm->nst; ++k){
+			    lvold[k] = (k+1 == d->obstrue[i] ? 0 : R_NegInf);
+			    pout[k] = 1;
+			  }
 			}
 			else {
 			    if (d->nout > 1) outcome = &d->obs[MI(0, i, d->nout)];
@@ -1445,16 +1462,22 @@ void Viterbi(msmdata *d, qmodel *qm, cmodel *cm, hmodel *hm, double *fitted, dou
 					++j;
 				    }
 				    else lvold[k] = R_NegInf;
+				    pout[k] = 1;
 				}
 			    }
 			    else { /* use initprobs */
 				for (k = 0; k < qm->nst; ++k)
 				    lvold[k] = log(hm->initp[MI(d->subject[i]-1, k, d->npts)]);
+				hpars = &(hm->pars[MI(0, i, hm->totpars)]);
+				GetOutcomeProb(pout, outcome, nc, d->nout, hpars, hm, qm, d->obstrue[i]);
 			    }
 			}
-			for (k = 0; k < qm->nst; ++k)
-			    pfwd[MI(i,k,d->n)] = exp(lvold[k]); 
+			for (k = 0; k < qm->nst; ++k){
+			  lvp[k] = lvold[k] + log(pout[k]);
+			  pfwd[MI(i,k,d->n)] = exp(lvp[k]);
+			}
 			ucfwd[i] = 0;
+			first_obs = 1;
 		    }
 		}
 	}

@@ -123,7 +123,7 @@ msm <- function(formula, subject=NULL, data=list(), qmatrix, gen.inits=FALSE,
         if (!all(grepl("^[[:digit:]]+$", as.character(mf$"(state)"))))
             stop("state variable should be numeric or a factor with ordinal numbers as levels")
         else mf$"(state)" <- as.numeric(as.character(mf$"(state)"))
-    }
+    } else if (is.character(mf$"(state)")) stop("state variable is character, should be numeric") 
     msm.check.state(qmodel$nstates, mf$"(state)", cmodel$censor, hmodel)
     if (is.null(mf$"(subject)")) mf$"(subject)" <- rep(1, nrow(mf))
     msm.check.times(mf$"(time)", mf$"(subject)", mf$"(state)")
@@ -146,9 +146,9 @@ msm <- function(formula, subject=NULL, data=list(), qmatrix, gen.inits=FALSE,
     oic <- ic[!ic %in% unlist(lapply(others, all.vars))]
     attr(mf, "icovi") <- match(oic, colnames(mf))
     if (missing(na.action) || identical(na.action, na.omit) || (identical(na.action,"na.omit")))
-        mf <- na.omit.msmdata(mf)
+        mf <- na.omit.msmdata(mf, hidden=hmodel$hidden, misc=emodel$misc)
     else if (identical(na.action, na.fail) || (identical(na.action,"na.fail")))
-        mf <- na.fail.msmdata(mf)
+        mf <- na.fail.msmdata(mf, hidden=hmodel$hidden, misc=emodel$misc)
     else stop ("na.action should be \"na.omit\" or \"na.fail\"")
     attr(mf, "npts") <- length(unique(mf$"(subject)"))
     attr(mf, "ntrans") <- nrow(mf) - attr(mf, "npts")
@@ -473,7 +473,7 @@ msm.form.emodel <- function(ematrix, econstraint=NULL, initprobs=NULL, est.initp
         constr <- match(econstraint, unique(econstraint))
     }
     else
-        constr <- seq(length=npars)
+        constr <- seq(length.out=npars)
     ndpars <- if(npars>0) max(constr) else 0
 
     nomisc <- isTRUE(all.equal(as.vector(diag(ematrix)),rep(1,nrow(ematrix)))) # degenerate ematrix with no misclassification: all 1 on diagonal
@@ -1086,8 +1086,8 @@ msm.form.params <- function(qmodel, qcmodel, emodel, hmodel, fixedpars)
                 if(is.null(qcmodel$constr)) NULL else (ni + abs(qcmodel$constr))*sign(qcmodel$constr),
                 ni + nc + hmodel$constr,
                 ni + nc + nh + hmodel$covconstr,
-                ni + nc + nh + nhc + seq(length=nip),
-                ni + nc + nh + nhc + nip + seq(length=nipc))
+                ni + nc + nh + nhc + seq(length.out=nip),
+                ni + nc + nh + nhc + nip + seq(length.out=nipc))
     constr <- match(abs(constr), unique(abs(constr)))*sign(constr)
     ## parameters which are always fixed and not included in user-supplied fixedpars
     auxpars <- which(plabs %in% .msm.AUXPARS)
@@ -1098,7 +1098,7 @@ msm.form.params <- function(qmodel, qcmodel, emodel, hmodel, fixedpars)
     nshortpars <- nrealpars - sum(qcmodel$cri[!duplicated(qcmodel$constr)]==0)
     if (is.logical(fixedpars))
         fixedpars <- if (fixedpars == TRUE) seq(nshortpars) else numeric()
-    if (any(! (fixedpars %in% seq(length=nshortpars))))
+    if (any(! (fixedpars %in% seq(length.out=nshortpars))))
         stop ( "Elements of fixedpars should be in 1, ..., ", nshortpars)
     if (!is.null(qcmodel$cri)) {
         ## Convert user-supplied fixedpars indexing transition-specific covariates
@@ -1106,7 +1106,7 @@ msm.form.params <- function(qmodel, qcmodel, emodel, hmodel, fixedpars)
         inds <- rep(1, nrealpars)
         inds[qmodel$ndpars + qcmodel$constr[!duplicated(qcmodel$constr)]] <-
             qcmodel$cri[!duplicated(qcmodel$constr)]
-        inds[inds==1] <- seq(length=nshortpars)
+        inds[inds==1] <- seq(length.out=nshortpars)
         fixedpars <- match(fixedpars, inds)
         ## fix covariate effects not included in model to zero
         fixedpars <- sort(c(fixedpars, which(inds==0)))
@@ -1711,16 +1711,25 @@ msm.pci <- function(tcut, mf, qmodel, cmodel, covariates)
     label <- if (cmodel$ncens > 0) max(cmodel$censor)*2 else qmodel$nstates + 1
     new$"(state)"[is.na(new$"(state)")] <- label
     ## Only keep cutpoints within range of each patient's followup
-    mintime <- tapply(mf$"(time)", mf$"(subject)", min)[as.character(unique(mf$"(subject)"))]
-    maxtime <- tapply(mf$"(time)", mf$"(subject)", max)[as.character(unique(mf$"(subject)"))]
-    nobspt <- as.numeric(table(new$"(subject)")[as.character(unique(new$"(subject)"))])
-    new <- new[new$"(time)" >= rep(mintime, nobspt) & new$"(time)" <= rep(maxtime, nobspt), ]
-
-    ## Drop imputed observations at times when there was already an observation
-    ## assumes there wasn't already duplicated obs times
+    mintime <- tapply(mf$"(time)", mf$"(subject)", min)
+    maxtime <- tapply(mf$"(time)", mf$"(subject)", max)
+    ptminmax <- data.frame(subject = names(mintime), mintime, maxtime) 
+    new$"(mintime)" <- ptminmax$mintime[match(new$`(subject)`, ptminmax$subject)]
+    new$"(maxtime)" <- ptminmax$maxtime[match(new$`(subject)`, ptminmax$subject)]
+    new <- new[new$"(time)" >= new$"(mintime)" & new$"(time)" <= new$"(maxtime)", ]
+    
     prevsubj <- c(NA,new$"(subject)"[1:(nrow(new)-1)]); nextsubj <- c(new$"(subject)"[2:nrow(new)], NA)
     prevtime <- c(NA,new$"(time)"[1:(nrow(new)-1)]); nexttime <- c(new$"(time)"[2:nrow(new)], NA)
     prevstate <- c(NA,new$"(state)"[1:(nrow(new)-1)]); nextstate <- c(new$"(state)"[2:nrow(new)], NA)
+
+    ## Don't label imputed states as censored if the next observation has obstype=2,
+    ## because we know the state at the imputed time is the same as the previous observation 
+    nextobstype <- c(new$"(obstype)"[2:nrow(new)], NA)
+    ot2 <- new$"(pci.imp)"==1 & nextobstype==2
+    new$"(state)"[ot2] <- prevstate[ot2]
+    
+    ## Drop imputed observations at times when there was already an observation
+    ## assumes there wasn't already duplicated obs times
     new <- new[!((new$"(subject)"==prevsubj & new$"(time)"==prevtime & new$"(state)"==label & prevstate!=label) |
                  (new$"(subject)"==nextsubj & new$"(time)"==nexttime & new$"(state)"==label & nextstate!=label))
                ,]
@@ -1745,6 +1754,7 @@ msm.pci <- function(tcut, mf, qmodel, cmodel, covariates)
                 " greater than or equal to maximum observed time of ",max(mf$"(time)"))
     tcut <- tcut[tcut > min(mf$"(time)") & tcut < max(mf$"(time)")]
     ntcut <- length(tcut)
+
     if (ntcut==0)
         res <- NULL # no cut points in range of data, continue with no time-dependent model
     else {
@@ -1766,7 +1776,7 @@ msm.pci <- function(tcut, mf, qmodel, cmodel, covariates)
         ## New censoring model
         cmodel$ncens <- cmodel$ncens + 1
         cmodel$censor <- c(cmodel$censor, label)
-        cmodel$states <- c(cmodel$states, 1:qmodel$nstates)
+        cmodel$states <- c(cmodel$states, transient.msm(qmatrix=qmodel$imatrix))
         cmodel$index <- if (is.null(cmodel$index)) 1 else cmodel$index
         cmodel$index <- c(cmodel$index, length(cmodel$states) + 1)
         res <- list(mf=new, covariates=covariates, cmodel=cmodel, tcut=tcut)
@@ -1793,7 +1803,7 @@ msm.check.covlist <- function(covlist, qemodel) {
     tm <- if(inherits(qemodel,"msmqmodel")) "transition" else "misclassification"
     qe <- if(inherits(qemodel,"msmqmodel")) "qmatrix" else "ematrix"
     imat <- qemodel$imatrix
-    for (i in seq(length=ncol(trans))){
+    for (i in seq(length.out=ncol(trans))){
         if (imat[trans[1,i],trans[2,i]] != 1)
             stop("covariates on ", names(covlist)[i], " ", tm, " requested, but this is not permitted by the ", qe, ".")
     }
@@ -1831,8 +1841,8 @@ msm.form.cri <- function(covlist, qmodel, mf, mm, tdmodel) {
 ## adapted from stats:::na.omit.data.frame.  ignore handling of
 ## non-atomic, matrix within df
 
-na.omit.msmdata <- function(object, ...) {
-    omit <- na.find.msmdata(object)
+na.omit.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
+    omit <- na.find.msmdata(object, hidden=hidden, misc=misc)
     xx <- object[!omit, , drop = FALSE]
     if (any(omit > 0L)) {
         temp <- setNames(seq(omit)[omit], attr(object, "row.names")[omit])
@@ -1842,17 +1852,21 @@ na.omit.msmdata <- function(object, ...) {
     xx
 }
 
-na.fail.msmdata <- function(object, ...) {
-    omit <- na.find.msmdata(object)
+na.fail.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
+    omit <- na.find.msmdata(object, hidden=hidden, misc=misc)
     if (any(omit))
         stop("Missing values or subjects with only one observation in data")
     else object
 }
 
-na.find.msmdata <- function(object, ...) {
+na.find.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
     subj <- as.character(object[,"(subject)"])
     firstobs <- !duplicated(subj)
     lastobs <- !duplicated(subj, fromLast=TRUE)
+    if (misc)
+        obstrue <- object[,"(obstrue)"]
+    else if (hidden)
+        obstrue <- !is.na(object[,"(obstrue)"])
     nm <- names(object)
     omit <- FALSE
     for (j in seq_along(object)) {
@@ -1860,9 +1874,13 @@ na.find.msmdata <- function(object, ...) {
         if (nm[j] %in% c("(time)", "(subject)"))
             omit <- omit | is.na(object[[j]])
         if (nm[j] == "(state)") {
+            ## Indicator for missing outcome 
             ## For matrix HMM outcomes ("states"), only drop a row if all columns are NA
             nas <- if (is.matrix(object[[j]])) apply(object[[j]], 1, function(x)all(is.na(x)))
                    else is.na(object[[j]])
+            ## Don't drop missing outcomes in HMMs at first obs or if true state known
+            ## since there is information then 
+            if (hidden) nas[obstrue | firstobs] <- FALSE 
             omit <- omit | nas
         }
         ## Don't drop NAs in obstype at first observation for a subject
