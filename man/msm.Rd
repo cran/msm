@@ -246,10 +246,13 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
   state to be included in the model, thus improving the estimation of
   the HMM outcome distributions.
   
-  In HMMs where there are also censored states, \code{obstrue} should be
-  set to 1 for observed states which are \emph{censored} but not
-  \emph{misclassified}.
-  }
+  HMMs where the true state is known to be within a specific set
+  at specific times can be defined with a combination of \code{censor}
+  and \code{obstrue}.  In these models, a code is defined for the
+  \code{state} outcome (see \code{censor}), and \code{obstrue} is
+  set to 1 for observations where the true state is known to be
+  one of the elements of \code{censor.states} at the corresponding
+  time.} 
 
   \item{covariates}{A formula or a list of formulae representing the
     covariates on the transition intensities via a log-linear model. If
@@ -565,6 +568,11 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     applicable.   Also a "censored" state here can be at any time, not
     just at the end.
 
+    For hidden Markov models, censoring may indicate either a set of possible
+    observed states, or a set of (hidden) true states. The later case is
+    specified by setting the relevant elements of \code{obstrue} to 1 (and 
+    \code{NA} otherwise).
+
     Note in particular that general time-inhomogeneous Markov models with
     piecewise constant transition
     intensities can be constructed using the \code{censor}
@@ -574,6 +582,8 @@ msm ( formula, subject=NULL, data = list(), qmatrix, gen.inits = FALSE,
     The covariate may represent time itself, in which case the \code{pci} option to msm can be used
     to perform this trick automatically, or some other time-dependent
     variable.
+
+    Not supported for multivariate hidden Markov models specified with \code{\link{hmmMV}}. 
   }
 
   \item{censor.states}{
