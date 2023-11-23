@@ -252,20 +252,20 @@ pearson.msm(cavmisc.msm, timegroups=2,
 
 
 ###################################################
-### code chunk number 37: msm-manual.Rnw:2146-2148
+### code chunk number 37: msm-manual.Rnw:2147-2149
 ###################################################
 vit <- viterbi.msm(cavmisc.msm)
 vit[vit$subject==100103,]
 
 
 ###################################################
-### code chunk number 38: msm-manual.Rnw:2348-2349
+### code chunk number 38: msm-manual.Rnw:2349-2350
 ###################################################
 three.q <- rbind(c(0, exp(-6), exp(-9)), c(0, 0, exp(-6)), c(0, 0, 0))
 
 
 ###################################################
-### code chunk number 39: msm-manual.Rnw:2367-2379
+### code chunk number 39: msm-manual.Rnw:2368-2380
 ###################################################
 hmodel1 <- list(hmmNorm(mean=100, sd=16), hmmNorm(mean=54, sd=18),
                 hmmIdent(999))
@@ -282,13 +282,13 @@ sojourn.msm(fev1.msm)
 
 
 ###################################################
-### code chunk number 40: msm-manual.Rnw:2659-2660 (eval = FALSE)
+### code chunk number 40: msm-manual.Rnw:2660-2661 (eval = FALSE)
 ###################################################
 ## help(msm)
 
 
 ###################################################
-### code chunk number 41: msm-manual.Rnw:2668-2669 (eval = FALSE)
+### code chunk number 41: msm-manual.Rnw:2669-2670 (eval = FALSE)
 ###################################################
 ## help.start()
 

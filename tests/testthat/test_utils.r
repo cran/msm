@@ -5,11 +5,14 @@ test_that("MatrixExp",{
     me <- MatrixExp(A, method="pade")
     res <- c(0.896703832431769, 0.171397960992687, 0, 0.00856989804963433, 0.81957474998506, 0, 0.00094726269518597, 9.0272890222537e-05, 1)
     expect_equal(res, as.numeric(me), tol=1e-06)
-    me <- MatrixExp(A, method="series")
-    expect_equal(res, as.numeric(me), tol=1e-06)
     ev <- eigen(A)
     me2 <- ev$vectors %*% diag(exp(ev$values)) %*% solve(ev$vectors)
     expect_equal(me2, me, tol=1e-06)
+    ## repeated eigenvalues
+    A <- matrix(c(-0.1, 0.1, 0,  0.1, -0.1, 0,  0, 0, 0), nrow=3, byrow=TRUE)
+    me <- MatrixExp(A, method="series")
+    mep <- MatrixExp(A, method="pade")
+    expect_equal(me, mep, tol=1e-06)
 })
 
 test_that("truncated normal",{
@@ -30,6 +33,9 @@ test_that("truncated normal",{
     expect_warning(rtnorm(3, mean=c(1, NA, 0)), "NAs produced")
     expect_warning(res <- rtnorm(3, sd=c(1, NA, 1), lower=c(NA, 0, 2)), "NAs produced")
     expect_equal(res[1:2], c(NaN, NaN))
+    ## Zero SDs in rtnorm
+    expect_equal(rnorm(1, mean=1, sd=0), 1)
+    expect_warning(rtnorm(1, mean=1, sd=0, lower=2), "NAs produced")
 })
 
 test_that("Measurement error distributions: normal",{
