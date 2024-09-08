@@ -212,6 +212,7 @@
 #' \code{deathexact = death.states} specifies that all observations of
 #' \code{death.states} are of type 3.  \code{deathexact = TRUE} specifies that
 #' all observations in the final absorbing state are of type 3.
+#'
 #' @param obstrue In misclassification models specified with \code{ematrix},
 #' \code{obstrue} is a vector of logicals (\code{TRUE} or \code{FALSE}) or
 #' numerics (1 or 0) specifying which observations (\code{TRUE}, 1) are
@@ -231,6 +232,7 @@
 #' \code{censor}), and \code{obstrue} is set to 1 for observations where the
 #' true state is known to be one of the elements of \code{censor.states} at the
 #' corresponding time.
+#'
 #' @param covariates A formula or a list of formulae representing the
 #' covariates on the transition intensities via a log-linear model. If a single
 #' formula is supplied, like
@@ -251,6 +253,7 @@
 #' the times they are observed, and the transition probability between a pair
 #' of times \eqn{(t1, t2)} is assumed to depend on the covariate value at
 #' \eqn{t1}.
+#'
 #' @param covinits Initial values for log-linear effects of covariates on the
 #' transition intensities. This should be a named list with each element
 #' corresponding to a covariate.  A single element contains the initial values
@@ -274,6 +277,7 @@
 #' 
 #' If not specified or wrongly specified, initial values are assumed to be
 #' zero.
+#'
 #' @param constraint A list of one numeric vector for each named covariate. The
 #' vector indicates which covariate effects on intensities are constrained to
 #' be equal. Take, for example, a model with five transition intensities and
@@ -335,20 +339,24 @@
 #' include all covariates in this formula, and use \code{fixedpars} to fix some
 #' of their effects (for particular probabilities) at their default initial
 #' values of zero.
+#'
 #' @param misccovinits Initial values for the covariates on the
 #' misclassification probabilities, defined in the same way as \code{covinits}.
 #' Only used if the model is specified using \code{ematrix}.
+#'
 #' @param miscconstraint A list of one vector for each named covariate on
 #' misclassification probabilities. The vector indicates which covariate
 #' effects on misclassification probabilities are constrained to be equal,
 #' analogously to \code{constraint}.  Only used if the model is specified using
 #' \code{ematrix}.
+#'
 #' @param hcovariates List of formulae the same length as \code{hmodel},
 #' defining any covariates governing the hidden Markov outcome models.  The
 #' covariates operate on a suitably link-transformed linear scale, for example,
 #' log scale for a Poisson outcome model. If there are no covariates for a
 #' certain hidden state, then insert a NULL in the corresponding place in the
 #' list.  For example, \code{hcovariates = list(~acute + age, ~acute, NULL).}
+#'
 #' @param hcovinits Initial values for the hidden Markov model covariate
 #' effects. A list of the same length as \code{hcovariates}. Each element is a
 #' vector with initial values for the effect of each covariate on that state.
@@ -361,6 +369,7 @@
 #' effects are constrained to be equal using \code{hconstraint}, then the
 #' initial value is taken from the first of the multiple initial values
 #' supplied.
+#'
 #' @param hconstraint A named list. Each element is a vector of constraints on
 #' the named hidden Markov model parameter. The vector has length equal to the
 #' number of times that class of parameter appears in the whole model.
@@ -375,6 +384,7 @@
 #' 
 #' Note this excludes initial state occupancy probabilities and covariate
 #' effects on those probabilities, which cannot be constrained.
+#'
 #' @param hranges Range constraints for hidden Markov model parameters.
 #' Supplied as a named list, with each element corresponding to the named
 #' hidden Markov model parameter.  This element is itself a list with two
@@ -476,8 +486,10 @@
 #' the previous observation, then you should specify \code{obstype=2} for the
 #' death times, or \code{exacttimes=TRUE} if the state is known at all times,
 #' and the \code{deathexact} argument is ignored.
+#'
 #' @param death Old name for the \code{deathexact} argument.  Overridden by
 #' \code{deathexact} if both are supplied. Deprecated.
+#'
 #' @param censor A state, or vector of states, which indicates censoring.
 #' Censoring means that the observed state is known only to be one of a
 #' particular set of states. For example, \code{censor=999} indicates that all
@@ -508,6 +520,7 @@
 #' 
 #' Not supported for multivariate hidden Markov models specified with
 #' \code{\link{hmmMV}}.
+#' 
 #' @param censor.states Specifies the underlying states which censored
 #' observations can represent. If \code{censor} is a single number (the
 #' default) this can be a vector, or a list with one element.  If \code{censor}
@@ -646,6 +659,16 @@
 #' flexible than the exponential can be fitted with the \pkg{flexsurv} package,
 #' or semi-parametric models can be implemented with \pkg{survival} in
 #' conjunction with \pkg{mstate}.
+#'
+#' @param subject.weights Name of a variable in the data (unquoted) giving
+#'   weights to apply to each subject in the data
+#'   when calculating the log-likelihood as a weighted sum over
+#'   subjects.  These are taken from the first observation for each
+#'   subject, and any weights supplied for subsequent observations are
+#'   not used.
+#'
+#'  Weights at the observation level are not supported.
+#' 
 #' @param cl Width of symmetric confidence intervals for maximum likelihood
 #' estimates, by default 0.95.
 #' @param fixedpars Vector of indices of parameters whose values will be fixed
@@ -828,6 +851,7 @@ msm <- function(formula, subject=NULL, data=list(), qmatrix, gen.inits=FALSE,
                 deathexact = NULL, death = NULL, exacttimes = FALSE, censor=NULL,
                 censor.states=NULL, pci=NULL, phase.states=NULL,
                 phase.inits = NULL, # TODO merge with inits eventually
+                subject.weights = NULL, 
                 cl = 0.95, fixedpars = NULL, center=TRUE,
                 opt.method="optim", hessian=NULL, use.deriv=TRUE,
                 use.expm=TRUE, analyticp=TRUE, na.action=na.omit, ...)
@@ -914,7 +938,7 @@ msm <- function(formula, subject=NULL, data=list(), qmatrix, gen.inits=FALSE,
     ## if specified.  Need to build and evaluate a call, instead of
     ## running model.frame() directly, to find subject and other
     ## extras. Not sure why.
-    indx <- match(c("data", "subject", "obstrue"), names(call), nomatch = 0)
+    indx <- match(c("data", "subject", "subject.weights", "obstrue"), names(call), nomatch = 0)
     temp <- call[c(1, indx)]
     temp[[1]] <- as.name("model.frame")
     temp[["state"]] <- as.name(all.vars(formula[[2]]))
@@ -928,13 +952,19 @@ msm <- function(formula, subject=NULL, data=list(), qmatrix, gen.inits=FALSE,
     mf <- eval(temp, parent.frame())
     
     ## remember user-specified names for later (e.g. bootstrap/cross validation)
-    usernames <- c(state=all.vars(formula[[2]]), time=all.vars(formula[[3]]), subject=as.character(temp$subject), obstype=as.character(substitute(obstype)), obstrue=as.character(temp$obstrue))
+    usernames <- c(state=all.vars(formula[[2]]),
+                   time=all.vars(formula[[3]]),
+                   subject=as.character(temp$subject),
+                   subject.weights=as.character(temp$subject.weights),
+                   obstype=as.character(substitute(obstype)),
+                   obstrue=as.character(temp$obstrue))
     attr(mf, "usernames") <- usernames
 
     ## handle matrices in state outcome constructed in formula with cbind()
     indx <- match(c("formula", "data"), names(call), nomatch = 0)
     temp <- call[c(1, indx)]
     temp[[1]] <- as.name("model.frame")
+    temp$na.action <- na.pass
     mfst <- eval(temp, parent.frame())
     if (is.matrix(mfst[[1]]) && !is.matrix(mf$"(state)"))
         mf$"(state)" <- mfst[[1]]
@@ -946,15 +976,15 @@ msm <- function(formula, subject=NULL, data=list(), qmatrix, gen.inits=FALSE,
     } else if (is.character(mf$"(state)")) stop("state variable is character, should be numeric") 
     msm.check.state(qmodel$nstates, mf$"(state)", cmodel$censor, hmodel)
     if (is.null(mf$"(subject)")) mf$"(subject)" <- rep(1, nrow(mf))
-    msm.check.times(mf$"(time)", mf$"(subject)", mf$"(state)")
+    msm.check.times(mf$"(time)", mf$"(subject)", mf$"(state)", hmodel$hidden)
     obstype <- if (missing(obstype)) NULL else eval(substitute(obstype), data, parent.frame()) # handle separately to allow passing a scalar (1, 2 or 3)
     mf$"(obstype)" <- msm.form.obstype(mf, obstype, dmodel, exacttimes)
     mf$"(obstrue)" <- msm.form.obstrue(mf, hmodel, cmodel)
     mf$"(obs)" <- seq_len(nrow(mf)) # row numbers before NAs omitted, for reporting in msm.check.*
-    basenames <- c("(state)","(time)","(subject)","(obstype)","(obstrue)","(obs)")
+    basenames <- c("(state)","(time)","(subject)","(obstype)","(obstrue)","(obs)","(subject.weights)")
     attr(mf, "covnames") <- setdiff(names(mf), basenames)
-    attr(mf, "covnames.q") <- colnames(attr(terms(covariates), "factors")) # names as in data, plus factor() if user
-    if (emodel$misc) attr(mf, "covnames.e") <- colnames(attr(terms(misccovariates), "factors"))
+    attr(mf, "covnames.q") <- rownames(attr(terms(covariates), "factors")) # names as in data, plus factor() if user
+    if (emodel$misc) attr(mf, "covnames.e") <- rownames(attr(terms(misccovariates), "factors"))
     attr(mf, "ncovs") <- length(attr(mf, "covnames"))
 
 
@@ -1071,8 +1101,10 @@ msm <- function(formula, subject=NULL, data=list(), qmatrix, gen.inits=FALSE,
 ### FORM LIST OF INITIAL PARAMETERS, MATCHING PROVIDED INITS WITH SPECIFIED MODEL, FIXING SOME PARS IF REQUIRED
     p <- msm.form.params(qmodel, qcmodel, emodel, hmodel, fixedpars)
 
+    subject.weights <- msm.form.subject.weights(mf)
     msmdata <- list(mf=mf, mf.agg=mf.agg, mm.cov=mm.cov, mm.cov.agg=mm.cov.agg,
-                    mm.mcov=mm.mcov, mm.hcov=mm.hcov, mm.icov=mm.icov)
+                    mm.mcov=mm.mcov, mm.hcov=mm.hcov, mm.icov=mm.icov,
+                    subject.weights = subject.weights)
 
 ### CALCULATE LIKELIHOOD AT INITIAL VALUES OR DO OPTIMISATION (see optim.R)
     if (p$fixed) opt.method <- "fixed"
@@ -1341,7 +1373,7 @@ msm.check.state <- function(nstates, state, censor, hmodel)
     invisible()
 }
 
-msm.check.times <- function(time, subject, state=NULL)
+msm.check.times <- function(time, subject, state=NULL, hidden=FALSE)
 {
     final.rows <- !is.na(subject) & !is.na(time)
     if (!is.null(state)) {
@@ -1362,7 +1394,8 @@ msm.check.times <- function(time, subject, state=NULL)
         badlist <- paste(badsubjs, collapse=", ")
         plural <- if (length(badsubjs)==1) "" else "s"
         has <-  if (length(badsubjs)==1) "has" else "have"
-        warning ("Subject", plural, " ", badlist, andothers, " only ", has, " one complete observation, which doesn't give any information")
+        if (!hidden)
+          warning ("Subject", plural, " ", badlist, andothers, " only ", has, " one complete observation, which doesn't give any information")
     }
 ### Check if observations within a subject are adjacent
     ind <- tapply(seq_along(subj.num), subj.num, length)
@@ -2326,14 +2359,27 @@ Ccall.msm <- function(params, do.what="lik", msmdata, qmodel, qcmodel, cmodel, h
 
 lik.msm <- function(params, ...)
 {
-    ## number of likelihood evaluations so far including this one
-    ## used for error message for iffy initial values in HMMs
-    assign("nliks", get("nliks",msm.globals) + 1, envir=msm.globals)
+  ## number of likelihood evaluations so far including this one
+  ## used for error message for iffy initial values in HMMs
+  assign("nliks", get("nliks",msm.globals) + 1, envir=msm.globals)
+  args <- list(...)
+  w <- args$msmdata$subject.weights
+  if (!is.null(w)){
+    lik <- Ccall.msm(params, do.what="lik.subj", ...)
+    sum(w * lik)
+  }
+  else 
     Ccall.msm(params, do.what="lik", ...)
 }
 
 grad.msm <- function(params, ...)
 {
+  w <- list(...)$msmdata$subject.weights
+  if (!is.null(w)){
+    deriv <- Ccall.msm(params, do.what="deriv.subj", ...) # npts x npar
+    apply(w * deriv, 2, sum)
+  }
+  else 
     Ccall.msm(params, do.what="deriv", ...)
 }
 
@@ -2352,8 +2398,9 @@ msm.form.output <- function(x, whichp)
     Matrices <- MatricesSE <- MatricesL <- MatricesU <- MatricesFixed <- list()
     basename <- if (whichp=="intens") "logbaseline" else "logitbaseline"
     fixedpars.logical <- p$constr %in% p$constr[p$fixedpars]
+    covlabels <-  make.unique(c("baseline", "logbaseline", cmodel$covlabels))[-(1:2)]
     for (i in 0:cmodel$ncovs) {
-        matrixname <- if (i==0) basename else cmodel$covlabels[i] # name of the current output matrix.
+        matrixname <- if (i==0) basename else covlabels[i] # name of the current output matrix.
         mat <- t(model$imatrix) # state matrices filled by row, while R fills them by column.
         if (whichp=="intens")
             parinds <- if (i==0) which(p$plabs=="qbase") else which(p$plabs=="qcov")[(i-1)*model$npars + 1:model$npars]
@@ -2395,6 +2442,8 @@ msm.form.output <- function(x, whichp)
         MatricesU[[matrixname]] <- umat
         MatricesFixed[[matrixname]] <- fixed
     }
+    attr(Matrices, "covlabels") <- covlabels
+    attr(Matrices, "covlabels.orig") <- cmodel$covlabels
     nam <- if(whichp=="intens") "Qmatrices" else "Ematrices"
     x[[nam]] <- Matrices; x[[paste0(nam, "SE")]] <- MatricesSE; x[[paste0(nam, "L")]] <- MatricesL
     x[[paste0(nam, "U")]] <- MatricesU; x[[paste0(nam, "Fixed")]] <- MatricesFixed
@@ -2771,6 +2820,7 @@ msm.form.cri <- function(covlist, qmodel, mf, mm, tdmodel) {
 ## adapted from stats:::na.omit.data.frame.  ignore handling of
 ## non-atomic, matrix within df
 
+#' @noRd
 na.omit.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
     omit <- na.find.msmdata(object, hidden=hidden, misc=misc)
     xx <- object[!omit, , drop = FALSE]
@@ -2782,6 +2832,7 @@ na.omit.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
     xx
 }
 
+#' @noRd
 na.fail.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
     omit <- na.find.msmdata(object, hidden=hidden, misc=misc)
     if (any(omit))
@@ -2789,6 +2840,7 @@ na.fail.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
     else object
 }
 
+#' @noRd
 na.find.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
     subj <- as.character(object[,"(subject)"])
     firstobs <- !duplicated(subj)
@@ -2827,8 +2879,10 @@ na.find.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
             omit <- omit | (is.na(object[[j]]) & !lastobs)
     }
     ## Drop obs with only one subject remaining after NAs have been omitted
-    nobspt <- table(subj[!omit])[subj]
-    omit <- omit | (nobspt==1)
+    if (!hidden){
+      nobspt <- table(subj[!omit])[subj]
+      omit <- omit | (nobspt==1)
+    }
     omit
 }
 
@@ -2968,7 +3022,22 @@ expand.data <- function(x){
     x$data
 }
 
-
+msm.form.subject.weights <- function(mf){
+  subjw <- mf$"(subject.weights)"
+  subj <- mf$"(subject)"
+  if (!is.null(subjw)){
+    if (!is.numeric(subjw)) stop("`subject.weights` must be numeric")
+    ndistinct <- tapply(subjw, subj, function(x)length(unique(na.omit(x))))
+    badsubj <- unique(subj)[ndistinct > 1]
+    if (length(badsubj) > 0){
+      warning(sprintf("subject %s (and perhaps others) has non-unique weights. Using the weight from their first observation",
+                      badsubj[1]))
+    }
+    ## form short vector
+    w <- subjw[!duplicated(subj)]
+  } else w <- NULL
+  w
+}
 
 #' Extract original data from \code{msm} objects.
 #' 

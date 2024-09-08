@@ -24,7 +24,7 @@
 #' See the references for further details of the methods.  The method used for
 #' censored states is a modification of the method in the appendix to Titman
 #' and Sharples (2008), described at
-#' \url{https://www.mrc-bsu.cam.ac.uk/wp-content/uploads/robustcensoring.pdf}
+#' \url{https://chjackson.github.io/msm/misc/robustcensoring.pdf}
 #' (Titman, 2007).
 #' 
 #' Groupings of the time since initiation, the time interval and the impact of
@@ -340,7 +340,7 @@ pearson.msm <- function(x, transitions=NULL, timegroups=3, intervalgroups=3, cov
         qmatindex <- match(pastedc,pastedu)
         qmat <- array(0,dim=c(nst,nst,nouniq))
         for (i in 1:nouniq)
-            qmat[,,i] <- qmatrix.msm(x, covariates=as.list(uniq[i,]), ci="none")
+            qmat[,,i] <- qmatrix.msm(x, covariates=as.list(uniq[i,,drop=FALSE]), ci="none")
     }else{
         qmatindex <- rep(1,n)
         nouniq <- 1
@@ -744,6 +744,7 @@ pearson.boot.msm <- function(x, imp.times=NULL, transitions=NULL, timegroups=4, 
   x$call$hessian <- x$call$death <- FALSE
   x$call$obstype <- NULL
   x$call$subject <- substitute(subject)
+  x$call$subject.weights <- substitute(subject.weights)
   i <- 1
   while (i <= B) {
     if (!is.null(imp.times))
