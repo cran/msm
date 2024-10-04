@@ -1,7 +1,7 @@
 c460517ff8c3020244e6e94197b5a792 *ChangeLog
-51e5cb98be7a499b2f8402e681283407 *DESCRIPTION
+5bc4b8e27a8b331ba9a6887a24e9e725 *DESCRIPTION
 ba68affc323cb18703bb8ce285ddc6c3 *NAMESPACE
-4ea43e34934f781cbea55f8d1c7fc3ba *NEWS.md
+b956b3f09eb8e3d1cac53a40fae607f3 *NEWS.md
 fe6538df6d5986f08a80b06008d303eb *R/MatrixExp.R
 804d3c05e8871b43b42ab7c9eec4e683 *R/boot.R
 195856200de56a64f8e3edc91c2b4bcd *R/constants.R
@@ -15,7 +15,7 @@ a08dd2901a339ab646c19e1aca5f9600 *R/draic.R
 b9d1f85b1a9dd9576957f71f92e41331 *R/internals_doc.R
 bbb47f9ac55e99da25b98a2beb994917 *R/medists.R
 385a5afaed084d25a47eefbd266a5cec *R/msm-package.R
-b14f97f54a3de3a81aa7648dfe291d6d *R/msm.R
+1a1a8decb521ac092f81cfbefa665333 *R/msm.R
 1d480b306cb40db15ca3775896e8bd47 *R/mstate.R
 571f18753afb0509b3a4ceb6785f77b7 *R/olddata.R
 83f719dabd7e192a7c32129a62c466a2 *R/optim.R
@@ -36,7 +36,7 @@ caa401192f3b4c7970a3f13459f0a81a *R/scoreresid.R
 9e96194ff444d83260e430c2c00757cc *R/totlos.R
 9fdf10e329189a10900c3e422b0158e5 *R/utils.R
 b6457d18b1d4dfb79a53619bbd329664 *R/viterbi.R
-6b8b59fd4a1b85ff104e859083954d5f *build/vignette.rds
+781171cc53a5c873fcdc8b6168009d00 *build/vignette.rds
 2e83efb31c764734aa67ed4e686c7fc1 *data/bos3.rda
 21080bd2b47eb8885142701c92c14c73 *data/bos4.rda
 35ea8ffa25baf02ee38f4ccb5fdc0446 *data/msmdata.rda
@@ -44,7 +44,7 @@ b6457d18b1d4dfb79a53619bbd329664 *R/viterbi.R
 2966ec2a2cadc89a000931d448391350 *inst/NEWS
 c6f3ba1f30060fa77a0c818724d9581d *inst/doc/msm-manual.R
 268e2df5718977ebab0977db5378ccfe *inst/doc/msm-manual.Rnw
-98934bc010d7c0520fce50c369250080 *inst/doc/msm-manual.pdf
+7567f6f1cb8c66da47ba61dd463334f1 *inst/doc/msm-manual.pdf
 ca2b9d76ae4df2b4f1adef54f7053fb7 *man/MatrixExp.Rd
 19ba7f5fa9359a7000e43475b3263ba8 *man/aneur.Rd
 f4dd5dd30b7ae85b4ea0ca78611c17cb *man/boot.msm.Rd
@@ -130,12 +130,12 @@ cd00af64ec331af182dafd74c77107f8 *tests/testthat/helper.r
 e63e537aa0930b05fff245a23619ea07 *tests/testthat/test_analyticp.r
 e2c81ab5ca5fc13977db33116a39dd2b *tests/testthat/test_boot.R
 04f8c782394158413e836b845d4479a2 *tests/testthat/test_datasumm.r
-4cc7160617afed9b14c0cde3427ea402 *tests/testthat/test_deriv.r
+ae716fa7b3ac8067ae614bb0a6f76866 *tests/testthat/test_deriv.r
 937966194b0c4897040751a795709bfc *tests/testthat/test_draic.r
 12f117aa64759bcd6f4ea82c292cc247 *tests/testthat/test_hmodel2list.R
 816c9aa73c147b1c49bb2894c6c78f03 *tests/testthat/test_models.r
 e500bed26455440902491d358566d54a *tests/testthat/test_models_hmm.r
-afde51985779f1f9083e493da5453644 *tests/testthat/test_models_hmmmulti.r
+5966c98916c1421e8bc2277b373bb289 *tests/testthat/test_models_hmmmulti.r
 abe663b515b493b9485f195a147f25bd *tests/testthat/test_models_misc.r
 e069a0dee4b17c02a6ecb377c01478f1 *tests/testthat/test_msm2Surv.R
 bcc8e77b4055031ebe4d00b79e70de4a *tests/testthat/test_pearson.R
