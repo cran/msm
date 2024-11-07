@@ -1,7 +1,7 @@
 c460517ff8c3020244e6e94197b5a792 *ChangeLog
-5bc4b8e27a8b331ba9a6887a24e9e725 *DESCRIPTION
+56d5575d0b4dd6df338b9eed050e5251 *DESCRIPTION
 ba68affc323cb18703bb8ce285ddc6c3 *NAMESPACE
-b956b3f09eb8e3d1cac53a40fae607f3 *NEWS.md
+ae66bb9f50cfb5e2be7a908a55f76eab *NEWS.md
 fe6538df6d5986f08a80b06008d303eb *R/MatrixExp.R
 804d3c05e8871b43b42ab7c9eec4e683 *R/boot.R
 195856200de56a64f8e3edc91c2b4bcd *R/constants.R
@@ -15,7 +15,7 @@ a08dd2901a339ab646c19e1aca5f9600 *R/draic.R
 b9d1f85b1a9dd9576957f71f92e41331 *R/internals_doc.R
 bbb47f9ac55e99da25b98a2beb994917 *R/medists.R
 385a5afaed084d25a47eefbd266a5cec *R/msm-package.R
-1a1a8decb521ac092f81cfbefa665333 *R/msm.R
+68580dbe9a25627a39f971dfe6c06faf *R/msm.R
 1d480b306cb40db15ca3775896e8bd47 *R/mstate.R
 571f18753afb0509b3a4ceb6785f77b7 *R/olddata.R
 83f719dabd7e192a7c32129a62c466a2 *R/optim.R
@@ -44,7 +44,7 @@ b6457d18b1d4dfb79a53619bbd329664 *R/viterbi.R
 2966ec2a2cadc89a000931d448391350 *inst/NEWS
 c6f3ba1f30060fa77a0c818724d9581d *inst/doc/msm-manual.R
 268e2df5718977ebab0977db5378ccfe *inst/doc/msm-manual.Rnw
-7567f6f1cb8c66da47ba61dd463334f1 *inst/doc/msm-manual.pdf
+aaf55dc6b860ef5b2a3c0fd69c5dd5c1 *inst/doc/msm-manual.pdf
 ca2b9d76ae4df2b4f1adef54f7053fb7 *man/MatrixExp.Rd
 19ba7f5fa9359a7000e43475b3263ba8 *man/aneur.Rd
 f4dd5dd30b7ae85b4ea0ca78611c17cb *man/boot.msm.Rd
