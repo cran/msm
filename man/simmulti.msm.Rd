@@ -2,8 +2,8 @@
 % Please edit documentation in R/simul.R
 \name{simmulti.msm}
 \alias{simmulti.msm}
-\title{Simulate multiple trajectories from a multi-state Markov model with
-arbitrary observation times}
+\title{Simulate intermittently-observed data from a set of individuals
+following a continuous-time Markov multi-state model.}
 \usage{
 simmulti.msm(
   data,
@@ -16,7 +16,8 @@ simmulti.msm(
   hmodel = NULL,
   hcovariates = NULL,
   censor.states = NULL,
-  drop.absorb = TRUE
+  drop.absorb = TRUE,
+  method = "C"
 )
 }
 \arguments{
@@ -95,7 +96,17 @@ censoring indicator at censoring times.  By default this is all transient
 states (representing alive, with unknown state).}
 
 \item{drop.absorb}{Drop repeated observations in the absorbing state,
-retaining only one.}
+retaining only one.  If \code{FALSE} and an individual enters a state in
+\code{death}, the observation at the exact death time takes the place of the
+next scheduled observation, and any later scheduled observations are
+retained, in the death state.}
+
+\item{method}{The default from \code{msm} version 1.9,
+\code{method="C"}, uses a fast C-based method, which will
+simulate different specific values for a given seed from the
+previous slower R-based method. Set \code{method="legacy"} to use
+the old method, in case reproducibility of older results for the
+same seed is needed.}
 }
 \value{
 A data frame with columns, \item{subject}{Subject identification
@@ -109,11 +120,13 @@ supplied covariates.
 \description{
 Simulate a number of individual realisations from a continuous-time Markov
 process. Observations of the process are made at specified arbitrary times
-for each individual, giving panel-observed data.
+for each individual, giving "panel-observed" or intermittently-observed data.
 }
 \details{
-\code{\link{sim.msm}} is called repeatedly to produce a simulated trajectory
-for each individual. The state at each specified observation time is then
+A trajectory is simulated for each individual, equivalently to calling
+\code{\link{sim.msm}} for each one, though this is done for all individuals
+at once in compiled code, so that large datasets can be simulated quickly.
+The state at each specified observation time is then
 taken to produce a new column \code{state}.  The effect of time-dependent
 covariates on the transition intensity matrix for an individual is
 determined by assuming that the covariate is a step function which remains

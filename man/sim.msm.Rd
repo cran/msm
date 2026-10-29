@@ -11,7 +11,8 @@ sim.msm(
   beta = NULL,
   obstimes = 0,
   start = 1,
-  mintime = 0
+  mintime = 0,
+  method = "C"
 )
 }
 \arguments{
@@ -38,6 +39,13 @@ off-diagonal elements of the matrix.}
 \item{start}{Starting state of the process. Defaults to 1.}
 
 \item{mintime}{Starting time of the process. Defaults to 0.}
+
+\item{method}{The default from \code{msm} version 1.9,
+\code{method="C"}, uses a fast C-based method, which will
+simulate different specific values for a given seed from the
+previous slower R-based method. Set \code{method="legacy"} to use
+the old method, in case reproducibility of older results for the
+same seed is needed.}
 }
 \value{
 A list with components,
@@ -52,14 +60,19 @@ states}
 \item{qmatrix}{The given transition intensity matrix}
 }
 \description{
-Simulate one realisation from a continuous-time Markov process up to a given
-time.
+Simulate the exact times of transition of a continuous-time Markov process up to a given time.
 }
 \details{
 The effect of time-dependent covariates on the transition intensity matrix
 for an individual is determined by assuming that the covariate is a step
 function which remains constant in between the individual's observation
-times.
+times.  The covariate values in row \code{k} of \code{covs} apply from
+\code{obstimes[k]} until \code{obstimes[k+1]}, those in the first row also
+apply from \code{mintime} if this is earlier than \code{obstimes[1]}, and
+those in the last row apply until \code{maxtime}.
+
+The simulation is done in compiled code, using the same engine as
+\code{\link{simmulti.msm}}.
 }
 \examples{
 

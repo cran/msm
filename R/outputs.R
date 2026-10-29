@@ -630,6 +630,8 @@ msm.fill.pci.covs <- function(x, covariates="mean"){
 ### covariates which interact in the model, form the corresponding
 ### "covariates" argument with the interactions expanded.
 
+#' @noRd
+#' @exportS3Method NULL
 expand.interactions.msm <- function(covariates, covlabels){
     cn.nointer <- names(covariates)
     elist <- strsplit(covlabels, ":")
@@ -676,6 +678,7 @@ print.msm.est <- function(x, digits=NULL, ...)
 }
 
 #' @noRd
+#' @exportS3Method NULL
 format.ci <- function(x, l, u, noci=NULL, digits=NULL, ...)
 {
     if (is.null(noci)) noci <- rep(FALSE, length(x))

@@ -1386,7 +1386,7 @@ msm.check.times <- function(time, subject, state=NULL, hidden=FALSE)
 ### Check if any individuals have only one observation (after excluding missing data)
 ### Note this shouldn't happen after 1.2
     subj.num <- match(subject,unique(subject)) # avoid problems with factor subjects with empty levels
-    nobspt <- table(subj.num)
+    nobspt <- tabulate(subj.num)
     if (any (nobspt == 1)) {
         badsubjs <- unique(subject)[ nobspt == 1 ]
         andothers <- if (length(badsubjs)>3) " and others" else ""
@@ -1398,10 +1398,10 @@ msm.check.times <- function(time, subject, state=NULL, hidden=FALSE)
           warning ("Subject", plural, " ", badlist, andothers, " only ", has, " one complete observation, which doesn't give any information")
     }
 ### Check if observations within a subject are adjacent
-    ind <- tapply(seq_along(subj.num), subj.num, length)
-    imin <- tapply(seq_along(subj.num), subj.num, min)
-    imax <- tapply(seq_along(subj.num), subj.num, max)
-    adjacent <- (ind == imax-imin+1)
+    nsubj <- length(nobspt)
+    imin <- match(seq_len(nsubj), subj.num)
+    imax <- length(subj.num) + 1 - match(seq_len(nsubj), rev(subj.num))
+    adjacent <- (nobspt == imax-imin+1)
     if (any (!adjacent)) {
         badsubjs <- unique(subject)[ !adjacent ]
         andothers <- if (length(badsubjs)>3) " and others" else ""
@@ -1411,7 +1411,9 @@ msm.check.times <- function(time, subject, state=NULL, hidden=FALSE)
         stop ("Observations within subject", plural, " ", badlist, andothers, " are not adjacent in the data")
     }
 ### Check if observations are ordered in time within subject
-    orderedpt <- ! tapply(time, subj.num, is.unsorted)
+    nobs <- length(time)
+    backwards <- c(FALSE, subj.num[-1] == subj.num[-nobs] & time[-1] < time[-nobs])
+    orderedpt <- ! (seq_len(nsubj) %in% subj.num[backwards])
     if (any (!orderedpt)) {
         badsubjs <- unique(subject)[ !orderedpt ]
         andothers <- if (length(badsubjs)>3) " and others" else ""
@@ -2179,6 +2181,8 @@ msm.form.dh <- function(hmodel,
 ### for r!=s,  exp(lp_r) * (-exp(lp_s)/ (sum_all())^2
 ### for r=s,  d/dlp_s p_r  =  exp(lp_r) / sum_all() - exp(lp_r)^2 / (sum_all())^2
 
+#' @noRd
+#' @exportS3Method NULL
 msm.dmninvlogit <- function(hmodel, pars, mml, hcov, dh){
     plabs <- hmodel$plabs
     states <- hmodel$parstate
@@ -2274,14 +2278,18 @@ msm.initprobs2mat <- function(hmodel, pars, mm, mf, cmodel){
     ## and reweight other entries to sum to 1. 
     initstate <- mf$"(state)"[!duplicated(mf$"(subject)")]
     initobstrue <- mf$"(obstrue)"[!duplicated(mf$"(subject)")]
-    initknown <- (initstate %in% cmodel$censor) & (initobstrue != 0) 
-    if (cmodel$ncens > 0 && any(initknown)) {
+    initknown <- (initobstrue != 0) 
+    if (any(initknown)) {
         for (i in 1:npts) {
             if (initknown[i]){
+              initp[i,] <- 0
+              if (initstate[i] %in% cmodel$censor){
                 cs <- cmodel$states_list[[as.character(initstate[i])]]
                 ip <- initp[i,cs]
-                initp[i,] <- 0
                 initp[i,cs] <- ip / sum(ip)
+              } else {
+                initp[i,initstate[i]] <- 1
+              }
             }
         }
     }
@@ -2825,6 +2833,7 @@ msm.form.cri <- function(covlist, qmodel, mf, mm, tdmodel) {
 ## non-atomic, matrix within df
 
 #' @noRd
+#' @exportS3Method NULL
 na.omit.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
     omit <- na.find.msmdata(object, hidden=hidden, misc=misc)
     xx <- object[!omit, , drop = FALSE]
@@ -2837,6 +2846,7 @@ na.omit.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
 }
 
 #' @noRd
+#' @exportS3Method NULL
 na.fail.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
     omit <- na.find.msmdata(object, hidden=hidden, misc=misc)
     if (any(omit))
@@ -2845,6 +2855,7 @@ na.fail.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
 }
 
 #' @noRd
+#' @exportS3Method NULL
 na.find.msmdata <- function(object, hidden=FALSE, misc=FALSE, ...) {
     subj <- as.character(object[,"(subject)"])
     firstobs <- !duplicated(subj)
@@ -3016,6 +3027,8 @@ msm.center.covs <- function(covmat, cm, center=TRUE){
     covmat
 }
 
+#' @noRd
+#' @exportS3Method NULL
 expand.data <- function(x){
     x$data$mf.agg <- msm.form.mf.agg(x)
     x$data$mm.cov <- msm.form.mm.cov(x)

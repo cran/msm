@@ -291,5 +291,3 @@ sojourn.msm(fev1.msm)
 ### code chunk number 41: msm-manual.Rnw:2669-2670 (eval = FALSE)
 ###################################################
 ## help.start()
-
-
